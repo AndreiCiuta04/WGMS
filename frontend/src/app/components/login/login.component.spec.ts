@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 
 import {LoginComponent} from './login.component';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
@@ -14,7 +15,8 @@ describe('LoginComponent', () => {
     TestBed.configureTestingModule({
     declarations: [LoginComponent],
     imports: [RouterTestingModule, ReactiveFormsModule],
-    providers: [provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()]
+    providers: [provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()],
+    schemas: [NO_ERRORS_SCHEMA]
 })
     .compileComponents();
   }));

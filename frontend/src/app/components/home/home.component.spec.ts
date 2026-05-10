@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 
 import {HomeComponent} from './home.component';
 import {ReactiveFormsModule} from '@angular/forms';
@@ -14,7 +15,8 @@ describe('HomeComponent', () => {
     TestBed.configureTestingModule({
     declarations: [HomeComponent],
     imports: [RouterTestingModule, ReactiveFormsModule],
-    providers: [provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()]
+    providers: [provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()],
+    schemas: [NO_ERRORS_SCHEMA]
 })
     .compileComponents();
   }));

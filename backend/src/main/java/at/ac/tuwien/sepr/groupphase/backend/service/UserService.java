@@ -37,4 +37,12 @@ public interface UserService extends UserDetailsService {
      * @throws org.springframework.security.authentication.BadCredentialsException if credentials are bad
      */
     String login(UserLoginDto userLoginDto);
+
+    /**
+     * Register a new user.
+     *
+     * @param userRegistrationDto registration credentials
+     * @return the JWT, if successful login directly after registration, or simply the registered user email
+     */
+    String register(at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserRegistrationDto userRegistrationDto);
 }

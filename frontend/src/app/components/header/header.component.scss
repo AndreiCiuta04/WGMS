@@ -1,0 +1,38 @@
+.navbar {
+  background-color: transparent !important;
+  border-bottom: 1px solid rgba(31, 42, 31, 0.1);
+  padding: 1rem 0;
+  margin-bottom: 2rem;
+}
+
+.navbar-brand {
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+  color: #346739 !important;
+  font-size: 24px;
+  letter-spacing: -0.5px;
+}
+
+.nav-link {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  color: #5F6B5F !important;
+  margin: 0 0.5rem;
+  transition: color 0.2s ease;
+
+  &:hover, &.active {
+    color: #346739 !important;
+  }
+}
+
+.navbar-toggler {
+  border: none;
+  &:focus {
+    outline: none;
+    box-shadow: none;
+  }
+}
+
+.navbar-toggler-icon {
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3Cpath stroke='rgba(52, 103, 57, 1)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 8h24M4 16h24M4 24h24'/%3E%3C/svg%3E") !important;
+}
