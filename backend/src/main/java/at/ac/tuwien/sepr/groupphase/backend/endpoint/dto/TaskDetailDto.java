@@ -9,6 +9,7 @@ import java.util.Objects;
 public class TaskDetailDto {
 
     private Long id;
+    private Long householdId;
     private String title;
     private String description;
     private LocalDate dueDate;
@@ -20,6 +21,14 @@ public class TaskDetailDto {
 
     public Long getId() {
         return id;
+    }
+
+    public Long getHouseholdId() {
+        return householdId;
+    }
+
+    public void setHouseholdId(Long householdId) {
+        this.householdId = householdId;
     }
 
     public void setId(Long id) {
@@ -94,8 +103,8 @@ public class TaskDetailDto {
     public String toString() {
         return "TaskDetailDto{"
             + "id=" + id
+            + ", householdId=" + householdId
             + ", title='" + title + '\''
-            + ", description='" + description + '\''
             + ", dueDate=" + dueDate
             + ", status=" + status
             + ", createdByEmail='" + createdByEmail + '\''
@@ -114,6 +123,7 @@ public class TaskDetailDto {
             return false;
         }
         return Objects.equals(id, that.id)
+            && Objects.equals(householdId, that.householdId)
             && Objects.equals(title, that.title)
             && Objects.equals(description, that.description)
             && Objects.equals(dueDate, that.dueDate)
@@ -126,6 +136,6 @@ public class TaskDetailDto {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, title, description, dueDate, status, createdByEmail, assignedToEmail, createdAt, updatedAt);
+        return Objects.hash(id, householdId, title, description, dueDate, status, createdByEmail, assignedToEmail, createdAt, updatedAt);
     }
 }

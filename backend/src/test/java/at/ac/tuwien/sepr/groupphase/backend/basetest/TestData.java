@@ -15,10 +15,6 @@ public interface TestData {
     LocalDateTime TEST_NEWS_PUBLISHED_AT =
         LocalDateTime.of(2019, 11, 13, 12, 15, 0, 0);
 
-    String TEST_TASK_TITLE = "Clean the kitchen";
-    String TEST_TASK_DESCRIPTION = "Clean the kitchen surfaces, sink, and floor";
-    LocalDate TEST_TASK_DUE_DATE = LocalDate.now().plusDays(3);
-
     String BASE_URI = "/api/v1";
     String MESSAGE_BASE_URI = BASE_URI + "/messages";
     String TASK_BASE_URI = BASE_URI + "/tasks";
@@ -37,4 +33,19 @@ public interface TestData {
             add("ROLE_USER");
         }
     };
+
+    String MAIN_TENANT_EMAIL = "main.tenant@test.com";
+    String ROOMMATE_EMAIL = "roommate@test.com";
+    String SECOND_ROOMMATE_EMAIL = "second.roommate@test.com";
+    String OUTSIDER_EMAIL = "outsider@test.com";
+
+    String TEST_HOUSEHOLD_NAME = "QA Test WG";
+    String OTHER_HOUSEHOLD_NAME = "Other Test WG";
+
+    String TEST_TASK_TITLE = "Clean the kitchen";
+    String TEST_TASK_DESCRIPTION = "Clean the kitchen surfaces, sink, and floor";
+    String UPDATED_TASK_TITLE = "Clean the bathroom";
+    String UPDATED_TASK_DESCRIPTION = "Clean the bathroom sink, mirror, and floor";
+    LocalDate TEST_TASK_DUE_DATE = LocalDate.now().plusDays(3);
+    LocalDate UPDATED_TASK_DUE_DATE = LocalDate.now().plusDays(5);
 }

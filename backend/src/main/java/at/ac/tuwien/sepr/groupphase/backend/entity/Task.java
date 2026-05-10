@@ -4,9 +4,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -23,6 +26,10 @@ public class Task {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "household_id", nullable = false)
+    private Household household;
+
     @Column(nullable = false, length = 100)
     private String title;
 
@@ -36,11 +43,13 @@ public class Task {
     @Column(nullable = false, length = 30)
     private TaskStatus status;
 
-    @Column(nullable = false, name = "created_by_email", length = 255)
-    private String createdByEmail;
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_user_id", nullable = false)
+    private ApplicationUser createdBy;
 
-    @Column(nullable = false, name = "assigned_to_email", length = 255)
-    private String assignedToEmail;
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_to_user_id", nullable = false)
+    private ApplicationUser assignedTo;
 
     @Column(nullable = false, name = "created_at")
     private LocalDateTime createdAt;
@@ -72,8 +81,44 @@ public class Task {
         return id;
     }
 
+    public Long getHouseholdId() {
+        return household == null ? null : household.getId();
+    }
+
+    public String getCreatedByEmail() {
+        return createdBy == null ? null : createdBy.getEmail();
+    }
+
+    public String getAssignedToEmail() {
+        return assignedTo == null ? null : assignedTo.getEmail();
+    }
+
+    public boolean isCreatedBy(ApplicationUser user) {
+        return user != null
+            && createdBy != null
+            && Objects.equals(createdBy.getId(), user.getId());
+    }
+
+    public boolean isAssignedTo(ApplicationUser user) {
+        return user != null
+            && assignedTo != null
+            && Objects.equals(assignedTo.getId(), user.getId());
+    }
+
+    public boolean belongsToHousehold(Long householdId) {
+        return household != null && Objects.equals(household.getId(), householdId);
+    }
+
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Household getHousehold() {
+        return household;
+    }
+
+    public void setHousehold(Household household) {
+        this.household = household;
     }
 
     public String getTitle() {
@@ -108,20 +153,20 @@ public class Task {
         this.status = status;
     }
 
-    public String getCreatedByEmail() {
-        return createdByEmail;
+    public ApplicationUser getCreatedBy() {
+        return createdBy;
     }
 
-    public void setCreatedByEmail(String createdByEmail) {
-        this.createdByEmail = createdByEmail;
+    public void setCreatedBy(ApplicationUser createdBy) {
+        this.createdBy = createdBy;
     }
 
-    public String getAssignedToEmail() {
-        return assignedToEmail;
+    public ApplicationUser getAssignedTo() {
+        return assignedTo;
     }
 
-    public void setAssignedToEmail(String assignedToEmail) {
-        this.assignedToEmail = assignedToEmail;
+    public void setAssignedTo(ApplicationUser assignedTo) {
+        this.assignedTo = assignedTo;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -140,48 +185,16 @@ public class Task {
         this.updatedAt = updatedAt;
     }
 
-    public boolean isCreatedBy(String email) {
-        return createdByEmail != null && createdByEmail.equalsIgnoreCase(email);
-    }
-
-    public boolean isAssignedTo(String email) {
-        return assignedToEmail != null && assignedToEmail.equalsIgnoreCase(email);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof Task task)) {
-            return false;
-        }
-        return Objects.equals(id, task.id)
-            && Objects.equals(title, task.title)
-            && Objects.equals(description, task.description)
-            && Objects.equals(dueDate, task.dueDate)
-            && status == task.status
-            && Objects.equals(createdByEmail, task.createdByEmail)
-            && Objects.equals(assignedToEmail, task.assignedToEmail)
-            && Objects.equals(createdAt, task.createdAt)
-            && Objects.equals(updatedAt, task.updatedAt);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, title, description, dueDate, status, createdByEmail, assignedToEmail, createdAt, updatedAt);
-    }
-
     @Override
     public String toString() {
         return "Task{"
             + "id=" + id
+            + ", householdId=" + getHouseholdId()
             + ", title='" + title + '\''
-            + ", description='" + description + '\''
             + ", dueDate=" + dueDate
             + ", status=" + status
-            + ", createdByEmail='" + createdByEmail + '\''
-            + ", assignedToEmail='" + assignedToEmail + '\''
+            + ", createdByUserId=" + (createdBy == null ? null : createdBy.getId())
+            + ", assignedToUserId=" + (assignedTo == null ? null : assignedTo.getId())
             + ", createdAt=" + createdAt
             + ", updatedAt=" + updatedAt
             + '}';
@@ -189,12 +202,13 @@ public class Task {
 
     public static final class TaskBuilder {
         private Long id;
+        private Household household;
         private String title;
         private String description;
         private LocalDate dueDate;
         private TaskStatus status;
-        private String createdByEmail;
-        private String assignedToEmail;
+        private ApplicationUser createdBy;
+        private ApplicationUser assignedTo;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
@@ -207,6 +221,11 @@ public class Task {
 
         public TaskBuilder withId(Long id) {
             this.id = id;
+            return this;
+        }
+
+        public TaskBuilder withHousehold(Household household) {
+            this.household = household;
             return this;
         }
 
@@ -230,13 +249,13 @@ public class Task {
             return this;
         }
 
-        public TaskBuilder withCreatedByEmail(String createdByEmail) {
-            this.createdByEmail = createdByEmail;
+        public TaskBuilder withCreatedBy(ApplicationUser createdBy) {
+            this.createdBy = createdBy;
             return this;
         }
 
-        public TaskBuilder withAssignedToEmail(String assignedToEmail) {
-            this.assignedToEmail = assignedToEmail;
+        public TaskBuilder withAssignedTo(ApplicationUser assignedTo) {
+            this.assignedTo = assignedTo;
             return this;
         }
 
@@ -253,12 +272,13 @@ public class Task {
         public Task build() {
             Task task = new Task();
             task.setId(id);
+            task.setHousehold(household);
             task.setTitle(title);
             task.setDescription(description);
             task.setDueDate(dueDate);
             task.setStatus(status);
-            task.setCreatedByEmail(createdByEmail);
-            task.setAssignedToEmail(assignedToEmail);
+            task.setCreatedBy(createdBy);
+            task.setAssignedTo(assignedTo);
             task.setCreatedAt(createdAt);
             task.setUpdatedAt(updatedAt);
             return task;

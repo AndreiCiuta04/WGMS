@@ -2,6 +2,7 @@ package at.ac.tuwien.sepr.groupphase.backend.endpoint.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -10,7 +11,7 @@ import java.util.Objects;
 
 public class TaskCreateDto {
 
-    @NotNull(message = "Title must not be null")
+    @NotBlank(message = "Title must not be blank")
     @Size(max = 100, message = "Title must not be longer than 100 characters")
     private String title;
 
@@ -61,7 +62,6 @@ public class TaskCreateDto {
     public String toString() {
         return "TaskCreateDto{"
             + "title='" + title + '\''
-            + ", description='" + description + '\''
             + ", dueDate=" + dueDate
             + ", assignedToEmail='" + assignedToEmail + '\''
             + '}';
