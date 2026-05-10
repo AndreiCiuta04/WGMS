@@ -22,7 +22,7 @@ export class LoginComponent implements OnInit {
 
   constructor(private formBuilder: UntypedFormBuilder, private authService: AuthService, private router: Router) {
     this.loginForm = this.formBuilder.group({
-      username: ['', [Validators.required]],
+      email: ['', [Validators.required]],
       password: ['', [Validators.required, Validators.minLength(8)]]
     });
   }
@@ -33,7 +33,7 @@ export class LoginComponent implements OnInit {
   loginUser() {
     this.submitted = true;
     if (this.loginForm.valid) {
-      const authRequest: AuthRequest = new AuthRequest(this.loginForm.controls.username.value, this.loginForm.controls.password.value);
+      const authRequest: AuthRequest = new AuthRequest(this.loginForm.controls.email.value, this.loginForm.controls.password.value);
       this.authenticateUser(authRequest);
     } else {
       console.log('Invalid input');
@@ -50,7 +50,12 @@ export class LoginComponent implements OnInit {
     this.authService.loginUser(authRequest).subscribe({
       next: () => {
         console.log('Successfully logged in user: ' + authRequest.email);
-        this.router.navigate(['/message']);
+        const pendingToken = localStorage.getItem('pendingInviteToken');
+        if (pendingToken) {
+          this.router.navigate(['/invite', pendingToken]);
+        } else {
+          this.router.navigate(['/']);
+        }
       },
       error: error => {
         console.log('Could not log in due to:');

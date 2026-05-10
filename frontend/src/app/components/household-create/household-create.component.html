@@ -1,0 +1,51 @@
+<div class="wgms-container">
+  <div class="row pt-5">
+    <div class="col-md-6 mx-auto">
+      
+      @if (errorMessage) {
+        <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+          <strong>Something went wrong</strong>
+          <p class="mb-0 caption">{{ errorMessage }}</p>
+        </div>
+      }
+
+      <div class="wgms-card">
+        <div class="card-header-clean mb-4 text-center">
+          <h1 class="h2 mb-1">Create your Household</h1>
+          <p class="caption accent-text">Every great home starts with a name.</p>
+        </div>
+
+        <form [formGroup]="form" (ngSubmit)="submit()">
+          <div class="mb-4">
+            <label for="name" class="caption mb-2 d-block">Household Name</label>
+            <input type="text" id="name" formControlName="name" class="form-control" 
+                   placeholder="e.g. Dream Loft Vienna"
+                   [ngClass]="{'is-invalid': form.get('name')?.touched && form.get('name')?.invalid}">
+            @if (form.get('name')?.touched && form.get('name')?.invalid) {
+              <div class="error mt-1">
+                <small class="form-text text-danger">A name is required (max 120 chars)</small>
+              </div>
+            }
+          </div>
+
+          <div class="mb-4">
+            <label for="address" class="caption mb-2 d-block">Address (optional)</label>
+            <textarea id="address" formControlName="address" class="form-control" rows="3" 
+                      placeholder="Street, City, Postcode"
+                      [ngClass]="{'is-invalid': form.get('address')?.touched && form.get('address')?.invalid}"></textarea>
+            @if (form.get('address')?.touched && form.get('address')?.invalid) {
+              <div class="error mt-1">
+                <small class="form-text text-danger">Address is too long (max 255 chars)</small>
+              </div>
+            }
+          </div>
+
+          <div class="text-center">
+            <button type="submit" class="btn btn-primary px-5 py-3 mt-2" [disabled]="form.invalid">Initialize WG</button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>

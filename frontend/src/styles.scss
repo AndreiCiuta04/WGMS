@@ -1,4 +1,188 @@
-/* You can add global styles to this file, and also import other style files */
+@use "sass:color";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@1,400;1,500;1,600;1,700&display=swap');
+
+// 02 Color Palette
+$forest-green: #346739;
+$leaf-green: #79AE6F;
+$soft-green: #9FCB98;
+$cream: #F2EDC2;
+$white: #FFFFFF;
+$eggwhite-bg: #FBFAF3;
+$text-primary: #1F2A1F;
+$text-secondary: #5F6B5F;
+
+// 03 Spacing System (4px base)
+$space-1: 4px;
+$space-2: 8px;
+$space-3: 12px;
+$space-4: 16px;
+$space-6: 24px;
+$space-8: 32px;
+$space-10: 40px;
+$space-12: 48px;
+$space-16: 64px;
+
+// 08 Surfaces, Borders, and Shadows
+$border-subtle: 1px solid rgba(52, 103, 57, 0.16);
+$divider: 1px solid rgba(31, 42, 31, 0.14);
+$soft-shadow: 0 12px 32px rgba(31, 42, 31, 0.08);
+
+:root {
+  --wgms-forest-green: #{$forest-green};
+  --wgms-leaf-green: #{$leaf-green};
+  --wgms-soft-green: #{$soft-green};
+  --wgms-cream: #{$cream};
+  --wgms-eggwhite-bg: #{$eggwhite-bg};
+  --wgms-text-primary: #{$text-primary};
+  --wgms-text-secondary: #{$text-secondary};
+}
+
+html, body {
+  height: 100%;
+}
+
 body {
-  background-color: whitesmoke;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: $eggwhite-bg;
+  color: $text-primary;
+  font-size: 18px;
+  line-height: 1.5;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Inter', sans-serif;
+  color: $text-primary;
+  margin-bottom: $space-4;
+  font-weight: 700;
+}
+
+h1 { font-size: 52px; line-height: 60px; }
+h2 { font-size: 36px; line-height: 44px; }
+h3 { font-size: 24px; line-height: 32px; font-weight: 600; }
+
+.body-text { font-size: 18px; line-height: 28px; font-weight: 400; }
+.caption { font-size: 14px; line-height: 20px; color: $text-secondary; }
+.accent-text { font-family: 'Cormorant Garamond', serif; font-style: italic; }
+
+// Layout Utilities
+.wgms-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: $space-8 $space-12;
+}
+
+// Surfaces
+.wgms-card {
+  background-color: $white;
+  border: $border-subtle;
+  box-shadow: $soft-shadow;
+  border-radius: $space-3;
+  padding: $space-8;
+  margin-bottom: $space-6;
+}
+
+// Buttons (Overriding Bootstrap)
+.btn-primary {
+  background-color: $forest-green !important;
+  border-color: $forest-green !important;
+  color: $white !important;
+  font-weight: 600;
+  padding: $space-3 $space-6;
+  border-radius: $space-2;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background-color: color.adjust($forest-green, $lightness: -5%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(52, 103, 57, 0.2);
+  }
+}
+
+.btn-outline-primary {
+  color: $forest-green !important;
+  border-color: $forest-green !important;
+  
+  &:hover {
+    background-color: rgba(52, 103, 57, 0.05) !important;
+    color: color.adjust($forest-green, $lightness: -10%) !important;
+  }
+}
+
+// Form Controls
+.form-control {
+  background-color: $white;
+  border: $border-subtle;
+  border-radius: $space-2;
+  padding: $space-3 $space-4;
+  color: $text-primary;
+  
+  &:focus {
+    border-color: $forest-green;
+    box-shadow: 0 0 0 3px rgba(52, 103, 57, 0.1);
+  }
+}
+
+// Links
+a {
+  color: $forest-green;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  
+  &:hover {
+    color: color.adjust($forest-green, $lightness: 10%);
+  }
+}
+
+// Typography Helpers
+.accent-text {
+  font-family: 'Cormorant Garamond', serif !important;
+  font-style: italic !important;
+}
+
+.hero-tagline {
+  font-size: 32px;
+  color: $forest-green;
+  margin-bottom: $space-6;
+}
+
+.caption {
+  font-size: 14px;
+  line-height: 20px;
+  color: $text-secondary;
+  font-weight: 400;
+}
+
+// Dividers
+hr, .divider {
+  border: 0;
+  border-top: $divider;
+  margin: $space-6 0;
+}
+
+// Badge Styles
+.badge {
+  padding: $space-1 $space-3 !important;
+  border-radius: $space-1 !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.5px !important;
+  display: inline-block !important;
+}
+
+.badge-wgms-active {
+  background-color: rgba(52, 103, 57, 0.12) !important;
+  color: #2D5431 !important;
+}
+
+.badge-wgms-used {
+  background-color: rgba(121, 174, 111, 0.15) !important;
+  color: #1F2A1F !important;
+}
+
+.badge-wgms-expired {
+  background-color: rgba(95, 107, 95, 0.1) !important;
+  color: #5F6B5F !important;
 }

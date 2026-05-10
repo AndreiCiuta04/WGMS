@@ -1,0 +1,48 @@
+<div class="wgms-container">
+  @if (household) {
+    <div class="header-section mb-5">
+      <h1 class="mb-1">{{ household.name }}</h1>
+      <p class="accent-text hero-tagline" style="font-size: 24px;">{{ household.address || 'One home. One system.' }}</p>
+      <div class="divider"></div>
+    </div>
+
+    @if (errorMessage) {
+      <div class="alert alert-warning mb-4">
+        <p class="mb-0 caption">{{ errorMessage }}</p>
+      </div>
+    }
+
+    <h3 class="mb-4">Household Members</h3>
+    <div class="row">
+      @for (member of members; track member.email) {
+        <div class="col-md-4 mb-4">
+          <div class="wgms-card h-100 mb-0">
+            <div class="member-info">
+              <h5 class="mb-1" style="font-weight: 700;">{{ member.firstName }} {{ member.lastName }}</h5>
+              <p class="caption mb-3" style="color: #346739; font-weight: 600; letter-spacing: 0.5px;">{{ member.role }}</p>
+              
+              <div class="pt-3 border-top">
+                <p class="caption mb-1"><span style="color: #5F6B5F;">Email:</span> {{ member.email }}</p>
+                <p class="caption mb-0"><span style="color: #5F6B5F;">Joined:</span> {{ member.joinedAt | date:'mediumDate' }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  } @else if (!errorMessage) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary" role="status" style="color: #346739 !important;">
+        <span class="sr-only">Loading...</span>
+      </div>
+    </div>
+  } @else {
+    <div class="text-center py-5">
+      <div class="wgms-card mx-auto" style="max-width: 500px;">
+        <h2 class="mb-3">Start your journey</h2>
+        <p class="body-text mb-4">You are not part of any WG yet. WGMS works best when shared with roommates.</p>
+        <button class="btn btn-primary btn-lg px-5" routerLink="/household/create">Create my WG</button>
+      </div>
+    </div>
+  }
+</div>

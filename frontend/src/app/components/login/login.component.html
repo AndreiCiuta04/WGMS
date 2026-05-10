@@ -1,64 +1,61 @@
-@if (error) {
-  <div class="alert alert-warning alert-dismissible fade show" role="alert">
-    <strong>Authentication problems!</strong> {{ errorMessage }}
-    <button type="button" (click)="vanishError()" class="close" data-dismiss="alert" aria-label="Close">
-      <span aria-hidden="true">&times;</span>
-    </button>
-  </div>
-}
+<div class="wgms-container">
+  <div class="row pt-5">
+    <div class="col-md-5 mx-auto">
+      
+      @if (error) {
+        <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+          <strong>Authentication problem</strong>
+          <p class="mb-0 caption">{{ errorMessage }}</p>
+          <button type="button" (click)="vanishError()" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+      }
 
-<div class="pt-5">
-  <div class="row">
-    <div class="col-md-6 mx-auto">
-      <span class="anchor" id="formLogin"></span>
-
-      <div class="card rounded-0">
-        <div class="card-header">
-          <h3 class="mb-0">Login</h3>
+      <div class="wgms-card">
+        <div class="card-header-clean mb-4">
+          <h2 class="mb-1">Login</h2>
+          <p class="caption">Welcome back to WGMS</p>
         </div>
 
-        <div class="card-body">
-          <form class="form" [formGroup]="loginForm" (ngSubmit)="loginUser()">
+        <form class="form" [formGroup]="loginForm" (ngSubmit)="loginUser()">
+          <div class="form-group mb-4">
+            <label for="inputEmail" class="caption mb-2 d-block">Email address</label>
+            <input type="email" name="email" formControlName="email" class="form-control" id="inputEmail"
+              placeholder="e.g. anna@example.com">
+            @if (submitted && loginForm.controls.email.errors) {
+              <div class="error mt-1">
+                @if (loginForm.controls.email.errors.required) {
+                  <small class="form-text text-danger">Email is required</small>
+                }
+              </div>
+            }
+          </div>
 
-            <div class="form-group">
-              <label for="inputUsername">Username</label>
-              <input type="text" name="username" formControlName="username" class="form-control" id="inputUsername"
-                aria-describedby="usernameHelp" placeholder="Enter username">
-              @if (submitted && loginForm.controls.username.errors) {
-                <div class="error">
-                  @if (loginForm.controls.username.errors.required) {
-                    <small class="form-text text-warning">Your username is
-                      required!
-                    </small>
-                  }
-                </div>
-              }
-            </div>
+          <div class="form-group mb-4">
+            <label for="password" class="caption mb-2 d-block">Password</label>
+            <input type="password" name="password" formControlName="password" class="form-control" id="password"
+              placeholder="••••••••">
+            @if (submitted && loginForm.controls.password.errors) {
+              <div class="error mt-1">
+                @if (loginForm.controls.password.errors.required) {
+                  <small class="form-text text-danger">Password is required</small>
+                }
+                @if (loginForm.controls.password.errors.minlength) {
+                  <small class="form-text text-danger">Minimum 8 characters required</small>
+                }
+              </div>
+            }
+          </div>
 
-            <div class="form-group">
-              <label for="password">Password</label>
-              <input type="password" name="password" formControlName="password" class="form-control" id="password"
-                placeholder="Password">
-              @if (submitted && loginForm.controls.password.errors) {
-                <div class="error">
-                  @if (loginForm.controls.password.errors.required) {
-                    <small class="form-text text-warning">Your password
-                      is
-                      required!
-                    </small>
-                  }
-                  @if (loginForm.controls.password.errors.minlength) {
-                    <small class="form-text text-warning">Your password
-                      must be at least 8 characters long!
-                    </small>
-                  }
-                </div>
-              }
-            </div>
+          <div class="text-center">
+            <button type="submit" class="btn btn-primary px-5 py-3">Login</button>
+          </div>
+        </form>
 
-            <button type="button" (click)="loginUser()" class="btn btn-success float-right">Login</button>
-
-          </form>
+        <div class="mt-4 pt-4 border-top text-center">
+          <span class="caption">Don't have an account? </span>
+          <a routerLink="/register" class="font-weight-bold">Register here</a>
         </div>
 
       </div>

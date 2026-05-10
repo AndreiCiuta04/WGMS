@@ -1,3 +1,5 @@
+server:
+  port: 8080
 logging:
   file.name: ./log/backend.log
   level:
@@ -35,9 +37,6 @@ security:
     # 12 hours in milliseconds
     expiration-time: 43200000
 
-management:
-  server:
-    port: 8081
   endpoint:
     shutdown:
       enabled: true

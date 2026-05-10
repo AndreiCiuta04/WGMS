@@ -50,7 +50,6 @@ public class UserLoginDto {
     public String toString() {
         return "UserLoginDto{"
             + "email='" + email + '\''
-            + ", password='" + password + '\''
             + '}';
     }
 
