@@ -7,6 +7,7 @@ import at.ac.tuwien.sepr.groupphase.backend.entity.Message;
 import org.mapstruct.IterableMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Named;
+import org.mapstruct.Mapping;
 
 import java.util.List;
 
@@ -27,6 +28,8 @@ public interface MessageMapper {
 
     Message detailedMessageDtoToMessage(DetailedMessageDto detailedMessageDto);
 
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "publishedAt", ignore = true)
     Message messageInquiryDtoToMessage(MessageInquiryDto messageInquiryDto);
 
     MessageInquiryDto messageToMessageInquiryDto(Message message);

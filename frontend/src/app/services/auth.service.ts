@@ -80,6 +80,15 @@ export class AuthService {
     return 'UNDEFINED';
   }
 
+  getUserEmail(): string | null {
+    const token = this.getToken();
+    if (token != null) {
+      const decoded: any = jwtDecode(token);
+      return decoded.sub;
+    }
+    return null;
+  }
+
   private setToken(authResponse: string) {
     localStorage.setItem('authToken', authResponse);
   }

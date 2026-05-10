@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <div class="jumbotron mt-5">
   <h1 class="display-4">Welcome to WGMS!</h1>
   <hr class="my-4">
@@ -9,7 +10,33 @@
       <p>Check out the latest message from WGMS.</p>
       <p class="lead">
         <a class="btn btn-primary btn-lg" routerLink="/message" role="button">Message</a>
+=======
+<div class="wgms-container">
+  <div class="hero-section">
+    <h1 class="display-title">Welcome to <span class="brand-accent">WGMS</span></h1>
+    <p class="hero-tagline accent-text">One home. One system.</p>
+    
+    <div class="hero-content wgms-card text-center">
+      <p class="body-text">
+        WGMS makes shared household management easier, clearer, and less stressful. 
+        Track expenses, manage chores, and stay connected with your roommates in one practical, modern platform.
+>>>>>>> origin/master
       </p>
+      
+      <div class="hero-actions text-center">
+        @if (!authService.isLoggedIn()) {
+          <div class="d-flex justify-content-center">
+            <a class="btn btn-primary btn-lg" routerLink="/login" role="button">Get Started</a>
+            <a class="btn btn-outline-primary btn-lg" routerLink="/register" role="button">Register</a>
+          </div>
+        }
+        @if (authService.isLoggedIn()) {
+          <div class="logged-in-actions">
+            <p class="caption mb-3">Welcome back! Ready to manage your household?</p>
+            <a class="btn btn-primary btn-lg" routerLink="/message" role="button">Go to Dashboard</a>
+          </div>
+        }
+      </div>
     </div>
-  }
+  </div>
 </div>

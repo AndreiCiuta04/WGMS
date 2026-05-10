@@ -1,3 +1,40 @@
-.jumbotron {
-  background: none
+.hero-section {
+  text-align: center;
+  padding: 4rem 0;
+}
+
+.display-title {
+  font-size: 64px;
+  line-height: 72px;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  letter-spacing: -1.5px;
+}
+
+.brand-accent {
+  color: #346739;
+}
+
+.hero-tagline {
+  margin-bottom: 3rem;
+}
+
+.hero-content {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.hero-actions {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(31, 42, 31, 0.08);
+
+  .btn + .btn {
+    margin-left: 24px; // space-6
+  }
+}
+
+.logged-in-actions {
+  text-align: center;
 }

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <div class="d-flex justify-content-center align-items-center h-100 mt-5">
   <div class="card p-4 shadow" style="width: 25rem;">
     <h2 class="text-center mb-4">Register</h2>
@@ -70,6 +71,102 @@
     </form>
     <div class="text-center mt-3">
       <span>Already have an account? </span><a routerLink="/login">Login here</a>
+=======
+<div class="wgms-container">
+  <div class="row pt-5">
+    <div class="col-md-6 mx-auto">
+      
+      @if (error) {
+        <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+          <strong>Registration failed</strong>
+          <p class="mb-0 caption">{{ errorMessage }}</p>
+          <button type="button" (click)="vanishError()" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+      }
+
+      <div class="wgms-card">
+        <div class="card-header-clean mb-4">
+          <h2 class="mb-1">Register</h2>
+          <p class="caption">Create your WGMS account to get started</p>
+        </div>
+
+        <form [formGroup]="registerForm" (ngSubmit)="registerUser()">
+          <div class="row">
+            <div class="col-md-6 mb-4">
+              <label for="inputFirstName" class="caption mb-2 d-block">First Name</label>
+              <input type="text" name="firstName" formControlName="firstName" class="form-control" id="inputFirstName"
+                     placeholder="e.g. Anna">
+              @if (submitted && registerForm.controls.firstName.errors) {
+                <div class="error mt-1">
+                  @if (registerForm.controls.firstName.errors.required) {
+                    <small class="form-text text-danger">First name is required</small>
+                  }
+                </div>
+              }
+            </div>
+            <div class="col-md-6 mb-4">
+              <label for="inputLastName" class="caption mb-2 d-block">Last Name</label>
+              <input type="text" name="lastName" formControlName="lastName" class="form-control" id="inputLastName"
+                     placeholder="e.g. Berger">
+              @if (submitted && registerForm.controls.lastName.errors) {
+                <div class="error mt-1">
+                  @if (registerForm.controls.lastName.errors.required) {
+                    <small class="form-text text-danger">Last name is required</small>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label for="inputEmail" class="caption mb-2 d-block">Email address</label>
+            <input type="email" name="email" formControlName="email" class="form-control" id="inputEmail"
+                   placeholder="e.g. anna.berger@tuwien.ac.at">
+            @if (submitted && registerForm.controls.email.errors) {
+              <div class="error mt-1">
+                @if (registerForm.controls.email.errors.required) {
+                  <small class="form-text text-danger">Email is required</small>
+                }
+                @if (registerForm.controls.email.errors.email) {
+                  <small class="form-text text-danger">Please provide a valid email</small>
+                }
+              </div>
+            }
+          </div>
+
+          <div class="mb-4">
+            <label for="inputPassword" class="caption mb-2 d-block">Password</label>
+            <input type="password" name="password" formControlName="password" class="form-control" id="inputPassword"
+                   placeholder="Minimum 8 characters">
+            @if (submitted && registerForm.controls.password.errors) {
+              <div class="error mt-1">
+                @if (registerForm.controls.password.errors.required) {
+                  <small class="form-text text-danger">Password is required</small>
+                }
+                @if (registerForm.controls.password.errors.minlength) {
+                  <small class="form-text text-danger">At least 8 characters required</small>
+                }
+                @if (registerForm.controls.password.errors.pattern) {
+                  <small class="form-text text-danger">Must contain a number and special character</small>
+                }
+              </div>
+            }
+          </div>
+
+          <div class="text-center">
+            <button type="submit" class="btn btn-primary px-5 py-3 mt-2">Register</button>
+          </div>
+        </form>
+
+        <div class="mt-4 pt-4 border-top text-center">
+          <span class="caption">Already have an account? </span>
+          <a routerLink="/login" class="font-weight-bold">Login here</a>
+        </div>
+      </div>
+
+>>>>>>> origin/master
     </div>
   </div>
 </div>

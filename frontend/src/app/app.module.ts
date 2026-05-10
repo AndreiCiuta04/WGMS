@@ -11,6 +11,10 @@ import {HomeComponent} from './components/home/home.component';
 import {LoginComponent} from './components/login/login.component';
 import {RegisterComponent} from './components/register/register.component';
 import {MessageComponent} from './components/message/message.component';
+import {HouseholdCreateComponent} from './components/household-create/household-create.component';
+import {HouseholdMembersComponent} from './components/household-members/household-members.component';
+import {HouseholdInvitationsComponent} from './components/household-invitations/household-invitations.component';
+import {InvitationAcceptComponent} from './components/invitation-accept/invitation-accept.component';
 import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
 import {httpInterceptorProviders} from './interceptors';
 
@@ -23,6 +27,10 @@ import {httpInterceptorProviders} from './interceptors';
     LoginComponent,
     RegisterComponent,
     MessageComponent,
+    HouseholdCreateComponent,
+    HouseholdMembersComponent,
+    HouseholdInvitationsComponent,
+    InvitationAcceptComponent,
   ],
   bootstrap: [AppComponent],
   imports: [BrowserModule,

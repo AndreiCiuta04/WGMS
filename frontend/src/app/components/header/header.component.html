@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark ">
+=======
+<nav class="navbar navbar-expand-lg ">
+>>>>>>> origin/master
   <a class="navbar-brand ml-lg-5" href="">WGMS</a>
   <button class="navbar-toggler ml-5" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
     aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -10,6 +14,16 @@
       <li class="nav-item">
         @if (authService.isLoggedIn()) {
           <a class="nav-link" routerLink="/message" routerLinkActive="active">Message</a>
+        }
+      </li>
+      <li class="nav-item">
+        @if (authService.isLoggedIn()) {
+          <a class="nav-link" routerLink="/household/members" routerLinkActive="active">My WG</a>
+        }
+      </li>
+      <li class="nav-item">
+        @if (authService.isLoggedIn()) {
+          <a class="nav-link" routerLink="/household/invitations" routerLinkActive="active">Invitations</a>
         }
       </li>
     </ul>

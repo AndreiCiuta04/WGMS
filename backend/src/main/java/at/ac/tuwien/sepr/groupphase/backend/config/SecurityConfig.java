@@ -1,10 +1,10 @@
 package at.ac.tuwien.sepr.groupphase.backend.config;
 
 import at.ac.tuwien.sepr.groupphase.backend.security.JwtAuthorizationFilter;
+import org.springframework.http.HttpMethod;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -33,6 +33,14 @@ public class SecurityConfig {
         return http
           .csrf(AbstractHttpConfigurer::disable)
           .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+          .authorizeHttpRequests(auth -> auth
+              .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+              .requestMatchers("/api/v1/users/**").permitAll()
+              .requestMatchers("/api/v1/authentication/**").permitAll()
+              .requestMatchers("/api/v1/invitations/*").permitAll()
+              .requestMatchers("/health/**").permitAll()
+              .anyRequest().authenticated()
+          )
           .headers(httpSecurityHeadersConfigurer -> httpSecurityHeadersConfigurer.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
           .addFilterBefore(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class)
           .build();
