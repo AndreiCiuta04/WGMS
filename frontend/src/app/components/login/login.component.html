@@ -21,13 +21,13 @@
           <form class="form" [formGroup]="loginForm" (ngSubmit)="loginUser()">
 
             <div class="form-group">
-              <label for="inputUsername">Username</label>
-              <input type="text" name="username" formControlName="username" class="form-control" id="inputUsername"
-                aria-describedby="usernameHelp" placeholder="Enter username">
-              @if (submitted && loginForm.controls.username.errors) {
+              <label for="inputEmail">Email address</label>
+              <input type="email" name="email" formControlName="email" class="form-control" id="inputEmail"
+                aria-describedby="emailHelp" placeholder="Enter email">
+              @if (submitted && loginForm.controls.email.errors) {
                 <div class="error">
-                  @if (loginForm.controls.username.errors.required) {
-                    <small class="form-text text-warning">Your username is
+                  @if (loginForm.controls.email.errors.required) {
+                    <small class="form-text text-warning">Your email is
                       required!
                     </small>
                   }
@@ -60,7 +60,9 @@
 
           </form>
         </div>
-
+        <div class="card-footer text-center">
+          <span>Don't have an account? </span><a routerLink="/register">Register here</a>
+        </div>
       </div>
 
     </div>

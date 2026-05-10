@@ -24,6 +24,6 @@ describe('AppComponent', () => {
   it(`should have as title 'sepr-group-phase'`, () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.debugElement.componentInstance;
-    expect(app.title).toEqual('SE PR Group Phase');
+    expect(app.title).toEqual('WGMS');
   });
 });
