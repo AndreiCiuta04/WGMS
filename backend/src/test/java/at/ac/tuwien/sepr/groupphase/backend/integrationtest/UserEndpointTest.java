@@ -3,12 +3,9 @@ package at.ac.tuwien.sepr.groupphase.backend.integrationtest;
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserRegistrationDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
-<<<<<<< HEAD
-=======
 import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdInvitationRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
->>>>>>> origin/master
 import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,8 +39,6 @@ public class UserEndpointTest implements TestData {
     private UserRepository userRepository;
 
     @Autowired
-<<<<<<< HEAD
-=======
     private HouseholdRepository householdRepository;
 
     @Autowired
@@ -53,17 +48,13 @@ public class UserEndpointTest implements TestData {
     private HouseholdInvitationRepository invitationRepository;
 
     @Autowired
->>>>>>> origin/master
     private JsonMapper jsonMapper;
 
     @BeforeEach
     public void beforeEach() {
-<<<<<<< HEAD
-=======
         invitationRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
->>>>>>> origin/master
         userRepository.deleteAll();
     }
 

@@ -40,16 +40,12 @@ export class RegisterComponent implements OnInit {
       };
       this.authService.registerUser(userRegistration).subscribe({
         next: () => {
-<<<<<<< HEAD
-          this.router.navigate(['/']);
-=======
           const pendingToken = localStorage.getItem('pendingInviteToken');
           if (pendingToken) {
             this.router.navigate(['/invite', pendingToken]);
           } else {
             this.router.navigate(['/']);
           }
->>>>>>> origin/master
         },
         error: error => {
           console.log('Could not register due to:');

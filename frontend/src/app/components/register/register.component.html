@@ -1,77 +1,3 @@
-<<<<<<< HEAD
-<div class="d-flex justify-content-center align-items-center h-100 mt-5">
-  <div class="card p-4 shadow" style="width: 25rem;">
-    <h2 class="text-center mb-4">Register</h2>
-    <form [formGroup]="registerForm" (ngSubmit)="registerUser()">
-      <div class="mb-3">
-        <label for="inputFirstName" class="form-label">First Name</label>
-        <input type="text" name="firstName" formControlName="firstName" class="form-control" id="inputFirstName"
-               placeholder="Enter your first name">
-        @if (submitted && registerForm.controls.firstName.errors) {
-          <div class="error text-danger">
-            @if (registerForm.controls.firstName.errors.required) {
-              <small class="form-text">Your first name is required!</small>
-            }
-          </div>
-        }
-      </div>
-      <div class="mb-3">
-        <label for="inputLastName" class="form-label">Last Name</label>
-        <input type="text" name="lastName" formControlName="lastName" class="form-control" id="inputLastName"
-               placeholder="Enter your last name">
-        @if (submitted && registerForm.controls.lastName.errors) {
-          <div class="error text-danger">
-            @if (registerForm.controls.lastName.errors.required) {
-              <small class="form-text">Your last name is required!</small>
-            }
-          </div>
-        }
-      </div>
-      <div class="mb-3">
-        <label for="inputEmail" class="form-label">Email address</label>
-        <input type="email" name="email" formControlName="email" class="form-control" id="inputEmail"
-               placeholder="Enter your email">
-        @if (submitted && registerForm.controls.email.errors) {
-          <div class="error text-danger">
-            @if (registerForm.controls.email.errors.required) {
-              <small class="form-text">Your email is required!</small>
-            }
-            @if (registerForm.controls.email.errors.email) {
-              <small class="form-text">Please provide a valid email!</small>
-            }
-          </div>
-        }
-      </div>
-      <div class="mb-3">
-        <label for="inputPassword" class="form-label">Password</label>
-        <input type="password" name="password" formControlName="password" class="form-control" id="inputPassword"
-               placeholder="Password">
-        @if (submitted && registerForm.controls.password.errors) {
-          <div class="error text-danger">
-            @if (registerForm.controls.password.errors.required) {
-              <small class="form-text">Your password is required!</small>
-            }
-            @if (registerForm.controls.password.errors.minlength) {
-              <small class="form-text">Your password must be at least 8 characters long!</small>
-            }
-            @if (registerForm.controls.password.errors.pattern) {
-              <small class="form-text">Your password must contain at least one number and one special character!</small>
-            }
-          </div>
-        }
-      </div>
-      @if (error) {
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-          <strong>Registration failed!</strong><br>
-          {{ errorMessage }}
-          <button type="button" (click)="vanishError()" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-      }
-      <button type="submit" class="btn btn-primary w-100">Register</button>
-    </form>
-    <div class="text-center mt-3">
-      <span>Already have an account? </span><a routerLink="/login">Login here</a>
-=======
 <div class="wgms-container">
   <div class="row pt-5">
     <div class="col-md-6 mx-auto">
@@ -165,8 +91,6 @@
           <a routerLink="/login" class="font-weight-bold">Login here</a>
         </div>
       </div>
-
->>>>>>> origin/master
     </div>
   </div>
 </div>

@@ -14,15 +14,11 @@ const routes: Routes = [
   {path: '', component: HomeComponent},
   {path: 'login', component: LoginComponent},
   {path: 'register', component: RegisterComponent},
-<<<<<<< HEAD
-  {path: 'message', canActivate: mapToCanActivate([AuthGuard]), component: MessageComponent}
-=======
   {path: 'message', canActivate: mapToCanActivate([AuthGuard]), component: MessageComponent},
   {path: 'household/create', component: HouseholdCreateComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'household/members', component: HouseholdMembersComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'household/invitations', component: HouseholdInvitationsComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'invite/:token', component: InvitationAcceptComponent}
->>>>>>> origin/master
 ];
 
 @NgModule({
