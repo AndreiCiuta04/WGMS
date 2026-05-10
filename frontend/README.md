@@ -1,4 +1,4 @@
-# SE PR Group Phase
+# WGMS
 
 ## First Steps
 
