@@ -67,19 +67,75 @@ public class CustomUserDetailService implements UserService {
 
     @Override
     public String login(UserLoginDto userLoginDto) {
-        UserDetails userDetails = loadUserByUsername(userLoginDto.getEmail());
-        if (userDetails != null
-            && userDetails.isAccountNonExpired()
-            && userDetails.isAccountNonLocked()
-            && userDetails.isCredentialsNonExpired()
-            && passwordEncoder.matches(userLoginDto.getPassword(), userDetails.getPassword())
-        ) {
-            List<String> roles = userDetails.getAuthorities()
-                .stream()
+        ApplicationUser applicationUser;
+        try {
+            applicationUser = findApplicationUserByEmail(userLoginDto.getEmail());
+        } catch (NotFoundException e) {
+            throw new BadCredentialsException("Username or password is incorrect");
+        }
+
+        if (applicationUser.getAccountLockedUntil() != null) {
+            if (applicationUser.getAccountLockedUntil().isAfter(java.time.LocalDateTime.now())) {
+                throw new BadCredentialsException("Account is locked due to too many failed attempts. Try again later.");
+            } else {
+                applicationUser.setAccountLockedUntil(null);
+                applicationUser.setFailedLoginAttempts(0);
+                userRepository.save(applicationUser);
+            }
+        }
+
+        if (passwordEncoder.matches(userLoginDto.getPassword(), applicationUser.getPassword())) {
+            applicationUser.setFailedLoginAttempts(0);
+            applicationUser.setAccountLockedUntil(null);
+            userRepository.save(applicationUser);
+
+            List<GrantedAuthority> grantedAuthorities;
+            if (applicationUser.getAdmin()) {
+                grantedAuthorities = AuthorityUtils.createAuthorityList("ROLE_ADMIN", "ROLE_USER");
+            } else {
+                grantedAuthorities = AuthorityUtils.createAuthorityList("ROLE_USER");
+            }
+
+            List<String> roles = grantedAuthorities.stream()
                 .map(GrantedAuthority::getAuthority)
                 .toList();
-            return jwtTokenizer.getAuthToken(userDetails.getUsername(), roles);
+            return jwtTokenizer.getAuthToken(applicationUser.getEmail(), roles);
+        } else {
+            int attempts = applicationUser.getFailedLoginAttempts() + 1;
+            applicationUser.setFailedLoginAttempts(attempts);
+            if (attempts >= 5) {
+                applicationUser.setAccountLockedUntil(java.time.LocalDateTime.now().plusMinutes(15));
+            }
+            userRepository.save(applicationUser);
+            throw new BadCredentialsException("Username or password is incorrect");
         }
-        throw new BadCredentialsException("Username or password is incorrect or account is locked");
+    }
+
+    @Override
+    public String register(at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserRegistrationDto userRegistrationDto) {
+        LOGGER.debug("Register new user with email {}", userRegistrationDto.getEmail());
+
+        // Check if user already exists
+        ApplicationUser existingUser = userRepository.findUserByEmail(userRegistrationDto.getEmail());
+        if (existingUser != null) {
+            throw new at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException(String.format("User with email %s already exists", userRegistrationDto.getEmail()));
+        }
+
+        ApplicationUser newUser = new ApplicationUser(
+            userRegistrationDto.getEmail(),
+            passwordEncoder.encode(userRegistrationDto.getPassword()),
+            userRegistrationDto.getFirstName(),
+            userRegistrationDto.getLastName(),
+            false // Admin is false by default for new users
+        );
+
+        userRepository.save(newUser);
+
+        // Auto-login the user after registration
+        UserLoginDto loginDto = new UserLoginDto();
+        loginDto.setEmail(userRegistrationDto.getEmail());
+        loginDto.setPassword(userRegistrationDto.getPassword()); // Use raw password for login check
+
+        return login(loginDto);
     }
 }

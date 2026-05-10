@@ -41,7 +41,7 @@ e2e-test:
     - npm run start &
     - cd ../backend
     - mvn -B clean install -DskipTests
-    - java -jar target/*.jar &
+    - java -jar target/*.jar --spring.profiles.active=generateData &
     - sleep 30
     - cd ../e2e
     - npm ci --legacy-peer-deps
