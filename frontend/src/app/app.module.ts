@@ -15,6 +15,9 @@ import {HouseholdCreateComponent} from './components/household-create/household-
 import {HouseholdMembersComponent} from './components/household-members/household-members.component';
 import {HouseholdInvitationsComponent} from './components/household-invitations/household-invitations.component';
 import {InvitationAcceptComponent} from './components/invitation-accept/invitation-accept.component';
+import {TaskListComponent} from './components/task-list/task-list.component';
+import {TaskCreateComponent} from './components/task-create/task-create.component';
+import {TaskEditComponent} from './components/task-edit/task-edit.component';
 import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
 import {httpInterceptorProviders} from './interceptors';
 
@@ -31,6 +34,9 @@ import {httpInterceptorProviders} from './interceptors';
     HouseholdMembersComponent,
     HouseholdInvitationsComponent,
     InvitationAcceptComponent,
+    TaskListComponent,
+    TaskCreateComponent,
+    TaskEditComponent,
   ],
   bootstrap: [AppComponent],
   imports: [BrowserModule,
