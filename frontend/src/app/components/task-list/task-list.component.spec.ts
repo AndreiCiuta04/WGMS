@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
 import { TaskListComponent } from './task-list.component';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { RouterModule } from '@angular/router';
 
 describe('TaskListComponent', () => {
   let component: TaskListComponent;
@@ -8,7 +9,11 @@ describe('TaskListComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TaskListComponent]
+      declarations: [TaskListComponent],
+      imports: [
+        HttpClientTestingModule,
+        RouterModule.forRoot([])
+      ]
     })
     .compileComponents();
 

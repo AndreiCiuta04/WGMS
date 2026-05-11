@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
 import { TaskCreateComponent } from './task-create.component';
+import { ReactiveFormsModule } from '@angular/forms';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { RouterModule } from '@angular/router';
 
 describe('TaskCreateComponent', () => {
   let component: TaskCreateComponent;
@@ -8,7 +10,12 @@ describe('TaskCreateComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TaskCreateComponent]
+      declarations: [TaskCreateComponent],
+      imports: [
+        ReactiveFormsModule,
+        HttpClientTestingModule,
+        RouterModule.forRoot([])
+      ]
     })
     .compileComponents();
 
