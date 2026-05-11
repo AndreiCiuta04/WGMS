@@ -6,6 +6,7 @@ import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdInvitationRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,10 +49,14 @@ public class UserEndpointTest implements TestData {
     private HouseholdInvitationRepository invitationRepository;
 
     @Autowired
+    private TaskRepository taskRepository;
+
+    @Autowired
     private JsonMapper jsonMapper;
 
     @BeforeEach
     public void beforeEach() {
+        taskRepository.deleteAll();
         invitationRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
@@ -69,8 +74,8 @@ public class UserEndpointTest implements TestData {
         String body = jsonMapper.writeValueAsString(userRegistrationDto);
 
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/users")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(body))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
             .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
@@ -101,8 +106,8 @@ public class UserEndpointTest implements TestData {
         String body = jsonMapper.writeValueAsString(userRegistrationDto);
 
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/users")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(body))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
             .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
@@ -122,8 +127,8 @@ public class UserEndpointTest implements TestData {
         String body = jsonMapper.writeValueAsString(userRegistrationDto);
 
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/users")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(body))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
             .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
