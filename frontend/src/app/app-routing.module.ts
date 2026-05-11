@@ -9,6 +9,9 @@ import {HouseholdCreateComponent} from './components/household-create/household-
 import {HouseholdMembersComponent} from './components/household-members/household-members.component';
 import {HouseholdInvitationsComponent} from './components/household-invitations/household-invitations.component';
 import {InvitationAcceptComponent} from './components/invitation-accept/invitation-accept.component';
+import {TaskListComponent} from './components/task-list/task-list.component';
+import {TaskCreateComponent} from './components/task-create/task-create.component';
+import {TaskEditComponent} from './components/task-edit/task-edit.component';
 
 const routes: Routes = [
   {path: '', component: HomeComponent},
@@ -18,7 +21,10 @@ const routes: Routes = [
   {path: 'household/create', component: HouseholdCreateComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'household/members', component: HouseholdMembersComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'household/invitations', component: HouseholdInvitationsComponent, canActivate: mapToCanActivate([AuthGuard])},
-  {path: 'invite/:token', component: InvitationAcceptComponent}
+  {path: 'invite/:token', component: InvitationAcceptComponent},
+  {path: 'tasks', component: TaskListComponent, canActivate: mapToCanActivate([AuthGuard])},
+  {path: 'tasks/create', component: TaskCreateComponent, canActivate: mapToCanActivate([AuthGuard])},
+  {path: 'tasks/:id/edit', component: TaskEditComponent, canActivate: mapToCanActivate([AuthGuard])}
 ];
 
 @NgModule({
