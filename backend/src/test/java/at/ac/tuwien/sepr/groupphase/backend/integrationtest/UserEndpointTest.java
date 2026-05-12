@@ -45,6 +45,9 @@ public class UserEndpointTest implements TestData {
     private HouseholdInvitationRepository invitationRepository;
 
     @Autowired
+    private TaskRepository taskRepository;
+
+    @Autowired
     private JsonMapper jsonMapper;
 
     @Autowired
@@ -55,6 +58,7 @@ public class UserEndpointTest implements TestData {
 
     @BeforeEach
     public void beforeEach() {
+        taskRepository.deleteAll();
         invitationRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
@@ -72,8 +76,8 @@ public class UserEndpointTest implements TestData {
         String body = jsonMapper.writeValueAsString(userRegistrationDto);
 
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/users")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(body))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
             .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
@@ -104,8 +108,8 @@ public class UserEndpointTest implements TestData {
         String body = jsonMapper.writeValueAsString(userRegistrationDto);
 
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/users")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(body))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
             .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
@@ -125,8 +129,8 @@ public class UserEndpointTest implements TestData {
         String body = jsonMapper.writeValueAsString(userRegistrationDto);
 
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/users")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(body))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
             .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
