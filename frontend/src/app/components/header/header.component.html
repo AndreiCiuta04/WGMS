@@ -1,40 +1,24 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark ">
-  <a class="navbar-brand ml-lg-5" href="">WGMS</a>
-  <button class="navbar-toggler ml-5" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
-    aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-    <span class="navbar-toggler-icon"></span>
-  </button>
+<!-- Logged-out header: simple brand + auth links -->
+@if (!authService.isLoggedIn()) {
+  <nav class="header-public">
+    <a class="header-brand" routerLink="/">WGMS</a>
+    <div class="header-auth-links">
+      <a routerLink="/login" routerLinkActive="active" class="header-link">Login</a>
+      <a routerLink="/register" routerLinkActive="active" class="header-link">Register</a>
+    </div>
+  </nav>
+}
 
-  <div class="collapse navbar-collapse" id="navbarSupportedContent">
-    <ul class="navbar-nav mr-auto">
-      <li class="nav-item">
-        @if (authService.isLoggedIn()) {
-          <a class="nav-link" routerLink="/message" routerLinkActive="active">Message</a>
-        }
-      </li>
-      <li class="nav-item">
-        @if (authService.isLoggedIn()) {
-          <a class="nav-link" routerLink="/household/members" routerLinkActive="active">My WG</a>
-        }
-      </li>
-      <li class="nav-item">
-        @if (authService.isLoggedIn()) {
-          <a class="nav-link" routerLink="/household/invitations" routerLinkActive="active">Invitations</a>
-        }
-      </li>
-      <li class="nav-item">
-        @if (authService.isLoggedIn()) {
-          <a class="nav-link" routerLink="/tasks" routerLinkActive="active">Tasks</a>
-        }
-      </li>
-    </ul>
-    <ul class="navbar-nav mr-5">
-      @if (!authService.isLoggedIn()) {
-        <a class="nav-link" routerLink="/login" routerLinkActive="active">Login</a>
-      }
-      @if (authService.isLoggedIn()) {
-        <a class="nav-link" routerLink="/" (click)="authService.logoutUser()">Logout</a>
-      }
-    </ul>
-  </div>
-</nav>
+<!-- Logged-in header: slim top bar (sidebar handles nav) -->
+@if (authService.isLoggedIn()) {
+  <header class="header-app">
+    <!-- Mobile only: show brand (sidebar is hidden on mobile) -->
+    <a class="header-app-brand" routerLink="/">WGMS</a>
+    <div class="header-app-actions">
+      <a routerLink="/" (click)="authService.logoutUser()" class="header-logout-btn">
+        <lucide-icon name="log-out" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+        <span class="header-logout-label">Logout</span>
+      </a>
+    </div>
+  </header>
+}

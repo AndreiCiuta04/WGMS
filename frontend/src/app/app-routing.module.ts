@@ -12,6 +12,9 @@ import {InvitationAcceptComponent} from './components/invitation-accept/invitati
 import {TaskListComponent} from './components/task-list/task-list.component';
 import {TaskCreateComponent} from './components/task-create/task-create.component';
 import {TaskEditComponent} from './components/task-edit/task-edit.component';
+import {CleaningScheduleListComponent} from './components/cleaning-schedule-list/cleaning-schedule-list.component';
+import {CleaningScheduleCreateComponent} from './components/cleaning-schedule-create/cleaning-schedule-create.component';
+import {CleaningScheduleEditComponent} from './components/cleaning-schedule-edit/cleaning-schedule-edit.component';
 
 const routes: Routes = [
   {path: '', component: HomeComponent},
@@ -24,7 +27,10 @@ const routes: Routes = [
   {path: 'invite/:token', component: InvitationAcceptComponent},
   {path: 'tasks', component: TaskListComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'tasks/create', component: TaskCreateComponent, canActivate: mapToCanActivate([AuthGuard])},
-  {path: 'tasks/:id/edit', component: TaskEditComponent, canActivate: mapToCanActivate([AuthGuard])}
+  {path: 'tasks/:id/edit', component: TaskEditComponent, canActivate: mapToCanActivate([AuthGuard])},
+  {path: 'cleaning-schedules', component: CleaningScheduleListComponent, canActivate: mapToCanActivate([AuthGuard])},
+  {path: 'cleaning-schedules/create', component: CleaningScheduleCreateComponent, canActivate: mapToCanActivate([AuthGuard])},
+  {path: 'cleaning-schedules/:id/edit', component: CleaningScheduleEditComponent, canActivate: mapToCanActivate([AuthGuard])}
 ];
 
 @NgModule({

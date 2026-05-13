@@ -1,0 +1,146 @@
+<div class="wgms-container cleaning-page">
+
+  <!-- Page Header -->
+  <div class="cleaning-header">
+    <h2>Cleaning</h2>
+  </div>
+
+  <!-- Success Message -->
+  @if (successMessage) {
+    <div class="success-toast">
+      <lucide-icon name="check-square" [size]="16" [strokeWidth]="2"></lucide-icon>
+      {{ successMessage }}
+    </div>
+  }
+
+  <!-- ============================== -->
+  <!-- Section 1: Due Now             -->
+  <!-- ============================== -->
+  <section class="section due-now-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <lucide-icon name="clock" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+        <h3 class="section-title">Due Now</h3>
+      </div>
+      @if (dueNowSchedules.length > 0) {
+        <span class="section-count">{{ dueNowSchedules.length }}</span>
+      }
+    </div>
+
+    @if (dueNowSchedules.length === 0) {
+      <div class="empty-state">
+        <span class="empty-emoji">🎉</span>
+        <p class="empty-text">All caught up! No chores due right now.</p>
+      </div>
+    }
+
+    @for (schedule of dueNowSchedules; track schedule.id) {
+      <div class="due-item" [class.overdue]="isOverdue(schedule)">
+        <div class="due-item-left">
+          <div class="due-indicator" [class.overdue]="isOverdue(schedule)">
+            <lucide-icon name="calendar-check" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+          </div>
+          <div class="due-item-info">
+            <span class="due-item-title">{{ schedule.title }}</span>
+            <span class="due-item-meta">
+              <span class="due-label" [class.overdue]="isOverdue(schedule)">{{ getDueLabel(schedule) }}</span>
+              · {{ getAssigneeName(schedule.assignedToEmail) }}
+              · {{ formatFrequency(schedule.frequency) }}
+            </span>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm generate-btn" (click)="generateTask(schedule)">
+          Generate Task ✓
+        </button>
+      </div>
+    }
+  </section>
+
+  <!-- ============================== -->
+  <!-- Section 2: Upcoming            -->
+  <!-- ============================== -->
+  <section class="section upcoming-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <lucide-icon name="calendar-check" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+        <h3 class="section-title">Upcoming</h3>
+      </div>
+    </div>
+
+    @if (upcomingSchedules.length === 0) {
+      <div class="empty-state">
+        <p class="empty-text">No upcoming schedules. Create one to get started.</p>
+      </div>
+    }
+
+    @for (schedule of upcomingSchedules; track schedule.id) {
+      <div class="upcoming-item">
+        <div class="upcoming-item-left">
+          <div class="upcoming-indicator">
+            <lucide-icon name="calendar-check" [size]="16" [strokeWidth]="1.75"></lucide-icon>
+          </div>
+          <div class="upcoming-item-info">
+            <span class="upcoming-item-title">{{ schedule.title }}</span>
+            <span class="upcoming-item-meta">
+              {{ formatFrequency(schedule.frequency) }} · {{ getDueLabel(schedule) }} · {{ getAssigneeName(schedule.assignedToEmail) }}
+            </span>
+          </div>
+        </div>
+        <span class="upcoming-date">{{ schedule.nextDueDate }}</span>
+      </div>
+    }
+  </section>
+
+  <!-- ============================== -->
+  <!-- Section 3: Manage Schedules    -->
+  <!-- ============================== -->
+  <section class="section manage-section">
+    <div class="manage-header" (click)="toggleManageExpanded()">
+      <div class="section-title-group">
+        <lucide-icon name="layout-dashboard" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+        <h3 class="section-title">Manage Schedules</h3>
+        <span class="manage-toggle">{{ manageExpanded ? '▾' : '▸' }}</span>
+      </div>
+      <a routerLink="/cleaning-schedules/create" class="btn btn-primary btn-sm" (click)="$event.stopPropagation()">
+        + New Schedule
+      </a>
+    </div>
+
+    @if (manageExpanded) {
+      @if (allSchedules.length === 0) {
+        <div class="empty-state">
+          <p class="empty-text">No schedules created yet.</p>
+        </div>
+      }
+
+      @for (schedule of allSchedules; track schedule.id) {
+        <div class="manage-item" [class.inactive]="!schedule.active">
+          <div class="manage-item-left">
+            <span class="manage-status-dot" [class.active]="schedule.active" [class.inactive]="!schedule.active"></span>
+            <div class="manage-item-info">
+              <span class="manage-item-title">{{ schedule.title }}</span>
+              <span class="manage-item-meta">
+                {{ formatFrequency(schedule.frequency) }} · {{ getAssigneeName(schedule.assignedToEmail) }}
+                @if (!schedule.active) {
+                  · <span class="paused-label">Paused</span>
+                }
+              </span>
+            </div>
+          </div>
+          <div class="manage-actions">
+            <button class="action-btn" (click)="toggleActive(schedule)" [title]="schedule.active ? 'Pause' : 'Resume'">
+              {{ schedule.active ? '⏸' : '▶' }}
+            </button>
+            <a [routerLink]="['/cleaning-schedules', schedule.id, 'edit']" class="action-btn" title="Edit">
+              ✎
+            </a>
+            <button class="action-btn danger" (click)="deleteSchedule(schedule)" title="Delete">
+              ✕
+            </button>
+          </div>
+        </div>
+      }
+    }
+  </section>
+
+</div>

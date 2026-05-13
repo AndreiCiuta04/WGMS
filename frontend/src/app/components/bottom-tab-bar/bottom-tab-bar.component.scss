@@ -1,0 +1,48 @@
+$forest-green: #346739;
+$text-secondary: #5F6B5F;
+$eggwhite-bg: #FBFAF3;
+
+.bottom-tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  height: 64px;
+  background-color: $eggwhite-bg;
+  border-top: 1px solid rgba(31, 42, 31, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 8px;
+  // Safe area for iOS notch devices
+  padding-bottom: env(safe-area-inset-bottom, 0);
+
+  @media (min-width: 992px) {
+    display: none;
+  }
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  color: $text-secondary !important;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 500;
+  transition: color 0.15s ease;
+  min-width: 60px;
+
+  &:hover {
+    color: $forest-green !important;
+  }
+
+  &.active {
+    color: $forest-green !important;
+    font-weight: 600;
+  }
+}

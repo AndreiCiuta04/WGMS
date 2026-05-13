@@ -53,8 +53,6 @@ public class UserEndpointTest implements TestData {
     @Autowired
     private CleaningScheduleRepository cleaningScheduleRepository;
 
-    @Autowired
-    private TaskRepository taskRepository;
 
     @BeforeEach
     public void beforeEach() {
