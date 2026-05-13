@@ -19,7 +19,7 @@ export class CleaningScheduleListComponent implements OnInit {
   upcomingSchedules: CleaningScheduleDetailDto[] = [];
 
   roommates: Roommate[] = [];
-  roommateMap: Map<string, string> = new Map(); // email -> first name
+  roommateMap = new Map<string, string>(); // email -> first name
 
   manageExpanded = false;
   successMessage = '';
@@ -52,7 +52,7 @@ export class CleaningScheduleListComponent implements OnInit {
           this.householdService.getMembers(household.id).subscribe({
             next: (members) => {
               this.roommates = members;
-              this.roommateMap = new Map(
+              this.roommateMap = new Map<string, string>(
                 members.map(m => [m.email, m.firstName])
               );
             },
