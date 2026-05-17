@@ -13,4 +13,6 @@ public interface ExpenseSplitRepository extends JpaRepository<ExpenseSplit, Long
     List<ExpenseSplit> findAllByExpenseHouseholdId(Long householdId);
 
     List<ExpenseSplit> findAllByRoommateId(Long roommateId);
+
+    void deleteAllByExpenseId(Long expenseId);
 }
