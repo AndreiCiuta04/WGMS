@@ -27,7 +27,6 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -78,7 +77,6 @@ public class LoginEndpointTest implements TestData {
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/authentication")
             .contentType(MediaType.APPLICATION_JSON)
             .content(body))
-            .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 
@@ -104,7 +102,6 @@ public class LoginEndpointTest implements TestData {
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/authentication")
             .contentType(MediaType.APPLICATION_JSON)
             .content(body))
-            .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 
@@ -127,7 +124,6 @@ public class LoginEndpointTest implements TestData {
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/authentication")
             .contentType(MediaType.APPLICATION_JSON)
             .content(body))
-            .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 
@@ -167,7 +163,6 @@ public class LoginEndpointTest implements TestData {
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/authentication")
             .contentType(MediaType.APPLICATION_JSON)
             .content(validBody))
-            .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 

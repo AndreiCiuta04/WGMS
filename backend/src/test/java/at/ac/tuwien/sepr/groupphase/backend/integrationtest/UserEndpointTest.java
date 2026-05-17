@@ -26,7 +26,6 @@ import tools.jackson.databind.json.JsonMapper;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -80,7 +79,6 @@ public class UserEndpointTest implements TestData {
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
-            .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 
@@ -114,7 +112,6 @@ public class UserEndpointTest implements TestData {
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
-            .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 
@@ -135,7 +132,6 @@ public class UserEndpointTest implements TestData {
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
-            .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 

@@ -23,13 +23,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class LogFilter extends OncePerRequestFilter {
     private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-    private static final DecimalFormat REQUEST_RUNTIME_FORMAT = new DecimalFormat("#.###", DecimalFormatSymbols.getInstance(Locale.ENGLISH));
+    private static final DecimalFormat REQUEST_RUNTIME_FORMAT =
+        new DecimalFormat("#.###", DecimalFormatSymbols.getInstance(Locale.ENGLISH));
+
     private static final Long NANOSECONDS_PER_MS = 1000_000L;
     private static final List<String> MUTED_PATHS = Arrays.asList(
         "/swagger-ui/",
         "/swagger.yaml"
     );
-
 
     @Override
     public void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) {
@@ -90,7 +91,7 @@ public class LogFilter extends OncePerRequestFilter {
             MDC.put("r", generateRequestId());
         }
         MDC.put("http_request_method", request.getMethod());
-        MDC.put("http_request_url", request.getRequestURI());
+        MDC.put("http_request_url", sanitizeUri(request.getRequestURI()));
         MDC.put("http_request_query", request.getQueryString());
         MDC.put("http_request_ua", request.getHeader("User-Agent"));
     }
@@ -105,12 +106,21 @@ public class LogFilter extends OncePerRequestFilter {
         var b = new StringBuilder(prefix)
             .append(request.getMethod())
             .append(" ")
-            .append(request.getRequestURI());
+            .append(sanitizeUri(request.getRequestURI()));
+
         var qs = request.getQueryString();
         if (qs != null) {
             b.append("?").append(qs);
         }
         return b;
+    }
+
+    private static String sanitizeUri(String uri) {
+        if (uri == null) {
+            return null;
+        }
+
+        return uri.replaceAll("(/api/v1/invitations/)[^/]+(/accept)?", "$1{token}$2");
     }
 
     private boolean shouldLog(HttpServletRequest request) {

@@ -47,7 +47,7 @@ public class TaskEndpoint {
     @PostMapping
     @Operation(summary = "Create a new task and assign it to a user", security = @SecurityRequirement(name = "apiKey"))
     public TaskDetailDto create(@Valid @RequestBody TaskCreateDto taskCreateDto, Authentication authentication) {
-        LOGGER.info("POST /api/v1/tasks body: {}", taskCreateDto);
+        LOGGER.info("POST /api/v1/tasks");
         return taskMapper.taskToTaskDetailDto(taskService.create(taskCreateDto, getCurrentUserEmail(authentication)));
     }
 
@@ -87,7 +87,7 @@ public class TaskEndpoint {
         @Valid @RequestBody TaskUpdateDto taskUpdateDto,
         Authentication authentication
     ) {
-        LOGGER.info("PUT /api/v1/tasks/{} body: {}", id, taskUpdateDto);
+        LOGGER.info("PUT /api/v1/tasks/{}", id);
         return taskMapper.taskToTaskDetailDto(
             taskService.update(id, taskUpdateDto, getCurrentUserEmail(authentication), isAdmin(authentication))
         );
@@ -101,7 +101,7 @@ public class TaskEndpoint {
         @Valid @RequestBody TaskStatusUpdateDto taskStatusUpdateDto,
         Authentication authentication
     ) {
-        LOGGER.info("PATCH /api/v1/tasks/{}/status body: {}", id, taskStatusUpdateDto);
+        LOGGER.info("PATCH /api/v1/tasks/{}/status", id);
         return taskMapper.taskToTaskDetailDto(
             taskService.updateStatus(id, taskStatusUpdateDto, getCurrentUserEmail(authentication), isAdmin(authentication))
         );
