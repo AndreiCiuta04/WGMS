@@ -103,7 +103,7 @@ public class InvitationEndpointTest implements TestData {
             .contentType(MediaType.APPLICATION_JSON)
             .content(createBody))
             .andReturn();
-        
+
         assertEquals(HttpStatus.CREATED.value(), createResult.getResponse().getStatus());
         InvitationDto invitationDto = jsonMapper.readValue(createResult.getResponse().getContentAsString(), InvitationDto.class);
         String rawToken = invitationDto.inviteUrl().substring(invitationDto.inviteUrl().lastIndexOf("/") + 1);
@@ -136,7 +136,7 @@ public class InvitationEndpointTest implements TestData {
             .contentType(MediaType.APPLICATION_JSON)
             .content(createBody))
             .andReturn();
-        
+
         InvitationDto invitationDto = jsonMapper.readValue(createResult.getResponse().getContentAsString(), InvitationDto.class);
         String rawToken = invitationDto.inviteUrl().substring(invitationDto.inviteUrl().lastIndexOf("/") + 1);
 
@@ -162,5 +162,29 @@ public class InvitationEndpointTest implements TestData {
             .contentType(MediaType.APPLICATION_JSON)
             .content(createBody))
             .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isForbidden());
+    }
+
+    @Test
+    public void givenMainTenantWithInvitation_whenGetInvitations_thenReturnsInvitations() throws Exception {
+        InvitationCreateDto createDto = new InvitationCreateDto("userB@test.com", 24);
+        String createBody = jsonMapper.writeValueAsString(createDto);
+
+        this.mockMvc.perform(post("/api/v1/households/" + household.getId() + "/invitations")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userA@test.com", USER_ROLES))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(createBody))
+            .andReturn();
+
+        MvcResult listResult = this.mockMvc.perform(get("/api/v1/households/" + household.getId() + "/invitations")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userA@test.com", USER_ROLES)))
+            .andReturn();
+
+        assertEquals(HttpStatus.OK.value(), listResult.getResponse().getStatus());
+
+        InvitationDto[] invitations = jsonMapper.readValue(listResult.getResponse().getContentAsString(), InvitationDto[].class);
+
+        assertEquals(1, invitations.length);
+        assertEquals("userB@test.com", invitations[0].invitedEmail());
+        assertEquals("ACTIVE", invitations[0].status());
     }
 }
