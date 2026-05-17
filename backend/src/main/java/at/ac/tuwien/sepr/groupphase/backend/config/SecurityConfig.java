@@ -31,19 +31,24 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
-          .csrf(AbstractHttpConfigurer::disable)
-          .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-          .authorizeHttpRequests(auth -> auth
-              .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-              .requestMatchers("/api/v1/users/**").permitAll()
-              .requestMatchers("/api/v1/authentication/**").permitAll()
-              .requestMatchers("/api/v1/invitations/*").permitAll()
-              .requestMatchers("/health/**").permitAll()
-              .anyRequest().authenticated()
-          )
-          .headers(httpSecurityHeadersConfigurer -> httpSecurityHeadersConfigurer.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
-          .addFilterBefore(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class)
-          .build();
+            .csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/api/v1/users/**").permitAll()
+                .requestMatchers("/api/v1/authentication/**").permitAll()
+                .requestMatchers("/api/v1/invitations/*").permitAll()
+                .requestMatchers("/health/**").permitAll()
+                .requestMatchers(
+                    "/v3/api-docs/**",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html"
+                ).permitAll()
+                .anyRequest().authenticated()
+            )
+            .headers(httpSecurityHeadersConfigurer -> httpSecurityHeadersConfigurer.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
+            .addFilterBefore(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class)
+            .build();
     }
 
     @Configuration
