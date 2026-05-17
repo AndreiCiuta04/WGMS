@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { forkJoin } from 'rxjs';
 import { TaskService } from '../../services/task.service';
 import { TaskDetailDto, TaskStatus } from '../../dtos/task';
 
@@ -12,11 +13,13 @@ export class TaskListComponent implements OnInit {
 
   allTasks: TaskDetailDto[] = [];
   myTasks: TaskDetailDto[] = [];
-  
   displayedTasks: TaskDetailDto[] = [];
-  
+
   currentTab: 'ALL' | 'MINE' = 'ALL';
-  
+
+  loading = false;
+  errorMessage = '';
+
   TaskStatus = TaskStatus;
 
   constructor(private taskService: TaskService) { }
@@ -25,49 +28,55 @@ export class TaskListComponent implements OnInit {
     this.loadTasks();
   }
 
-  loadTasks() {
-    this.taskService.findAll().subscribe({
-      next: (tasks) => {
-        this.allTasks = tasks;
-        if (this.currentTab === 'ALL') {
-          this.displayedTasks = this.allTasks;
-        }
-      },
-      error: (err) => console.error('Error fetching all tasks', err)
-    });
+  loadTasks(): void {
+    this.loading = true;
+    this.errorMessage = '';
 
-    this.taskService.findAssignedToMe().subscribe({
-      next: (tasks) => {
-        this.myTasks = tasks;
-        if (this.currentTab === 'MINE') {
-          this.displayedTasks = this.myTasks;
-        }
+    forkJoin({
+      allTasks: this.taskService.findAll(),
+      myTasks: this.taskService.findAssignedToMe()
+    }).subscribe({
+      next: ({ allTasks, myTasks }) => {
+        this.allTasks = allTasks;
+        this.myTasks = myTasks;
+        this.displayedTasks = this.currentTab === 'ALL' ? this.allTasks : this.myTasks;
+        this.loading = false;
       },
-      error: (err) => console.error('Error fetching my tasks', err)
+      error: err => {
+        console.error('Error fetching tasks', err);
+        this.errorMessage = 'Could not load tasks. Please try again.';
+        this.loading = false;
+      }
     });
   }
 
-  switchTab(tab: 'ALL' | 'MINE') {
+  switchTab(tab: 'ALL' | 'MINE'): void {
     this.currentTab = tab;
-    if (tab === 'ALL') {
-      this.displayedTasks = this.allTasks;
-    } else {
-      this.displayedTasks = this.myTasks;
-    }
+    this.displayedTasks = tab === 'ALL' ? this.allTasks : this.myTasks;
   }
 
-  completeTask(task: TaskDetailDto) {
+  completeTask(task: TaskDetailDto): void {
+    this.errorMessage = '';
+
     this.taskService.updateStatus(task.id, { status: TaskStatus.DONE }).subscribe({
       next: () => this.loadTasks(),
-      error: (err) => console.error('Error completing task', err)
+      error: err => {
+        console.error('Error completing task', err);
+        this.errorMessage = 'Could not mark the task as done.';
+      }
     });
   }
 
-  deleteTask(task: TaskDetailDto) {
+  deleteTask(task: TaskDetailDto): void {
+    this.errorMessage = '';
+
     if (confirm('Are you sure you want to delete this task?')) {
       this.taskService.delete(task.id).subscribe({
         next: () => this.loadTasks(),
-        error: (err) => console.error('Error deleting task', err)
+        error: err => {
+          console.error('Error deleting task', err);
+          this.errorMessage = 'Could not delete the task.';
+        }
       });
     }
   }

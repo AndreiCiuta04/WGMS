@@ -32,6 +32,9 @@
       @if (!authService.isLoggedIn()) {
         <a class="nav-link" routerLink="/login" routerLinkActive="active">Login</a>
       }
+      @if (!authService.isLoggedIn()) {
+        <a class="nav-link" routerLink="/register" routerLinkActive="active">Register</a>
+      }
       @if (authService.isLoggedIn()) {
         <a class="nav-link" routerLink="/" (click)="authService.logoutUser()">Logout</a>
       }
