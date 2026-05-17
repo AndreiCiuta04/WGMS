@@ -361,8 +361,8 @@ public class ExpenseServiceImpl implements ExpenseService {
     }
 
     private List<BalanceDto> settleNetAmounts(Map<Long, BigDecimal> netAmountsByRoommateId, Map<Long, Roommate> roommatesById) {
-        List<RoommateBalance> debtors = toRoommateBalances(netAmountsByRoommateId, roommatesById, -1);
-        List<RoommateBalance> creditors = toRoommateBalances(netAmountsByRoommateId, roommatesById, 1);
+        List<RoommateBalance> debtors = new ArrayList<>(toRoommateBalances(netAmountsByRoommateId, roommatesById, -1));
+        List<RoommateBalance> creditors = new ArrayList<>(toRoommateBalances(netAmountsByRoommateId, roommatesById, 1));
         List<BalanceDto> balances = new ArrayList<>();
         int debtorIndex = 0;
         int creditorIndex = 0;

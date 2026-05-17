@@ -12,6 +12,7 @@ import {InvitationAcceptComponent} from './components/invitation-accept/invitati
 import {TaskListComponent} from './components/task-list/task-list.component';
 import {TaskCreateComponent} from './components/task-create/task-create.component';
 import {TaskEditComponent} from './components/task-edit/task-edit.component';
+import {ExpensesComponent} from './components/expenses/expenses.component';
 
 const routes: Routes = [
   {path: '', component: HomeComponent},
@@ -24,7 +25,8 @@ const routes: Routes = [
   {path: 'invite/:token', component: InvitationAcceptComponent},
   {path: 'tasks', component: TaskListComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'tasks/create', component: TaskCreateComponent, canActivate: mapToCanActivate([AuthGuard])},
-  {path: 'tasks/:id/edit', component: TaskEditComponent, canActivate: mapToCanActivate([AuthGuard])}
+  {path: 'tasks/:id/edit', component: TaskEditComponent, canActivate: mapToCanActivate([AuthGuard])},
+  {path: 'expenses', component: ExpensesComponent, canActivate: mapToCanActivate([AuthGuard])}
 ];
 
 @NgModule({

@@ -18,6 +18,7 @@ import {InvitationAcceptComponent} from './components/invitation-accept/invitati
 import {TaskListComponent} from './components/task-list/task-list.component';
 import {TaskCreateComponent} from './components/task-create/task-create.component';
 import {TaskEditComponent} from './components/task-edit/task-edit.component';
+import {ExpensesComponent} from './components/expenses/expenses.component';
 import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
 import {httpInterceptorProviders} from './interceptors';
 
@@ -37,6 +38,7 @@ import {httpInterceptorProviders} from './interceptors';
     TaskListComponent,
     TaskCreateComponent,
     TaskEditComponent,
+    ExpensesComponent,
   ],
   bootstrap: [AppComponent],
   imports: [BrowserModule,

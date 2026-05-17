@@ -1,0 +1,155 @@
+.expenses-header {
+  max-width: 720px;
+}
+
+.split-toolbar {
+  gap: 16px;
+}
+
+.split-list {
+  border: 1px solid rgba(52, 103, 57, 0.16);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.split-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(31, 42, 31, 0.1);
+}
+
+.split-row:last-child {
+  border-bottom: 0;
+}
+
+.split-member {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.split-member input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.expense-actions,
+.table-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.amount-field {
+  position: relative;
+}
+
+.amount-field .form-control {
+  padding-right: 38px;
+}
+
+.amount-currency {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #5F6B5F;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.split-amount {
+  min-width: 0;
+}
+
+.balance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.balance-section h4 {
+  font-size: 18px;
+  line-height: 24px;
+  margin-bottom: 12px;
+}
+
+.balance-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(31, 42, 31, 0.1);
+}
+
+.balance-row:last-child {
+  border-bottom: 0;
+}
+
+.balance-amount {
+  color: #346739;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.balance-negative {
+  color: #A92E2E;
+}
+
+.expense-table th {
+  color: #5F6B5F;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-top: 0;
+}
+
+.expense-table td {
+  vertical-align: middle;
+}
+
+.modal-backdrop-custom {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(31, 42, 31, 0.35);
+}
+
+.delete-dialog {
+  width: min(440px, 100%);
+  padding: 28px;
+  border: 1px solid rgba(52, 103, 57, 0.16);
+  border-radius: 8px;
+  background: #FFFFFF;
+  box-shadow: 0 18px 48px rgba(31, 42, 31, 0.18);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .expenses-header,
+  .split-toolbar,
+  .balance-row {
+    align-items: stretch !important;
+    flex-direction: column;
+  }
+
+  .split-row {
+    grid-template-columns: 1fr;
+  }
+}
