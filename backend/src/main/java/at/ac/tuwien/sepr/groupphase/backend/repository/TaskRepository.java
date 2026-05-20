@@ -11,15 +11,17 @@ import java.util.Optional;
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
-    @EntityGraph(attributePaths = {"household", "createdBy", "assignedTo"})
+    @EntityGraph(attributePaths = {"household", "createdBy", "assignedTo", "cleaningSchedule"})
     Optional<Task> findWithRelationsById(Long id);
 
-    @EntityGraph(attributePaths = {"household", "createdBy", "assignedTo"})
+    @EntityGraph(attributePaths = {"household", "createdBy", "assignedTo", "cleaningSchedule"})
     List<Task> findAllByHousehold_IdOrderByDueDateAscCreatedAtDesc(Long householdId);
 
-    @EntityGraph(attributePaths = {"household", "createdBy", "assignedTo"})
+    @EntityGraph(attributePaths = {"household", "createdBy", "assignedTo", "cleaningSchedule"})
     List<Task> findByHousehold_IdAndAssignedTo_IdOrderByDueDateAscCreatedAtDesc(
         Long householdId,
         Long assignedToId
     );
+
+    boolean existsByCleaningSchedule_Id(Long cleaningScheduleId);
 }

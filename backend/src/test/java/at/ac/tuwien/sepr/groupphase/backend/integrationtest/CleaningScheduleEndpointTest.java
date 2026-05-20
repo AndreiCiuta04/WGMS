@@ -106,8 +106,8 @@ public class CleaningScheduleEndpointTest implements TestData {
 
     @BeforeEach
     public void beforeEach() {
-        cleaningScheduleRepository.deleteAll();
         taskRepository.deleteAll();
+        cleaningScheduleRepository.deleteAll();
         invitationRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
@@ -348,6 +348,7 @@ public class CleaningScheduleEndpointTest implements TestData {
             () -> assertEquals(TEST_START_DATE, taskDetailDto.getDueDate()),
             () -> assertEquals(TaskStatus.OPEN, taskDetailDto.getStatus()),
             () -> assertEquals(household.getId(), taskDetailDto.getHouseholdId()),
+            () -> assertEquals(schedule.getId(), taskDetailDto.getCleaningScheduleId()),
             () -> assertEquals(MAIN_TENANT_EMAIL, taskDetailDto.getCreatedByEmail()),
             () -> assertEquals(ROOMMATE_EMAIL, taskDetailDto.getAssignedToEmail()),
             () -> assertEquals(1, taskRepository.findAll().size()),
@@ -367,6 +368,27 @@ public class CleaningScheduleEndpointTest implements TestData {
         assertAll(
             () -> assertEquals(HttpStatus.CONFLICT.value(), mvcResult.getResponse().getStatus()),
             () -> assertEquals(0, taskRepository.findAll().size())
+        );
+    }
+
+    @Test
+    public void givenScheduleWithGeneratedTask_whenDeleteSchedule_then409AndScheduleAndTaskRemain() throws Exception {
+        CleaningSchedule schedule = saveSchedule(household, mainTenant, roommate, TEST_CLEANING_TITLE, true);
+
+        this.mockMvc.perform(post(CLEANING_SCHEDULE_BASE_URI + "/{id}/generate-task", schedule.getId())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andDo(print())
+            .andReturn();
+
+        MvcResult mvcResult = this.mockMvc.perform(delete(CLEANING_SCHEDULE_BASE_URI + "/{id}", schedule.getId())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andDo(print())
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.CONFLICT.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals(1, cleaningScheduleRepository.findAll().size()),
+            () -> assertEquals(1, taskRepository.findAll().size())
         );
     }
 

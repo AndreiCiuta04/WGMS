@@ -180,6 +180,7 @@ public class SimpleCleaningScheduleService implements CleaningScheduleService {
         task.setStatus(TaskStatus.OPEN);
         task.setCreatedBy(currentUser);
         task.setAssignedTo(cleaningSchedule.getAssignedTo());
+        task.setCleaningSchedule(cleaningSchedule);
 
         LocalDate nextDueDate = calculateNextDueDate(cleaningSchedule.getNextDueDate(), cleaningSchedule.getFrequency());
         cleaningSchedule.setNextDueDate(nextDueDate);
@@ -204,6 +205,10 @@ public class SimpleCleaningScheduleService implements CleaningScheduleService {
 
         requireScheduleInCurrentHousehold(cleaningSchedule, currentRoommate);
         requireCanManage(cleaningSchedule, currentUser, currentRoommate);
+
+        if (taskRepository.existsByCleaningSchedule_Id(cleaningSchedule.getId())) {
+            throw new ConflictException("Cleaning schedule cannot be deleted because it already generated tasks.");
+        }
 
         cleaningScheduleRepository.delete(cleaningSchedule);
     }

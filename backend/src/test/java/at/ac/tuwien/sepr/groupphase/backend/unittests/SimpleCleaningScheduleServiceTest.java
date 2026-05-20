@@ -266,6 +266,8 @@ public class SimpleCleaningScheduleServiceTest {
             () -> assertEquals(TaskStatus.OPEN, result.getStatus()),
             () -> assertSame(mainTenant, result.getCreatedBy()),
             () -> assertSame(roommate, result.getAssignedTo()),
+            () -> assertSame(schedule, result.getCleaningSchedule()),
+            () -> assertEquals(schedule.getId(), result.getCleaningScheduleId()),
             () -> assertEquals(TEST_START_DATE.plusWeeks(1), schedule.getNextDueDate())
         );
 
@@ -297,6 +299,20 @@ public class SimpleCleaningScheduleServiceTest {
         cleaningScheduleService.delete(schedule.getId(), MAIN_TENANT_EMAIL, false);
 
         verify(cleaningScheduleRepository).delete(schedule);
+    }
+
+    @Test
+    public void givenScheduleWithGeneratedTasks_whenDeleteSchedule_thenConflictAndScheduleIsNotDeleted() {
+        CleaningSchedule schedule = schedule(1L, household, mainTenant, roommate, TEST_CLEANING_TITLE);
+
+        when(userService.findApplicationUserByEmail(MAIN_TENANT_EMAIL)).thenReturn(mainTenant);
+        when(roommateRepository.findByUserIdAndActiveTrue(mainTenant.getId())).thenReturn(Optional.of(mainTenantMembership));
+        when(cleaningScheduleRepository.findWithRelationsById(schedule.getId())).thenReturn(Optional.of(schedule));
+        when(taskRepository.existsByCleaningSchedule_Id(schedule.getId())).thenReturn(true);
+
+        assertThrows(ConflictException.class, () -> cleaningScheduleService.delete(schedule.getId(), MAIN_TENANT_EMAIL, false));
+
+        verify(cleaningScheduleRepository, never()).delete(any(CleaningSchedule.class));
     }
 
     @Test
