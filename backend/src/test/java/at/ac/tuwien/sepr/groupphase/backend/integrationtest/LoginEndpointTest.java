@@ -61,6 +61,8 @@ public class LoginEndpointTest implements TestData {
 
     @BeforeEach
     public void beforeEach() {
+        taskRepository.deleteAll();
+        cleaningScheduleRepository.deleteAll();
         invitationRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
