@@ -23,6 +23,7 @@ export class CleaningScheduleListComponent implements OnInit {
 
   manageExpanded = false;
   successMessage = '';
+  errorMessage = '';
 
   constructor(
     private cleaningScheduleService: CleaningScheduleService,
@@ -36,12 +37,16 @@ export class CleaningScheduleListComponent implements OnInit {
   }
 
   loadSchedules() {
+    this.errorMessage = '';
     this.cleaningScheduleService.findAll().subscribe({
       next: (schedules) => {
         this.allSchedules = schedules;
         this.categorizeSchedules();
       },
-      error: (err) => console.error('Error fetching cleaning schedules', err)
+      error: (err) => {
+        console.error('Error fetching cleaning schedules', err);
+        this.errorMessage = this.extractErrorMessage(err, 'Could not load cleaning schedules. Please try again.');
+      }
     });
   }
 
@@ -79,26 +84,50 @@ export class CleaningScheduleListComponent implements OnInit {
   generateTask(schedule: CleaningScheduleDetailDto) {
     this.cleaningScheduleService.generateTask(schedule.id).subscribe({
       next: () => {
+        this.errorMessage = '';
         this.successMessage = `Task created for "${schedule.title}"!`;
         this.loadSchedules();
         setTimeout(() => this.successMessage = '', 4000);
       },
-      error: (err) => console.error('Error generating task', err)
+      error: (err) => {
+        console.error('Error generating task', err);
+        this.successMessage = '';
+        this.errorMessage = this.extractErrorMessage(err, `Could not create a task for "${schedule.title}".`);
+      }
     });
   }
 
   toggleActive(schedule: CleaningScheduleDetailDto) {
     this.cleaningScheduleService.updateActive(schedule.id, { active: !schedule.active }).subscribe({
-      next: () => this.loadSchedules(),
-      error: (err) => console.error('Error toggling active status', err)
+      next: () => {
+        this.errorMessage = '';
+        this.loadSchedules();
+      },
+      error: (err) => {
+        console.error('Error toggling active status', err);
+        this.successMessage = '';
+        this.errorMessage = this.extractErrorMessage(err, `Could not update "${schedule.title}".`);
+      }
     });
   }
 
   deleteSchedule(schedule: CleaningScheduleDetailDto) {
     if (confirm(`Delete "${schedule.title}"? This cannot be undone.`)) {
       this.cleaningScheduleService.delete(schedule.id).subscribe({
-        next: () => this.loadSchedules(),
-        error: (err) => console.error('Error deleting cleaning schedule', err)
+        next: () => {
+          this.errorMessage = '';
+          this.loadSchedules();
+        },
+        error: (err) => {
+          console.error('Error deleting cleaning schedule', err);
+          this.successMessage = '';
+          this.errorMessage = this.extractErrorMessage(
+            err,
+            err.status === 409
+              ? `Cannot delete "${schedule.title}" because it already generated tasks. Pause it instead if you do not want it to create more tasks.`
+              : `Could not delete "${schedule.title}".`
+          );
+        }
       });
     }
   }
@@ -143,6 +172,30 @@ export class CleaningScheduleListComponent implements OnInit {
       case 'MONTHLY': return 'Monthly';
       default: return frequency;
     }
+  }
+
+  private extractErrorMessage(err: any, fallback: string): string {
+    if (err?.error?.message) {
+      return err.error.message;
+    }
+
+    if (typeof err?.error === 'string' && err.error.trim().length > 0) {
+      return err.error;
+    }
+
+    if (err?.status === 401) {
+      return 'Your session expired. Please log in again.';
+    }
+
+    if (err?.status === 403) {
+      return 'You do not have permission to perform this action.';
+    }
+
+    if (err?.status === 404) {
+      return 'The requested cleaning schedule could not be found.';
+    }
+
+    return fallback;
   }
 
   private getTodayStr(): string {
