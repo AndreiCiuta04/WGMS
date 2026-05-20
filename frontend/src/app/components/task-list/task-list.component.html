@@ -4,6 +4,12 @@
     <a routerLink="/tasks/create" class="btn btn-primary">Create Task</a>
   </div>
 
+  @if (errorMessage) {
+    <div class="alert alert-danger mb-4" role="alert">
+      {{ errorMessage }}
+    </div>
+  }
+
   <ul class="nav nav-tabs mb-4">
     <li class="nav-item">
       <a class="nav-link cursor-pointer" [class.active]="currentTab === 'ALL'" (click)="switchTab('ALL')">All Tasks</a>
@@ -13,40 +19,48 @@
     </li>
   </ul>
 
-  @if (displayedTasks.length === 0) {
+  @if (loading) {
     <div class="wgms-card text-center p-5">
-      <p class="body-text text-muted mb-0">No tasks found.</p>
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
     </div>
-  }
-
-  <div class="row">
-    @for (task of displayedTasks; track task.id) {
-      <div class="col-md-6 mb-4">
-        <div class="wgms-card h-100 d-flex flex-column">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <h3 class="mb-0">{{ task.title }}</h3>
-            <span class="badge" [class.badge-wgms-active]="task.status === TaskStatus.OPEN" [class.badge-wgms-used]="task.status === TaskStatus.DONE">
-              {{ task.status }}
-            </span>
-          </div>
-          
-          <p class="body-text mb-3 flex-grow-1">{{ task.description || 'No description provided.' }}</p>
-          
-          <div class="caption mb-3">
-            <div><strong>Assigned To:</strong> {{ task.assignedToEmail }}</div>
-            <div><strong>Due Date:</strong> {{ task.dueDate }}</div>
-            <div><strong>Created By:</strong> {{ task.createdByEmail }}</div>
-          </div>
-          
-          <div class="d-flex justify-content-end gap-3 border-top pt-3 mt-auto">
-            @if (task.status !== TaskStatus.DONE) {
-              <button class="btn btn-outline-primary btn-sm" (click)="completeTask(task)">Mark as Done</button>
-            }
-            <a [routerLink]="['/tasks', task.id, 'edit']" class="btn btn-outline-secondary btn-sm">Edit</a>
-            <button class="btn btn-outline-danger btn-sm" (click)="deleteTask(task)">Delete</button>
-          </div>
-        </div>
+  } @else {
+    @if (displayedTasks.length === 0) {
+      <div class="wgms-card text-center p-5">
+        <p class="body-text text-muted mb-0">No tasks found.</p>
       </div>
     }
-  </div>
+
+    <div class="row">
+      @for (task of displayedTasks; track task.id) {
+        <div class="col-md-6 mb-4">
+          <div class="wgms-card h-100 d-flex flex-column">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h3 class="mb-0">{{ task.title }}</h3>
+              <span class="badge" [class.badge-wgms-active]="task.status === TaskStatus.OPEN" [class.badge-wgms-used]="task.status === TaskStatus.DONE">
+                {{ task.status }}
+              </span>
+            </div>
+
+            <p class="body-text mb-3 flex-grow-1">{{ task.description || 'No description provided.' }}</p>
+
+            <div class="caption mb-3">
+              <div><strong>Assigned To:</strong> {{ task.assignedToEmail }}</div>
+              <div><strong>Due Date:</strong> {{ task.dueDate }}</div>
+              <div><strong>Created By:</strong> {{ task.createdByEmail }}</div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-3 border-top pt-3 mt-auto">
+              @if (task.status !== TaskStatus.DONE) {
+                <button class="btn btn-outline-primary btn-sm" (click)="completeTask(task)">Mark as Done</button>
+              }
+              <a [routerLink]="['/tasks', task.id, 'edit']" class="btn btn-outline-secondary btn-sm">Edit</a>
+              <button class="btn btn-outline-danger btn-sm" (click)="deleteTask(task)">Delete</button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
 </div>
