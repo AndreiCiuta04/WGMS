@@ -26,7 +26,7 @@ export class HouseholdInvitationsComponent implements OnInit {
   ) {
     this.form = this.fb.group({
       invitedEmail: ['', [Validators.email]],
-      expiresInHours: [168]
+      expiresInHours: [168, [Validators.required]]
     });
   }
 
@@ -36,42 +36,56 @@ export class HouseholdInvitationsComponent implements OnInit {
         this.household = h;
         this.loadInvitations();
       },
-      error: err => this.errorMessage = 'Could not load household information.'
+      error: () => this.errorMessage = 'Could not load household information.'
     });
   }
 
   loadInvitations(): void {
-    if (this.household) {
-      this.invitationService.getInvitations(this.household.id).subscribe({
-        next: invs => this.invitations = invs,
-        error: err => {
-          if (err.status === 403) {
-            this.errorMessage = 'Access Denied: Only the Main Tenant can manage invitations.';
-          } else {
-            this.errorMessage = 'Could not load invitations.';
-          }
-        }
-      });
+    if (!this.household) {
+      return;
     }
+
+    this.invitationService.getInvitations(this.household.id).subscribe({
+      next: invs => this.invitations = invs,
+      error: err => {
+        if (err.status === 403) {
+          this.errorMessage = 'Access Denied: Only the Main Tenant can manage invitations.';
+        } else {
+          this.errorMessage = 'Could not load invitations.';
+        }
+      }
+    });
   }
 
   create(): void {
-    if (this.household) {
-      this.invitationService.createInvitation(this.household.id, this.form.value).subscribe({
-        next: inv => {
-          this.lastCreatedUrl = inv.inviteUrl;
-          this.loadInvitations();
-          this.form.reset({ expiresInHours: 168 });
-        },
-        error: err => this.errorMessage = 'Could not create invitation.'
-      });
+    this.errorMessage = '';
+
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
     }
+
+    if (!this.household) {
+      this.errorMessage = 'Could not create invitation because no household is loaded.';
+      return;
+    }
+
+    this.invitationService.createInvitation(this.household.id, this.form.value).subscribe({
+      next: inv => {
+        this.lastCreatedUrl = inv.inviteUrl;
+        this.loadInvitations();
+        this.form.reset({ invitedEmail: '', expiresInHours: 168 });
+      },
+      error: () => this.errorMessage = 'Could not create invitation.'
+    });
   }
 
   delete(id: number): void {
+    this.errorMessage = '';
+
     this.invitationService.deleteInvitation(id).subscribe({
       next: () => this.loadInvitations(),
-      error: err => this.errorMessage = 'Could not revoke invitation.'
+      error: () => this.errorMessage = 'Could not revoke invitation.'
     });
   }
 

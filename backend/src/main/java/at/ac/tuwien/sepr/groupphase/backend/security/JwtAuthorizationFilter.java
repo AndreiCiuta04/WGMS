@@ -14,7 +14,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -82,7 +81,6 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
             throw new IllegalArgumentException("Token contains no user");
         }
 
-        MDC.put("u", username);
 
         return new UsernamePasswordAuthenticationToken(username, null, authorities);
     }
