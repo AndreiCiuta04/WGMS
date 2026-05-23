@@ -1,0 +1,124 @@
+import { Component, OnInit } from '@angular/core';
+import { ShoppingItemService } from '../../services/shopping-item.service';
+import { ShoppingItemDto, ShoppingItemStatus } from '../../dtos/shopping-item';
+
+@Component({
+  selector: 'app-shopping-item-list',
+  templateUrl: './shopping-item-list.component.html',
+  styleUrls: ['./shopping-item-list.component.scss'],
+  standalone: false
+})
+export class ShoppingItemListComponent implements OnInit {
+
+  items: ShoppingItemDto[] = [];
+  loading = false;
+  actionError: string | null = null;
+  successMessage: string | null = null;
+
+  /** Controls visibility of the Bought & Cancelled section */
+  completedExpanded = false;
+
+  ShoppingItemStatus = ShoppingItemStatus;
+
+  constructor(private shoppingItemService: ShoppingItemService) { }
+
+  ngOnInit(): void {
+    this.loadItems();
+  }
+
+  /** Items that still need to be bought */
+  get neededItems(): ShoppingItemDto[] {
+    return this.items.filter(i => i.status === ShoppingItemStatus.NEEDED);
+  }
+
+  /** Items that are bought or cancelled */
+  get completedItems(): ShoppingItemDto[] {
+    return this.items.filter(
+      i => i.status === ShoppingItemStatus.BOUGHT || i.status === ShoppingItemStatus.CANCELLED
+    );
+  }
+
+  toggleCompletedExpanded(): void {
+    this.completedExpanded = !this.completedExpanded;
+  }
+
+  loadItems() {
+    this.loading = true;
+    this.actionError = null;
+    this.shoppingItemService.findAll().subscribe({
+      next: (items) => {
+        this.items = items;
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Error fetching shopping items', err);
+        this.actionError = this.extractError(err, 'Failed to load shopping items.');
+        this.loading = false;
+      }
+    });
+  }
+
+  markAsBought(item: ShoppingItemDto) {
+    this.updateStatus(item, ShoppingItemStatus.BOUGHT, 'mark as bought', 'Item marked as bought.');
+  }
+
+  markAsNeeded(item: ShoppingItemDto) {
+    this.updateStatus(item, ShoppingItemStatus.NEEDED, 'reopen', 'Item moved back to needed.');
+  }
+
+  cancelItem(item: ShoppingItemDto) {
+    this.updateStatus(item, ShoppingItemStatus.CANCELLED, 'cancel', 'Item cancelled.');
+  }
+
+  deleteItem(item: ShoppingItemDto) {
+    if (confirm('Are you sure you want to delete this shopping item?')) {
+      this.actionError = null;
+      this.shoppingItemService.delete(item.id).subscribe({
+        next: () => {
+          this.showSuccess('Item deleted.');
+          this.loadItems();
+        },
+        error: (err) => {
+          console.error('Error deleting item', err);
+          this.actionError = this.extractError(err, 'Failed to delete the shopping item.');
+        }
+      });
+    }
+  }
+
+  private updateStatus(item: ShoppingItemDto, status: ShoppingItemStatus, label: string, successMsg: string) {
+    this.actionError = null;
+    this.shoppingItemService.updateStatus(item.id, { status }).subscribe({
+      next: () => {
+        this.showSuccess(successMsg);
+        this.loadItems();
+      },
+      error: (err) => {
+        console.error(`Error trying to ${label} item`, err);
+        this.actionError = this.extractError(err, `Failed to ${label} the shopping item.`);
+      }
+    });
+  }
+
+  private showSuccess(message: string): void {
+    this.successMessage = message;
+    setTimeout(() => { this.successMessage = null; }, 3000);
+  }
+
+  private extractError(err: any, fallback: string): string {
+    if (err?.error?.message) {
+      return err.error.message;
+    }
+    const validation = err?.error?.['Validation errors'];
+    if (Array.isArray(validation) && validation.length) {
+      return validation.join(', ');
+    }
+    if (err?.status === 403) {
+      return 'You are not allowed to perform this action.';
+    }
+    if (err?.status === 401) {
+      return 'Your session has expired. Please log in again.';
+    }
+    return fallback;
+  }
+}

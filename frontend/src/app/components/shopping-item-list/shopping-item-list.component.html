@@ -1,0 +1,140 @@
+<div class="wgms-container shopping-page">
+
+  <!-- Page Header -->
+  <div class="shopping-header">
+    <h2>Shopping List</h2>
+    <span class="accent-text" style="font-size: 16px; color: #5F6B5F; display: block; margin-top: 4px;">Collaborative household provisioning</span>
+  </div>
+
+  <!-- Success Message -->
+  @if (successMessage) {
+    <div class="success-toast">
+      <lucide-icon name="circle-check" [size]="16" [strokeWidth]="2"></lucide-icon>
+      {{ successMessage }}
+    </div>
+  }
+
+  <!-- Error Message -->
+  @if (actionError) {
+    <div class="alert alert-danger" role="alert">{{ actionError }}</div>
+  }
+
+  <!-- ============================== -->
+  <!-- Section 1: Needed Items        -->
+  <!-- ============================== -->
+  <section class="section needed-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <lucide-icon name="shopping-cart" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+        <h3 class="section-title">Needed</h3>
+      </div>
+      <div class="section-header-actions">
+        @if (neededItems.length > 0) {
+          <span class="section-count">{{ neededItems.length }}</span>
+        }
+        <a routerLink="/shopping-items/create" class="btn btn-primary btn-sm">+ Add Item</a>
+      </div>
+    </div>
+
+    @if (loading) {
+      <div class="text-center p-4">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    } @else if (neededItems.length === 0) {
+      <div class="empty-state">
+        <lucide-icon name="shopping-cart" [size]="32" [strokeWidth]="1.5" style="color: #79AE6F; margin-bottom: 8px; display: inline-block;"></lucide-icon>
+        <p class="empty-text">All stocked up! No items needed right now.</p>
+      </div>
+    }
+
+    @for (item of neededItems; track item.id) {
+      <div class="needed-item">
+        <div class="needed-item-left">
+          <div class="needed-indicator">
+            <lucide-icon name="shopping-cart" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+          </div>
+          <div class="needed-item-info">
+            <span class="needed-item-title">{{ item.name }}</span>
+            <span class="needed-item-meta">
+              @if (item.quantity) { {{ item.quantity }} · }
+              Added by {{ item.createdByFirstName }} {{ item.createdByLastName }}
+              @if (item.notes) { · {{ item.notes }} }
+            </span>
+          </div>
+        </div>
+        <div class="item-actions">
+          <button class="action-btn success" (click)="markAsBought(item)" title="Mark as Bought">
+            <lucide-icon name="circle-check" [size]="15" [strokeWidth]="2"></lucide-icon>
+          </button>
+          <button class="action-btn muted" (click)="cancelItem(item)" title="Cancel">
+            <lucide-icon name="circle-x" [size]="15" [strokeWidth]="2"></lucide-icon>
+          </button>
+          <a [routerLink]="['/shopping-items', item.id, 'edit']" class="action-btn" title="Edit">
+            <lucide-icon name="pencil" [size]="14" [strokeWidth]="2"></lucide-icon>
+          </a>
+          <button class="action-btn danger" (click)="deleteItem(item)" title="Delete">
+            <lucide-icon name="trash-2" [size]="14" [strokeWidth]="2"></lucide-icon>
+          </button>
+        </div>
+      </div>
+    }
+  </section>
+
+  <!-- ============================== -->
+  <!-- Section 2: Bought / Cancelled  -->
+  <!-- ============================== -->
+  <section class="section completed-section">
+    <div class="completed-header" (click)="toggleCompletedExpanded()">
+      <div class="section-title-group">
+        <lucide-icon name="circle-check" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+        <h3 class="section-title">Bought &amp; Cancelled</h3>
+        <span class="manage-toggle">{{ completedExpanded ? '▾' : '▸' }}</span>
+      </div>
+      @if (completedItems.length > 0) {
+        <span class="section-count completed-count">{{ completedItems.length }}</span>
+      }
+    </div>
+
+    @if (completedExpanded) {
+      @if (completedItems.length === 0) {
+        <div class="empty-state">
+          <lucide-icon name="circle-check" [size]="28" [strokeWidth]="1.5" style="color: #9FCB98; margin-bottom: 8px; display: inline-block;"></lucide-icon>
+          <p class="empty-text">No completed or cancelled items.</p>
+        </div>
+      }
+
+      @for (item of completedItems; track item.id) {
+        <div class="completed-item">
+          <div class="completed-item-left">
+            <span class="completed-status-dot"
+                  [class.bought]="item.status === ShoppingItemStatus.BOUGHT"
+                  [class.cancelled]="item.status === ShoppingItemStatus.CANCELLED"></span>
+            <div class="completed-item-info">
+              <span class="completed-item-title">{{ item.name }}</span>
+              <span class="completed-item-meta">
+                <span class="status-label"
+                      [class.status-bought]="item.status === ShoppingItemStatus.BOUGHT"
+                      [class.status-cancelled]="item.status === ShoppingItemStatus.CANCELLED">
+                  {{ item.status === ShoppingItemStatus.BOUGHT ? 'Bought' : 'Cancelled' }}
+                </span>
+                @if (item.quantity) { · {{ item.quantity }} }
+                · {{ item.createdByFirstName }} {{ item.createdByLastName }}
+              </span>
+            </div>
+          </div>
+          <div class="item-actions">
+            <button class="action-btn" (click)="markAsNeeded(item)" title="Mark as Needed">
+              <lucide-icon name="rotate-ccw" [size]="14" [strokeWidth]="2"></lucide-icon>
+            </button>
+            <button class="action-btn danger" (click)="deleteItem(item)" title="Delete">
+              <lucide-icon name="trash-2" [size]="14" [strokeWidth]="2"></lucide-icon>
+            </button>
+          </div>
+        </div>
+      }
+    }
+  </section>
+
+</div>
