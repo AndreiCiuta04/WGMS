@@ -1,0 +1,127 @@
+$forest-green: #346739;
+$text-primary: #1F2A1F;
+$text-secondary: #5F6B5F;
+$eggwhite-bg: #FBFAF3;
+
+.sidebar {
+  width: 240px;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  background-color: $eggwhite-bg;
+  border-right: 1px solid rgba(31, 42, 31, 0.1);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  overflow-y: auto;
+
+  @media (max-width: 991px) {
+    display: none;
+  }
+}
+
+.sidebar-brand {
+  padding: 0 8px 24px 8px;
+  border-bottom: 1px solid rgba(31, 42, 31, 0.08);
+  margin-bottom: 8px;
+}
+
+.sidebar-logo {
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+  font-size: 22px;
+  color: $forest-green !important;
+  letter-spacing: -0.5px;
+  text-decoration: none;
+  display: block;
+}
+
+.sidebar-tagline {
+  font-size: 13px;
+  color: $text-secondary;
+  display: block;
+  margin-top: 2px;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: $text-secondary !important;
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background-color: rgba(52, 103, 57, 0.06);
+    color: $forest-green !important;
+  }
+
+  &.active {
+    background-color: rgba(52, 103, 57, 0.1);
+    color: $forest-green !important;
+    font-weight: 600;
+  }
+}
+
+.sidebar-footer {
+  padding-top: 16px;
+  border-top: 1px solid rgba(31, 42, 31, 0.08);
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+}
+
+.sidebar-user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: rgba(52, 103, 57, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $forest-green;
+  flex-shrink: 0;
+}
+
+.sidebar-user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sidebar-user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: $text-primary;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-user-action {
+  font-size: 12px;
+  color: $text-secondary !important;
+  text-decoration: none;
+
+  &:hover {
+    color: $forest-green !important;
+  }
+}

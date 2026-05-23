@@ -3,11 +3,8 @@ package at.ac.tuwien.sepr.groupphase.backend.integrationtest;
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserRegistrationDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
-import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdInvitationRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.*;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,7 +22,6 @@ import tools.jackson.databind.json.JsonMapper;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -54,9 +50,16 @@ public class UserEndpointTest implements TestData {
     @Autowired
     private JsonMapper jsonMapper;
 
+    @Autowired
+    private CleaningScheduleRepository cleaningScheduleRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @BeforeEach
     public void beforeEach() {
         taskRepository.deleteAll();
+        cleaningScheduleRepository.deleteAll();
         invitationRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
@@ -76,7 +79,6 @@ public class UserEndpointTest implements TestData {
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
-            .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 
@@ -90,6 +92,8 @@ public class UserEndpointTest implements TestData {
         assertFalse(savedUser.getAdmin());
         assertEquals(0, savedUser.getFailedLoginAttempts());
         assertNull(savedUser.getAccountLockedUntil());
+        assertNotEquals("Password123!", savedUser.getPassword());
+        assertTrue(passwordEncoder.matches("Password123!", savedUser.getPassword()));
     }
 
     @Test
@@ -108,7 +112,6 @@ public class UserEndpointTest implements TestData {
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
-            .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 
@@ -129,7 +132,6 @@ public class UserEndpointTest implements TestData {
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
-            .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 

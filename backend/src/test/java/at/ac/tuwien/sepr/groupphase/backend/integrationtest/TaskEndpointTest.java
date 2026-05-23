@@ -1,4 +1,5 @@
 package at.ac.tuwien.sepr.groupphase.backend.integrationtest;
+import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepository;
 
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
 import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties;
@@ -32,6 +33,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.json.JsonMapper;
 
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -43,7 +45,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -75,6 +76,9 @@ public class TaskEndpointTest implements TestData {
     @Autowired
     private JsonMapper jsonMapper;
 
+    @Autowired
+    private CleaningScheduleRepository cleaningScheduleRepository;
+
     private ApplicationUser mainTenant;
     private ApplicationUser roommate;
     private ApplicationUser secondRoommate;
@@ -85,6 +89,7 @@ public class TaskEndpointTest implements TestData {
     @BeforeEach
     public void beforeEach() {
         taskRepository.deleteAll();
+        cleaningScheduleRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
         userRepository.deleteAll();
@@ -115,7 +120,6 @@ public class TaskEndpointTest implements TestData {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonMapper.writeValueAsString(taskCreateDto))
                 .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
-            .andDo(print())
             .andReturn();
 
         MockHttpServletResponse response = mvcResult.getResponse();
@@ -145,7 +149,6 @@ public class TaskEndpointTest implements TestData {
         MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonMapper.writeValueAsString(taskCreateDto)))
-            .andDo(print())
             .andReturn();
 
         assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus());
@@ -160,7 +163,6 @@ public class TaskEndpointTest implements TestData {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonMapper.writeValueAsString(taskCreateDto))
                 .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
-            .andDo(print())
             .andReturn();
 
         assertEquals(HttpStatus.BAD_REQUEST.value(), mvcResult.getResponse().getStatus());
@@ -175,7 +177,6 @@ public class TaskEndpointTest implements TestData {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonMapper.writeValueAsString(taskCreateDto))
                 .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
-            .andDo(print())
             .andReturn();
 
         assertEquals(HttpStatus.NOT_FOUND.value(), mvcResult.getResponse().getStatus());
@@ -190,7 +191,6 @@ public class TaskEndpointTest implements TestData {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonMapper.writeValueAsString(taskCreateDto))
                 .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
-            .andDo(print())
             .andReturn();
 
         assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus());
@@ -204,7 +204,6 @@ public class TaskEndpointTest implements TestData {
 
         MvcResult mvcResult = this.mockMvc.perform(get(TASK_BASE_URI)
                 .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
-            .andDo(print())
             .andReturn();
 
         MockHttpServletResponse response = mvcResult.getResponse();
@@ -226,7 +225,6 @@ public class TaskEndpointTest implements TestData {
 
         MvcResult mvcResult = this.mockMvc.perform(get(TASK_BASE_URI + "/my")
                 .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
-            .andDo(print())
             .andReturn();
 
         MockHttpServletResponse response = mvcResult.getResponse();
@@ -246,7 +244,6 @@ public class TaskEndpointTest implements TestData {
 
         MvcResult mvcResult = this.mockMvc.perform(get(TASK_BASE_URI + "/{id}", otherHouseholdTask.getId())
                 .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
-            .andDo(print())
             .andReturn();
 
         assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus());
@@ -263,7 +260,6 @@ public class TaskEndpointTest implements TestData {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonMapper.writeValueAsString(statusUpdateDto))
                 .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
-            .andDo(print())
             .andReturn();
 
         MockHttpServletResponse response = mvcResult.getResponse();
@@ -287,7 +283,6 @@ public class TaskEndpointTest implements TestData {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonMapper.writeValueAsString(statusUpdateDto))
                 .header(securityProperties.getAuthHeader(), tokenFor(SECOND_ROOMMATE_EMAIL)))
-            .andDo(print())
             .andReturn();
 
         assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus());
@@ -307,7 +302,6 @@ public class TaskEndpointTest implements TestData {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonMapper.writeValueAsString(updateDto))
                 .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
-            .andDo(print())
             .andReturn();
 
         MockHttpServletResponse response = mvcResult.getResponse();
@@ -336,7 +330,6 @@ public class TaskEndpointTest implements TestData {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonMapper.writeValueAsString(updateDto))
                 .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
-            .andDo(print())
             .andReturn();
 
         assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus());
@@ -348,7 +341,6 @@ public class TaskEndpointTest implements TestData {
 
         MvcResult mvcResult = this.mockMvc.perform(delete(TASK_BASE_URI + "/{id}", task.getId())
                 .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
-            .andDo(print())
             .andReturn();
 
         assertAll(
@@ -363,7 +355,6 @@ public class TaskEndpointTest implements TestData {
 
         MvcResult mvcResult = this.mockMvc.perform(delete(TASK_BASE_URI + "/{id}", task.getId())
                 .header(securityProperties.getAuthHeader(), tokenFor(SECOND_ROOMMATE_EMAIL)))
-            .andDo(print())
             .andReturn();
 
         assertAll(

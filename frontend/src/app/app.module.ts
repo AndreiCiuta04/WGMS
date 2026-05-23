@@ -19,8 +19,17 @@ import {TaskListComponent} from './components/task-list/task-list.component';
 import {TaskCreateComponent} from './components/task-create/task-create.component';
 import {TaskEditComponent} from './components/task-edit/task-edit.component';
 import {ExpensesComponent} from './components/expenses/expenses.component';
+import {ShoppingItemListComponent} from './components/shopping-item-list/shopping-item-list.component';
+import {ShoppingItemCreateComponent} from './components/shopping-item-create/shopping-item-create.component';
+import {ShoppingItemEditComponent} from './components/shopping-item-edit/shopping-item-edit.component';
+import {CleaningScheduleListComponent} from './components/cleaning-schedule-list/cleaning-schedule-list.component';
+import {CleaningScheduleCreateComponent} from './components/cleaning-schedule-create/cleaning-schedule-create.component';
+import {CleaningScheduleEditComponent} from './components/cleaning-schedule-edit/cleaning-schedule-edit.component';
+import {SidebarComponent} from './components/sidebar/sidebar.component';
+import {BottomTabBarComponent} from './components/bottom-tab-bar/bottom-tab-bar.component';
 import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
 import {httpInterceptorProviders} from './interceptors';
+import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw} from 'lucide-angular';
 
 @NgModule({
   declarations: [
@@ -39,13 +48,22 @@ import {httpInterceptorProviders} from './interceptors';
     TaskCreateComponent,
     TaskEditComponent,
     ExpensesComponent,
+    ShoppingItemListComponent,
+    ShoppingItemCreateComponent,
+    ShoppingItemEditComponent,
+    CleaningScheduleListComponent,
+    CleaningScheduleCreateComponent,
+    CleaningScheduleEditComponent,
+    SidebarComponent,
+    BottomTabBarComponent,
   ],
   bootstrap: [AppComponent],
   imports: [BrowserModule,
     AppRoutingModule,
     ReactiveFormsModule,
     NgbModule,
-    FormsModule],
+    FormsModule,
+    LucideAngularModule.pick({LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw})],
   providers: [
     httpInterceptorProviders,
     provideHttpClient(withInterceptorsFromDi()),

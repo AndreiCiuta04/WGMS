@@ -10,6 +10,7 @@ public class TaskDetailDto {
 
     private Long id;
     private Long householdId;
+    private Long cleaningScheduleId;
     private String title;
     private String description;
     private LocalDate dueDate;
@@ -29,6 +30,14 @@ public class TaskDetailDto {
 
     public void setHouseholdId(Long householdId) {
         this.householdId = householdId;
+    }
+
+    public Long getCleaningScheduleId() {
+        return cleaningScheduleId;
+    }
+
+    public void setCleaningScheduleId(Long cleaningScheduleId) {
+        this.cleaningScheduleId = cleaningScheduleId;
     }
 
     public void setId(Long id) {
@@ -104,6 +113,7 @@ public class TaskDetailDto {
         return "TaskDetailDto{"
             + "id=" + id
             + ", householdId=" + householdId
+            + ", cleaningScheduleId=" + cleaningScheduleId
             + ", title='" + title + '\''
             + ", dueDate=" + dueDate
             + ", status=" + status
@@ -124,6 +134,7 @@ public class TaskDetailDto {
         }
         return Objects.equals(id, that.id)
             && Objects.equals(householdId, that.householdId)
+            && Objects.equals(cleaningScheduleId, that.cleaningScheduleId)
             && Objects.equals(title, that.title)
             && Objects.equals(description, that.description)
             && Objects.equals(dueDate, that.dueDate)
@@ -136,6 +147,6 @@ public class TaskDetailDto {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, householdId, title, description, dueDate, status, createdByEmail, assignedToEmail, createdAt, updatedAt);
+        return Objects.hash(id, householdId, cleaningScheduleId, title, description, dueDate, status, createdByEmail, assignedToEmail, createdAt, updatedAt);
     }
 }
