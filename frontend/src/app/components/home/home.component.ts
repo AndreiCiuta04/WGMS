@@ -3,8 +3,10 @@ import { AuthService } from '../../services/auth.service';
 import { TaskService } from '../../services/task.service';
 import { CleaningScheduleService } from '../../services/cleaning-schedule.service';
 import { HouseholdService } from '../../services/household.service';
+import { ShoppingItemService } from '../../services/shopping-item.service';
 import { TaskDetailDto, TaskStatus } from '../../dtos/task';
 import { CleaningScheduleDetailDto } from '../../dtos/cleaning-schedule';
+import { ShoppingItemDto, ShoppingItemStatus } from '../../dtos/shopping-item';
 
 @Component({
     selector: 'app-home',
@@ -14,22 +16,26 @@ import { CleaningScheduleDetailDto } from '../../dtos/cleaning-schedule';
 })
 export class HomeComponent implements OnInit {
 
-  // Dashboard state
+  // Dashboard counters
   openTaskCount = 0;
   myTaskCount = 0;
   activeScheduleCount = 0;
   housemateCount = 0;
 
-  todayTasks: TaskDetailDto[] = [];
-  upcomingSchedules: CleaningScheduleDetailDto[] = [];
+  // Active items lists
+  myPendingTasks: TaskDetailDto[] = [];
+  householdSchedules: CleaningScheduleDetailDto[] = [];
+  wgShoppingList: ShoppingItemDto[] = [];
 
   dashboardLoading = true;
+  currentUserEmail: string | null = null;
 
   constructor(
     public authService: AuthService,
     private taskService: TaskService,
     private cleaningScheduleService: CleaningScheduleService,
-    private householdService: HouseholdService
+    private householdService: HouseholdService,
+    private shoppingItemService: ShoppingItemService
   ) { }
 
   ngOnInit() {
@@ -49,10 +55,11 @@ export class HomeComponent implements OnInit {
 
   private loadDashboard() {
     this.dashboardLoading = true;
+    this.currentUserEmail = this.authService.getUserEmail();
     let completed = 0;
-    const checkDone = () => { completed++; if (completed >= 4) { this.dashboardLoading = false; } };
+    const checkDone = () => { completed++; if (completed >= 5) { this.dashboardLoading = false; } };
 
-    // Open tasks
+    // 1. All household tasks (to calculate general stats)
     this.taskService.findAll().subscribe({
       next: (tasks) => {
         this.openTaskCount = tasks.filter(t => t.status !== TaskStatus.DONE && t.status !== TaskStatus.CANCELLED).length;
@@ -61,22 +68,22 @@ export class HomeComponent implements OnInit {
       error: () => checkDone()
     });
 
-    // My tasks
+    // 2. Tasks assigned to current user
     this.taskService.findAssignedToMe().subscribe({
       next: (tasks) => {
-        const openTasks = tasks.filter(t => t.status !== TaskStatus.DONE && t.status !== TaskStatus.CANCELLED);
-        this.myTaskCount = openTasks.length;
-        this.todayTasks = openTasks.filter(t => this.isToday(t.dueDate)).slice(0, 5);
+        this.myPendingTasks = tasks.filter(t => t.status !== TaskStatus.DONE && t.status !== TaskStatus.CANCELLED)
+          .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+        this.myTaskCount = this.myPendingTasks.length;
         checkDone();
       },
       error: () => checkDone()
     });
 
-    // Active schedules
+    // 3. Active schedules
     this.cleaningScheduleService.findActive().subscribe({
       next: (schedules) => {
         this.activeScheduleCount = schedules.length;
-        this.upcomingSchedules = schedules
+        this.householdSchedules = schedules
           .sort((a, b) => a.nextDueDate.localeCompare(b.nextDueDate))
           .slice(0, 5);
         checkDone();
@@ -84,7 +91,7 @@ export class HomeComponent implements OnInit {
       error: () => checkDone()
     });
 
-    // Housemates
+    // 4. Housemates
     this.householdService.getMyHousehold().subscribe({
       next: (household) => {
         if (household && household.id) {
@@ -98,14 +105,17 @@ export class HomeComponent implements OnInit {
       },
       error: () => checkDone()
     });
-  }
 
-  private isToday(dateStr: string): boolean {
-    const today = new Date();
-    const todayStr = today.getFullYear() + '-' +
-      String(today.getMonth() + 1).padStart(2, '0') + '-' +
-      String(today.getDate()).padStart(2, '0');
-    return dateStr === todayStr;
+    // 5. Shopping items
+    this.shoppingItemService.findAll().subscribe({
+      next: (items) => {
+        this.wgShoppingList = items.filter(item => item.status === ShoppingItemStatus.NEEDED)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          .slice(0, 5);
+        checkDone();
+      },
+      error: () => checkDone()
+    });
   }
 
   formatFrequency(frequency: string): string {
