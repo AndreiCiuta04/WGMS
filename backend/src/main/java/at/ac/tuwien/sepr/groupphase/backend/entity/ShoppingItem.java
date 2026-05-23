@@ -16,10 +16,9 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 /**
- * A single shopping-list entry. Each item is scoped to a {@link Household};
- * in FR-07 only the creator can see their own items, but the household column
- * is stored from the start so that FR-08 (visibility/targeting) and
- * FR-09 (aggregated household list) can build on it without a schema migration.
+ * A single shopping-list entry. Scoped to a {@link Household}. FR-08 adds
+ * {@link ShoppingItemVisibility} and an optional {@code targetUser} for direct
+ * shopping requests like "Anna, please grab milk while you're at the store".
  */
 @Entity
 @Table(name = "shopping_item")
@@ -42,11 +41,22 @@ public class ShoppingItem {
     @Column(nullable = false, length = 30)
     private ShoppingItemStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private ShoppingItemVisibility visibility;
+
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     private Household household;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     private ApplicationUser createdBy;
+
+    /**
+     * Set only when {@link #visibility} is {@link ShoppingItemVisibility#TARGETED}.
+     * Must be an active member of the same {@link #household}.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    private ApplicationUser targetUser;
 
     @Column(nullable = false, name = "created_at")
     private LocalDateTime createdAt;
@@ -59,6 +69,9 @@ public class ShoppingItem {
         LocalDateTime now = LocalDateTime.now();
         if (status == null) {
             status = ShoppingItemStatus.NEEDED;
+        }
+        if (visibility == null) {
+            visibility = ShoppingItemVisibility.PERSONAL;
         }
         if (createdAt == null) {
             createdAt = now;
@@ -111,6 +124,14 @@ public class ShoppingItem {
         this.status = status;
     }
 
+    public ShoppingItemVisibility getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(ShoppingItemVisibility visibility) {
+        this.visibility = visibility;
+    }
+
     public Household getHousehold() {
         return household;
     }
@@ -125,6 +146,14 @@ public class ShoppingItem {
 
     public void setCreatedBy(ApplicationUser createdBy) {
         this.createdBy = createdBy;
+    }
+
+    public ApplicationUser getTargetUser() {
+        return targetUser;
+    }
+
+    public void setTargetUser(ApplicationUser targetUser) {
+        this.targetUser = targetUser;
     }
 
     public LocalDateTime getCreatedAt() {

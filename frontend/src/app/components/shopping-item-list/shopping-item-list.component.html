@@ -19,6 +19,16 @@
     <div class="alert alert-danger" role="alert">{{ actionError }}</div>
   }
 
+  <!-- Tab Switcher -->
+  <ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+      <a class="nav-link cursor-pointer" [class.active]="currentTab === 'ALL'" (click)="switchTab('ALL')">All Items</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link cursor-pointer" [class.active]="currentTab === 'TARGETED'" (click)="switchTab('TARGETED')">Targeted at Me</a>
+    </li>
+  </ul>
+
   <!-- ============================== -->
   <!-- Section 1: Needed Items        -->
   <!-- ============================== -->
@@ -56,10 +66,21 @@
             <lucide-icon name="shopping-cart" [size]="18" [strokeWidth]="1.75"></lucide-icon>
           </div>
           <div class="needed-item-info">
-            <span class="needed-item-title">{{ item.name }}</span>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span class="needed-item-title">{{ item.name }}</span>
+              <span class="badge badge-visibility"
+                    [class.badge-personal]="item.visibility === ShoppingItemVisibility.PERSONAL"
+                    [class.badge-shared]="item.visibility === ShoppingItemVisibility.SHARED"
+                    [class.badge-targeted]="item.visibility === ShoppingItemVisibility.TARGETED">
+                {{ item.visibility }}
+              </span>
+            </div>
             <span class="needed-item-meta">
               @if (item.quantity) { {{ item.quantity }} · }
               Added by {{ item.createdByFirstName }} {{ item.createdByLastName }}
+              @if (item.visibility === ShoppingItemVisibility.TARGETED && item.targetUserEmail) {
+                · <span class="target-user-label">For: {{ item.targetUserFirstName }} {{ item.targetUserLastName }}</span>
+              }
               @if (item.notes) { · {{ item.notes }} }
             </span>
           </div>
@@ -112,7 +133,15 @@
                   [class.bought]="item.status === ShoppingItemStatus.BOUGHT"
                   [class.cancelled]="item.status === ShoppingItemStatus.CANCELLED"></span>
             <div class="completed-item-info">
-              <span class="completed-item-title">{{ item.name }}</span>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="completed-item-title">{{ item.name }}</span>
+                <span class="badge badge-visibility badge-completed"
+                      [class.badge-personal]="item.visibility === ShoppingItemVisibility.PERSONAL"
+                      [class.badge-shared]="item.visibility === ShoppingItemVisibility.SHARED"
+                      [class.badge-targeted]="item.visibility === ShoppingItemVisibility.TARGETED">
+                  {{ item.visibility }}
+                </span>
+              </div>
               <span class="completed-item-meta">
                 <span class="status-label"
                       [class.status-bought]="item.status === ShoppingItemStatus.BOUGHT"
@@ -121,6 +150,9 @@
                 </span>
                 @if (item.quantity) { · {{ item.quantity }} }
                 · {{ item.createdByFirstName }} {{ item.createdByLastName }}
+                @if (item.visibility === ShoppingItemVisibility.TARGETED && item.targetUserEmail) {
+                  · <span class="target-user-label">For: {{ item.targetUserFirstName }} {{ item.targetUserLastName }}</span>
+                }
               </span>
             </div>
           </div>

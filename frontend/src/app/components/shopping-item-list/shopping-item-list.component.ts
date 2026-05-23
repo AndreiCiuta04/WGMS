@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
+import { forkJoin } from 'rxjs';
 import { ShoppingItemService } from '../../services/shopping-item.service';
-import { ShoppingItemDto, ShoppingItemStatus } from '../../dtos/shopping-item';
+import { ShoppingItemDto, ShoppingItemStatus, ShoppingItemVisibility } from '../../dtos/shopping-item';
 
 @Component({
   selector: 'app-shopping-item-list',
@@ -10,7 +11,10 @@ import { ShoppingItemDto, ShoppingItemStatus } from '../../dtos/shopping-item';
 })
 export class ShoppingItemListComponent implements OnInit {
 
-  items: ShoppingItemDto[] = [];
+  allItems: ShoppingItemDto[] = [];
+  targetedItems: ShoppingItemDto[] = [];
+
+  currentTab: 'ALL' | 'TARGETED' = 'ALL';
   loading = false;
   actionError: string | null = null;
   successMessage: string | null = null;
@@ -19,6 +23,7 @@ export class ShoppingItemListComponent implements OnInit {
   completedExpanded = false;
 
   ShoppingItemStatus = ShoppingItemStatus;
+  ShoppingItemVisibility = ShoppingItemVisibility;
 
   constructor(private shoppingItemService: ShoppingItemService) { }
 
@@ -26,14 +31,18 @@ export class ShoppingItemListComponent implements OnInit {
     this.loadItems();
   }
 
-  /** Items that still need to be bought */
-  get neededItems(): ShoppingItemDto[] {
-    return this.items.filter(i => i.status === ShoppingItemStatus.NEEDED);
+  get activeTabItems(): ShoppingItemDto[] {
+    return this.currentTab === 'ALL' ? this.allItems : this.targetedItems;
   }
 
-  /** Items that are bought or cancelled */
+  /** Items that still need to be bought in the active tab */
+  get neededItems(): ShoppingItemDto[] {
+    return this.activeTabItems.filter(i => i.status === ShoppingItemStatus.NEEDED);
+  }
+
+  /** Items that are bought or cancelled in the active tab */
   get completedItems(): ShoppingItemDto[] {
-    return this.items.filter(
+    return this.activeTabItems.filter(
       i => i.status === ShoppingItemStatus.BOUGHT || i.status === ShoppingItemStatus.CANCELLED
     );
   }
@@ -42,12 +51,20 @@ export class ShoppingItemListComponent implements OnInit {
     this.completedExpanded = !this.completedExpanded;
   }
 
+  switchTab(tab: 'ALL' | 'TARGETED') {
+    this.currentTab = tab;
+  }
+
   loadItems() {
     this.loading = true;
     this.actionError = null;
-    this.shoppingItemService.findAll().subscribe({
-      next: (items) => {
-        this.items = items;
+    forkJoin({
+      all: this.shoppingItemService.findAll(),
+      targeted: this.shoppingItemService.findTargetedAtMe()
+    }).subscribe({
+      next: ({ all, targeted }) => {
+        this.allItems = all;
+        this.targetedItems = targeted;
         this.loading = false;
       },
       error: (err) => {
