@@ -1,0 +1,18 @@
+<nav class="bottom-tab-bar">
+  <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="tab-item">
+    <lucide-icon name="layout-dashboard" [size]="22" [strokeWidth]="1.75"></lucide-icon>
+    <span>Dashboard</span>
+  </a>
+  <a routerLink="/tasks" routerLinkActive="active" class="tab-item">
+    <lucide-icon name="check-square" [size]="22" [strokeWidth]="1.75"></lucide-icon>
+    <span>Tasks</span>
+  </a>
+  <a routerLink="/cleaning-schedules" routerLinkActive="active" class="tab-item">
+    <lucide-icon name="calendar-check" [size]="22" [strokeWidth]="1.75"></lucide-icon>
+    <span>Cleaning</span>
+  </a>
+  <a routerLink="/household/members" routerLinkActive="active" class="tab-item">
+    <lucide-icon name="users" [size]="22" [strokeWidth]="1.75"></lucide-icon>
+    <span>My WG</span>
+  </a>
+</nav>

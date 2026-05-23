@@ -1,28 +1,166 @@
-<div class="wgms-container">
-  <div class="hero-section">
-    <h1 class="display-title">Welcome to <span class="brand-accent">WGMS</span></h1>
-    <p class="hero-tagline accent-text">One home. One system.</p>
-    
-    <div class="hero-content wgms-card text-center">
-      <p class="body-text">
-        WGMS makes shared household management easier, clearer, and less stressful. 
-        Track expenses, manage chores, and stay connected with your roommates in one practical, modern platform.
-      </p>
-      
-      <div class="hero-actions text-center">
-        @if (!authService.isLoggedIn()) {
-          <div class="d-flex justify-content-center">
-            <a class="btn btn-primary btn-lg" routerLink="/login" role="button">Get Started</a>
-            <a class="btn btn-outline-primary btn-lg" routerLink="/register" role="button">Register</a>
-          </div>
+<!-- ======================== -->
+<!-- LANDING PAGE (Logged Out) -->
+<!-- ======================== -->
+@if (!authService.isLoggedIn()) {
+  <div class="landing">
+
+    <!-- Hero Section -->
+    <section class="landing-hero">
+      <div class="landing-hero-content">
+        <h1 class="landing-title">One home.<br>One system.</h1>
+        <p class="landing-subtitle">
+          A shared-flat management system that brings tasks, cleaning schedules
+          and household coordination into one calm workflow.
+        </p>
+        <div class="landing-cta">
+          <a class="btn btn-primary btn-lg" routerLink="/register">Get Started</a>
+          <a class="btn btn-outline-primary btn-lg" routerLink="/login">Login</a>
+        </div>
+      </div>
+      <div class="landing-hero-illustration">
+        <img src="assets/wgms-hero.png" alt="WGMS — organized home" class="hero-image">
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="landing-features">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <lucide-icon name="check-square" [size]="28" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <h3 class="feature-title">Tasks</h3>
+        <p class="feature-desc">Assign chores, track progress, and stay accountable together.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <lucide-icon name="calendar-check" [size]="28" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <h3 class="feature-title">Cleaning Schedules</h3>
+        <p class="feature-desc">Recurring routines that generate tasks automatically.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <lucide-icon name="users" [size]="28" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <h3 class="feature-title">Household</h3>
+        <p class="feature-desc">Invite roommates, manage roles, and see who does what.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <lucide-icon name="mail" [size]="28" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <h3 class="feature-title">Invitations</h3>
+        <p class="feature-desc">Join a WG with a single link — fast and frictionless.</p>
+      </div>
+    </section>
+
+    <!-- Bottom CTA -->
+    <section class="landing-bottom-cta">
+      <p class="landing-bottom-quote accent-text">Designed for shared living. Built for clarity, trust and balance.</p>
+      <a class="btn btn-primary" routerLink="/register">Create your WG now</a>
+    </section>
+
+  </div>
+}
+
+<!-- ======================== -->
+<!-- DASHBOARD (Logged In)    -->
+<!-- ======================== -->
+@if (authService.isLoggedIn()) {
+  <div class="dashboard wgms-container">
+
+    <!-- Greeting -->
+    <div class="dashboard-greeting">
+      <h2>Welcome home, {{ getUserFirstName() }} 👋</h2>
+      <p class="caption">Here's what's happening in your WG today.</p>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="dashboard-stats">
+      <a routerLink="/tasks" class="stat-card">
+        <div class="stat-icon">
+          <lucide-icon name="check-square" [size]="22" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <span class="stat-number">{{ openTaskCount }}</span>
+        <span class="stat-label">Open Tasks</span>
+        <span class="stat-link">View tasks →</span>
+      </a>
+
+      <a routerLink="/tasks" [queryParams]="{ tab: 'mine' }" class="stat-card">
+        <div class="stat-icon">
+          <lucide-icon name="user" [size]="22" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <span class="stat-number">{{ myTaskCount }}</span>
+        <span class="stat-label">My Tasks</span>
+        <span class="stat-link">View mine →</span>
+      </a>
+
+      <a routerLink="/cleaning-schedules" class="stat-card">
+        <div class="stat-icon">
+          <lucide-icon name="calendar-check" [size]="22" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <span class="stat-number">{{ activeScheduleCount }}</span>
+        <span class="stat-label">Schedules</span>
+        <span class="stat-link">View all →</span>
+      </a>
+
+      <a routerLink="/household/members" class="stat-card">
+        <div class="stat-icon">
+          <lucide-icon name="users" [size]="22" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <span class="stat-number">{{ housemateCount }}</span>
+        <span class="stat-label">Housemates</span>
+        <span class="stat-link">View all →</span>
+      </a>
+    </div>
+
+    <!-- Feed Widgets -->
+    <div class="dashboard-feeds">
+
+      <!-- Today's Tasks -->
+      <div class="feed-widget wgms-card">
+        <div class="feed-header">
+          <h3 class="feed-title">Today</h3>
+          <a routerLink="/tasks" class="feed-view-all">View all</a>
+        </div>
+        @if (todayTasks.length === 0) {
+          <p class="feed-empty">Nothing due today! 🎉</p>
         }
-        @if (authService.isLoggedIn()) {
-          <div class="logged-in-actions">
-            <p class="caption mb-3">Welcome back! Ready to manage your household?</p>
-            <a class="btn btn-primary btn-lg" routerLink="/message" role="button">Go to Dashboard</a>
+        @for (task of todayTasks; track task.id) {
+          <div class="feed-item">
+            <div class="feed-item-icon">
+              <lucide-icon name="check-square" [size]="16" [strokeWidth]="1.75"></lucide-icon>
+            </div>
+            <div class="feed-item-content">
+              <span class="feed-item-title">{{ task.title }}</span>
+              <span class="feed-item-meta">Due: {{ task.dueDate }}</span>
+            </div>
           </div>
         }
       </div>
+
+      <!-- Upcoming Schedules -->
+      <div class="feed-widget wgms-card">
+        <div class="feed-header">
+          <h3 class="feed-title">Upcoming Schedules</h3>
+          <a routerLink="/cleaning-schedules" class="feed-view-all">View all</a>
+        </div>
+        @if (upcomingSchedules.length === 0) {
+          <p class="feed-empty">No active schedules yet.</p>
+        }
+        @for (schedule of upcomingSchedules; track schedule.id) {
+          <div class="feed-item">
+            <div class="feed-item-icon schedule-icon">
+              <lucide-icon name="calendar-check" [size]="16" [strokeWidth]="1.75"></lucide-icon>
+            </div>
+            <div class="feed-item-content">
+              <span class="feed-item-title">{{ schedule.title }}</span>
+              <span class="feed-item-meta">{{ formatFrequency(schedule.frequency) }} · Next: {{ schedule.nextDueDate }}</span>
+            </div>
+          </div>
+        }
+      </div>
+
     </div>
   </div>
-</div>
+}

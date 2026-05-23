@@ -51,6 +51,10 @@ public class Task {
     @JoinColumn(name = "assigned_to_user_id", nullable = false)
     private ApplicationUser assignedTo;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cleaning_schedule_id")
+    private CleaningSchedule cleaningSchedule;
+
     @Column(nullable = false, name = "created_at")
     private LocalDateTime createdAt;
 
@@ -91,6 +95,10 @@ public class Task {
 
     public String getAssignedToEmail() {
         return assignedTo == null ? null : assignedTo.getEmail();
+    }
+
+    public Long getCleaningScheduleId() {
+        return cleaningSchedule == null ? null : cleaningSchedule.getId();
     }
 
     public boolean isCreatedBy(ApplicationUser user) {
@@ -169,6 +177,14 @@ public class Task {
         this.assignedTo = assignedTo;
     }
 
+    public CleaningSchedule getCleaningSchedule() {
+        return cleaningSchedule;
+    }
+
+    public void setCleaningSchedule(CleaningSchedule cleaningSchedule) {
+        this.cleaningSchedule = cleaningSchedule;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -195,6 +211,7 @@ public class Task {
             + ", status=" + status
             + ", createdByUserId=" + (createdBy == null ? null : createdBy.getId())
             + ", assignedToUserId=" + (assignedTo == null ? null : assignedTo.getId())
+            + ", cleaningScheduleId=" + getCleaningScheduleId()
             + ", createdAt=" + createdAt
             + ", updatedAt=" + updatedAt
             + '}';
@@ -209,6 +226,7 @@ public class Task {
         private TaskStatus status;
         private ApplicationUser createdBy;
         private ApplicationUser assignedTo;
+        private CleaningSchedule cleaningSchedule;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
@@ -259,6 +277,11 @@ public class Task {
             return this;
         }
 
+        public TaskBuilder withCleaningSchedule(CleaningSchedule cleaningSchedule) {
+            this.cleaningSchedule = cleaningSchedule;
+            return this;
+        }
+
         public TaskBuilder withCreatedAt(LocalDateTime createdAt) {
             this.createdAt = createdAt;
             return this;
@@ -279,6 +302,7 @@ public class Task {
             task.setStatus(status);
             task.setCreatedBy(createdBy);
             task.setAssignedTo(assignedTo);
+            task.setCleaningSchedule(cleaningSchedule);
             task.setCreatedAt(createdAt);
             task.setUpdatedAt(updatedAt);
             return task;

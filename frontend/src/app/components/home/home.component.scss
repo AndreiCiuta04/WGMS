@@ -1,40 +1,333 @@
-.hero-section {
-  text-align: center;
-  padding: 4rem 0;
-}
+$forest-green: #346739;
+$leaf-green: #79AE6F;
+$soft-green: #9FCB98;
+$cream: #F2EDC2;
+$eggwhite-bg: #FBFAF3;
+$text-primary: #1F2A1F;
+$text-secondary: #5F6B5F;
 
-.display-title {
-  font-size: 64px;
-  line-height: 72px;
-  font-weight: 800;
-  margin-bottom: 0.5rem;
-  letter-spacing: -1.5px;
-}
+// ==============================
+// LANDING PAGE (Logged Out)
+// ==============================
 
-.brand-accent {
-  color: #346739;
-}
-
-.hero-tagline {
-  margin-bottom: 3rem;
-}
-
-.hero-content {
-  max-width: 800px;
+.landing {
+  max-width: 1100px;
   margin: 0 auto;
-  text-align: left;
+  padding: 0 32px;
 }
 
-.hero-actions {
-  margin-top: 3rem;
-  padding-top: 2rem;
-  border-top: 1px solid rgba(31, 42, 31, 0.08);
+// --- Hero ---
+.landing-hero {
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  padding: 64px 0 48px;
 
-  .btn + .btn {
-    margin-left: 24px; // space-6
+  @media (max-width: 768px) {
+    flex-direction: column;
+    text-align: center;
+    padding: 40px 0 32px;
+    gap: 32px;
   }
 }
 
-.logged-in-actions {
+.landing-hero-content {
+  flex: 1;
+}
+
+.landing-title {
+  font-size: 52px;
+  line-height: 58px;
+  font-weight: 800;
+  color: $text-primary;
+  letter-spacing: -1.5px;
+  margin-bottom: 20px;
+
+  @media (max-width: 768px) {
+    font-size: 38px;
+    line-height: 44px;
+  }
+}
+
+.landing-subtitle {
+  font-size: 18px;
+  line-height: 28px;
+  color: $text-secondary;
+  max-width: 480px;
+  margin-bottom: 32px;
+
+  @media (max-width: 768px) {
+    margin: 0 auto 28px;
+  }
+}
+
+.landing-cta {
+  display: flex;
+  gap: 16px;
+
+  @media (max-width: 768px) {
+    justify-content: center;
+  }
+}
+
+.landing-hero-illustration {
+  flex: 0 0 auto;
+
+  @media (max-width: 768px) {
+    order: -1;
+  }
+}
+
+.hero-image {
+  width: 340px;
+  height: auto;
+  border-radius: 16px;
+
+  @media (max-width: 768px) {
+    width: 240px;
+  }
+}
+
+// --- Features ---
+.landing-features {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  padding: 48px 0;
+  border-top: 1px solid rgba(31, 42, 31, 0.08);
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    padding: 32px 0;
+  }
+}
+
+.feature-card {
+  background: white;
+  border: 1px solid rgba(52, 103, 57, 0.12);
+  border-radius: 12px;
+  padding: 24px 20px;
   text-align: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(31, 42, 31, 0.08);
+  }
+}
+
+.feature-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: rgba(52, 103, 57, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+  color: $forest-green;
+}
+
+.feature-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: $text-primary;
+  margin-bottom: 6px;
+}
+
+.feature-desc {
+  font-size: 13px;
+  line-height: 19px;
+  color: $text-secondary;
+  margin: 0;
+}
+
+// --- Bottom CTA ---
+.landing-bottom-cta {
+  text-align: center;
+  padding: 48px 0 64px;
+  border-top: 1px solid rgba(31, 42, 31, 0.08);
+}
+
+.landing-bottom-quote {
+  font-size: 22px;
+  color: $forest-green;
+  margin-bottom: 24px;
+}
+
+// ==============================
+// DASHBOARD (Logged In)
+// ==============================
+
+.dashboard {
+  padding-top: 28px;
+}
+
+.dashboard-greeting {
+  margin-bottom: 28px;
+
+  h2 {
+    margin-bottom: 4px;
+    font-size: 28px;
+  }
+}
+
+// --- Stat Cards ---
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.stat-card {
+  background: white;
+  border: 1px solid rgba(52, 103, 57, 0.12);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  text-decoration: none !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(31, 42, 31, 0.08);
+  }
+}
+
+.stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(52, 103, 57, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $forest-green;
+  margin-bottom: 14px;
+}
+
+.stat-number {
+  font-size: 32px;
+  font-weight: 700;
+  color: $text-primary;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: $text-secondary;
+  margin-top: 4px;
+}
+
+.stat-link {
+  font-size: 12px;
+  color: $forest-green;
+  margin-top: 12px;
+  font-weight: 500;
+}
+
+// --- Feed Widgets ---
+.dashboard-feeds {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.feed-widget {
+  padding: 20px !important;
+}
+
+.feed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+  }
+}
+
+.feed-view-all {
+  font-size: 13px;
+  font-weight: 500;
+  color: $forest-green !important;
+}
+
+.feed-empty {
+  font-size: 14px;
+  color: $text-secondary;
+  text-align: center;
+  padding: 20px 0;
+  margin: 0;
+}
+
+.feed-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(31, 42, 31, 0.06);
+
+  &:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  &:first-of-type {
+    padding-top: 0;
+  }
+}
+
+.feed-item-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(52, 103, 57, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $forest-green;
+  flex-shrink: 0;
+  margin-top: 1px;
+
+  &.schedule-icon {
+    background: rgba(121, 174, 111, 0.12);
+    color: #5a8e50;
+  }
+}
+
+.feed-item-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.feed-item-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: $text-primary;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.feed-item-meta {
+  font-size: 12px;
+  color: $text-secondary;
+  margin-top: 2px;
 }

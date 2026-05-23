@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { TaskService } from '../../services/task.service';
 import { TaskDetailDto, TaskStatus } from '../../dtos/task';
@@ -22,9 +23,12 @@ export class TaskListComponent implements OnInit {
 
   TaskStatus = TaskStatus;
 
-  constructor(private taskService: TaskService) { }
+  constructor(private taskService: TaskService, private route: ActivatedRoute) { }
 
   ngOnInit(): void {
+    if (this.route.snapshot.queryParamMap.get('tab') === 'mine') {
+      this.currentTab = 'MINE';
+    }
     this.loadTasks();
   }
 

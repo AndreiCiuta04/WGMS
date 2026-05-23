@@ -9,10 +9,7 @@ import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
-import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdInvitationRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.*;
 import at.ac.tuwien.sepr.groupphase.backend.security.JwtTokenizer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,6 +53,12 @@ public class InvitationEndpointTest implements TestData {
     private UserRepository userRepository;
 
     @Autowired
+    private CleaningScheduleRepository cleaningScheduleRepository;
+
+    @Autowired
+    private TaskRepository taskRepository;
+
+    @Autowired
     private JwtTokenizer jwtTokenizer;
 
     @Autowired
@@ -70,6 +73,8 @@ public class InvitationEndpointTest implements TestData {
 
     @BeforeEach
     public void beforeEach() {
+        taskRepository.deleteAll();
+        cleaningScheduleRepository.deleteAll();
         invitationRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();

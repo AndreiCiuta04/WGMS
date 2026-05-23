@@ -3,10 +3,7 @@ package at.ac.tuwien.sepr.groupphase.backend.integrationtest;
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserLoginDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
-import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdInvitationRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,8 +52,16 @@ public class LoginEndpointTest implements TestData {
     @Autowired
     private JsonMapper jsonMapper;
 
+    @Autowired
+    private CleaningScheduleRepository cleaningScheduleRepository;
+
+    @Autowired
+    private TaskRepository taskRepository;
+
     @BeforeEach
     public void beforeEach() {
+        taskRepository.deleteAll();
+        cleaningScheduleRepository.deleteAll();
         invitationRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();

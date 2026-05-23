@@ -18,8 +18,14 @@ import {InvitationAcceptComponent} from './components/invitation-accept/invitati
 import {TaskListComponent} from './components/task-list/task-list.component';
 import {TaskCreateComponent} from './components/task-create/task-create.component';
 import {TaskEditComponent} from './components/task-edit/task-edit.component';
+import {CleaningScheduleListComponent} from './components/cleaning-schedule-list/cleaning-schedule-list.component';
+import {CleaningScheduleCreateComponent} from './components/cleaning-schedule-create/cleaning-schedule-create.component';
+import {CleaningScheduleEditComponent} from './components/cleaning-schedule-edit/cleaning-schedule-edit.component';
+import {SidebarComponent} from './components/sidebar/sidebar.component';
+import {BottomTabBarComponent} from './components/bottom-tab-bar/bottom-tab-bar.component';
 import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
 import {httpInterceptorProviders} from './interceptors';
+import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock} from 'lucide-angular';
 
 @NgModule({
   declarations: [
@@ -37,13 +43,19 @@ import {httpInterceptorProviders} from './interceptors';
     TaskListComponent,
     TaskCreateComponent,
     TaskEditComponent,
+    CleaningScheduleListComponent,
+    CleaningScheduleCreateComponent,
+    CleaningScheduleEditComponent,
+    SidebarComponent,
+    BottomTabBarComponent,
   ],
   bootstrap: [AppComponent],
   imports: [BrowserModule,
     AppRoutingModule,
     ReactiveFormsModule,
     NgbModule,
-    FormsModule],
+    FormsModule,
+    LucideAngularModule.pick({LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock})],
   providers: [
     httpInterceptorProviders,
     provideHttpClient(withInterceptorsFromDi()),
@@ -51,3 +63,4 @@ import {httpInterceptorProviders} from './interceptors';
   ] })
 export class AppModule {
 }
+

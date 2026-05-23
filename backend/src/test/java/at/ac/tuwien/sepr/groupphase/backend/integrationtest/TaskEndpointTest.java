@@ -1,4 +1,5 @@
 package at.ac.tuwien.sepr.groupphase.backend.integrationtest;
+import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepository;
 
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
 import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties;
@@ -31,6 +32,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.json.JsonMapper;
+
 
 import java.util.Arrays;
 import java.util.List;
@@ -74,6 +76,9 @@ public class TaskEndpointTest implements TestData {
     @Autowired
     private JsonMapper jsonMapper;
 
+    @Autowired
+    private CleaningScheduleRepository cleaningScheduleRepository;
+
     private ApplicationUser mainTenant;
     private ApplicationUser roommate;
     private ApplicationUser secondRoommate;
@@ -84,6 +89,7 @@ public class TaskEndpointTest implements TestData {
     @BeforeEach
     public void beforeEach() {
         taskRepository.deleteAll();
+        cleaningScheduleRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
         userRepository.deleteAll();

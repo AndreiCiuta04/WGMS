@@ -8,6 +8,7 @@ import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
+import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdInvitationRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
@@ -58,6 +59,9 @@ public class HouseholdEndpointTest implements TestData {
     private TaskRepository taskRepository;
 
     @Autowired
+    private CleaningScheduleRepository cleaningScheduleRepository;
+
+    @Autowired
     private JwtTokenizer jwtTokenizer;
 
     @Autowired
@@ -69,6 +73,7 @@ public class HouseholdEndpointTest implements TestData {
     @BeforeEach
     public void beforeEach() {
         taskRepository.deleteAll();
+        cleaningScheduleRepository.deleteAll();
         invitationRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();

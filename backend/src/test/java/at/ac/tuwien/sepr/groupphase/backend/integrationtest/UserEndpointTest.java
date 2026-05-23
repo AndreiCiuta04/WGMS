@@ -3,11 +3,7 @@ package at.ac.tuwien.sepr.groupphase.backend.integrationtest;
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserRegistrationDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
-import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdInvitationRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,11 +51,15 @@ public class UserEndpointTest implements TestData {
     private JsonMapper jsonMapper;
 
     @Autowired
+    private CleaningScheduleRepository cleaningScheduleRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     public void beforeEach() {
         taskRepository.deleteAll();
+        cleaningScheduleRepository.deleteAll();
         invitationRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
