@@ -25,6 +25,12 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
         Long assignedToId
     );
 
+    @EntityGraph(attributePaths = {"household", "createdBy", "assignedTo", "cleaningSchedule"})
+    List<Task> findAllByHousehold_IdAndStatusInOrderByUpdatedAtDescDueDateDescCreatedAtDesc(
+        Long householdId,
+        Collection<TaskStatus> statuses
+    );
+
     boolean existsByCleaningSchedule_Id(Long cleaningScheduleId);
 
     boolean existsByCleaningSchedule_IdAndStatusNotIn(
