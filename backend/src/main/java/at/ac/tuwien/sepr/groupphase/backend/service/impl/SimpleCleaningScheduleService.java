@@ -206,8 +206,15 @@ public class SimpleCleaningScheduleService implements CleaningScheduleService {
         requireScheduleInCurrentHousehold(cleaningSchedule, currentRoommate);
         requireCanManage(cleaningSchedule, currentUser, currentRoommate);
 
-        if (taskRepository.existsByCleaningSchedule_Id(cleaningSchedule.getId())) {
-            throw new ConflictException("Cleaning schedule cannot be deleted because it already generated tasks.");
+        boolean hasOpenTasks = taskRepository.existsByCleaningSchedule_IdAndStatusNotIn(
+            cleaningSchedule.getId(),
+            List.of(TaskStatus.DONE, TaskStatus.CANCELLED)
+        );
+
+        if (hasOpenTasks) {
+            throw new ConflictException(
+                "Cleaning schedule cannot be deleted because it has open tasks. Complete or cancel them first."
+            );
         }
 
         cleaningScheduleRepository.delete(cleaningSchedule);

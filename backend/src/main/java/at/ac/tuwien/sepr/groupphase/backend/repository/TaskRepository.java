@@ -4,7 +4,9 @@ import at.ac.tuwien.sepr.groupphase.backend.entity.Task;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import at.ac.tuwien.sepr.groupphase.backend.entity.TaskStatus;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,4 +26,9 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     );
 
     boolean existsByCleaningSchedule_Id(Long cleaningScheduleId);
+
+    boolean existsByCleaningSchedule_IdAndStatusNotIn(
+        Long cleaningScheduleId,
+        Collection<TaskStatus> statuses
+    );
 }

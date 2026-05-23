@@ -302,13 +302,16 @@ public class SimpleCleaningScheduleServiceTest {
     }
 
     @Test
-    public void givenScheduleWithGeneratedTasks_whenDeleteSchedule_thenConflictAndScheduleIsNotDeleted() {
+    public void givenScheduleWithOpenGeneratedTasks_whenDeleteSchedule_thenConflictAndScheduleIsNotDeleted() {
         CleaningSchedule schedule = schedule(1L, household, mainTenant, roommate, TEST_CLEANING_TITLE);
 
         when(userService.findApplicationUserByEmail(MAIN_TENANT_EMAIL)).thenReturn(mainTenant);
         when(roommateRepository.findByUserIdAndActiveTrue(mainTenant.getId())).thenReturn(Optional.of(mainTenantMembership));
         when(cleaningScheduleRepository.findWithRelationsById(schedule.getId())).thenReturn(Optional.of(schedule));
-        when(taskRepository.existsByCleaningSchedule_Id(schedule.getId())).thenReturn(true);
+        when(taskRepository.existsByCleaningSchedule_IdAndStatusNotIn(
+            schedule.getId(),
+            List.of(TaskStatus.DONE, TaskStatus.CANCELLED)
+        )).thenReturn(true);
 
         assertThrows(ConflictException.class, () -> cleaningScheduleService.delete(schedule.getId(), MAIN_TENANT_EMAIL, false));
 
