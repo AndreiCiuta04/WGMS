@@ -15,6 +15,10 @@ public interface ShoppingItemMapper {
     @Mapping(target = "createdByEmail", source = "createdBy.email")
     @Mapping(target = "createdByFirstName", source = "createdBy.firstName")
     @Mapping(target = "createdByLastName", source = "createdBy.lastName")
+    @Mapping(target = "targetUserId", source = "targetUser.id")
+    @Mapping(target = "targetUserEmail", source = "targetUser.email")
+    @Mapping(target = "targetUserFirstName", source = "targetUser.firstName")
+    @Mapping(target = "targetUserLastName", source = "targetUser.lastName")
     ShoppingItemDto entityToDto(ShoppingItem item);
 
     List<ShoppingItemDto> entityToDto(List<ShoppingItem> items);

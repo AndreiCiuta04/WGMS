@@ -69,4 +69,3 @@ import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users,
   ] })
 export class AppModule {
 }
-

@@ -26,6 +26,9 @@ export class ShoppingItemService {
     return this.http.get<ShoppingItemDto[]>(this.baseUri);
   }
 
+  findTargetedAtMe(): Observable<ShoppingItemDto[]> {
+    return this.http.get<ShoppingItemDto[]>(`${this.baseUri}/targeted-at-me`);
+  }
   findOne(id: number): Observable<ShoppingItemDto> {
     return this.http.get<ShoppingItemDto>(`${this.baseUri}/${id}`);
   }

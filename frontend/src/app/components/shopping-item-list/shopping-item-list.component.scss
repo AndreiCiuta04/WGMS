@@ -1,5 +1,6 @@
 $forest-green: #346739;
 $leaf-green: #79AE6F;
+$soft-green: #9FCB98;
 $text-primary: #1F2A1F;
 $text-secondary: #5F6B5F;
 
@@ -149,6 +150,7 @@ $text-secondary: #5F6B5F;
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
 }
 
 .needed-item-title {
@@ -167,6 +169,41 @@ $text-secondary: #5F6B5F;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+// Badges
+.badge-visibility {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
+
+  &.badge-personal {
+    background-color: rgba(95, 107, 95, 0.1) !important;
+    color: #5F6B5F !important;
+  }
+
+  &.badge-shared {
+    background-color: rgba(52, 103, 57, 0.1) !important;
+    color: $forest-green !important;
+  }
+
+  &.badge-targeted {
+    background-color: rgba(121, 174, 111, 0.15) !important;
+    color: #2D5431 !important;
+  }
+}
+
+.badge-completed {
+  opacity: 0.7;
+}
+
+.target-user-label {
+  font-weight: 600;
+  color: #2D5431;
 }
 
 // ===========================
@@ -223,6 +260,7 @@ $text-secondary: #5F6B5F;
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
 }
 
 .completed-item-title {
@@ -292,4 +330,8 @@ $text-secondary: #5F6B5F;
     color: #C63A3A;
     border-color: rgba(198, 58, 58, 0.2);
   }
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
