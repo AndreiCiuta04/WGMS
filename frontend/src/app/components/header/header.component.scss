@@ -1,3 +1,4 @@
+@use "sass:color";
 $forest-green: #346739;
 $text-primary: #1F2A1F;
 $text-secondary: #5F6B5F;
@@ -66,9 +67,9 @@ $eggwhite-bg: #FBFAF3;
   letter-spacing: -0.5px;
   text-decoration: none;
 
-  // On desktop, sidebar shows the brand — hide this duplicate
+  // Hide on desktop when sidebar is visible
   @media (min-width: 992px) {
-    visibility: hidden;
+    display: none;
   }
 }
 
@@ -76,6 +77,7 @@ $eggwhite-bg: #FBFAF3;
   display: flex;
   align-items: center;
   gap: 12px;
+  margin-left: auto;
 }
 
 .header-logout-btn {
