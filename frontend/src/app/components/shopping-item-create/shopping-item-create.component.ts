@@ -1,8 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ShoppingItemService } from '../../services/shopping-item.service';
-import { ShoppingItemCreateDto } from '../../dtos/shopping-item';
+import { HouseholdService } from '../../services/household.service';
+import { AuthService } from '../../services/auth.service';
+import { Roommate } from '../../dtos/roommate';
+import { ShoppingItemCreateDto, ShoppingItemVisibility } from '../../dtos/shopping-item';
 
 @Component({
   selector: 'app-shopping-item-create',
@@ -10,35 +13,82 @@ import { ShoppingItemCreateDto } from '../../dtos/shopping-item';
   styleUrls: ['./shopping-item-create.component.scss'],
   standalone: false
 })
-export class ShoppingItemCreateComponent {
+export class ShoppingItemCreateComponent implements OnInit {
 
   itemForm: FormGroup;
+  roommates: Roommate[] = [];
   submitted = false;
   submitting = false;
   error = false;
   errorMessage = '';
 
+  ShoppingItemVisibility = ShoppingItemVisibility;
+
   constructor(
     private formBuilder: FormBuilder,
     private shoppingItemService: ShoppingItemService,
+    private householdService: HouseholdService,
+    private authService: AuthService,
     private router: Router
   ) {
     this.itemForm = this.formBuilder.group({
       name: ['', [Validators.required, Validators.maxLength(100)]],
       quantity: ['', [Validators.maxLength(50)]],
-      notes: ['', [Validators.maxLength(2000)]]
+      notes: ['', [Validators.maxLength(2000)]],
+      visibility: [ShoppingItemVisibility.PERSONAL, [Validators.required]],
+      targetUserEmail: ['']
     });
+  }
+
+  ngOnInit(): void {
+    this.loadRoommates();
+  }
+
+  loadRoommates() {
+    const currentEmail = this.authService.getUserEmail();
+    this.householdService.getMyHousehold().subscribe({
+      next: (household) => {
+        if (household && household.id) {
+          this.householdService.getMembers(household.id).subscribe({
+            next: (members) => {
+              // Filter out the current user — backend rejects self-target with 409;
+              // hiding it in the UI makes the rule obvious.
+              this.roommates = members.filter(m => m.email !== currentEmail);
+            },
+            error: (err) => console.error('Error fetching roommates', err)
+          });
+        }
+      },
+      error: (err) => console.error('Error fetching household', err)
+    });
+  }
+
+  isTargeted(): boolean {
+    return this.itemForm.get('visibility')?.value === ShoppingItemVisibility.TARGETED;
   }
 
   onSubmit() {
     this.submitted = true;
+
     if (this.itemForm.invalid || this.submitting) {
+      return;
+    }
+    if (this.isTargeted() && !this.itemForm.get('targetUserEmail')?.value) {
       return;
     }
 
     this.submitting = true;
     this.error = false;
-    const dto: ShoppingItemCreateDto = this.itemForm.value;
+    const raw = this.itemForm.value;
+    const dto: ShoppingItemCreateDto = {
+      name: raw.name,
+      quantity: raw.quantity || undefined,
+      notes: raw.notes || undefined,
+      visibility: raw.visibility,
+      targetUserEmail: raw.visibility === ShoppingItemVisibility.TARGETED
+        ? raw.targetUserEmail
+        : undefined
+    };
 
     this.shoppingItemService.create(dto).subscribe({
       next: () => {
@@ -66,7 +116,7 @@ export class ShoppingItemCreateComponent {
         if (errorsArray.length > 0) {
           errorMsg = errorsArray.map((e: string) => {
             const parts = e.split(' ');
-            if (parts.length > 1 && (parts[0] === 'name' || parts[0] === 'quantity' || parts[0] === 'notes')) {
+            if (parts.length > 1 && ['name', 'quantity', 'notes', 'visibility', 'targetUserEmail'].includes(parts[0])) {
               return parts.slice(1).join(' ');
             }
             return e;

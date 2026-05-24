@@ -14,24 +14,47 @@ import java.util.List;
 public interface ShoppingItemService {
 
     /**
-     * Create a new shopping item for the current user. The item is attached to the
-     * user's active household.
+     * Creates a new shopping item for the current user. The item is attached to the
+     * user's active household. Validates the targeting fields when visibility is
+     * {@code TARGETED}.
      *
+     * @param dto         the request body
+     * @param currentUser the currently authenticated user
+     * @return the created shopping item
      * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException
      *     if the user is not a member of any active household
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException
+     *     if targeting fields are invalid (missing email, self-target, target outside household)
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException
+     *     if a referenced target user does not exist
      */
     ShoppingItemDto create(ShoppingItemCreateDto dto, ApplicationUser currentUser);
 
     /**
-     * List shopping items visible to the current user. In FR-07 this is "items I
-     * created in my active household". Admins see every item in the system.
+     * Lists items visible to the current user within their household: items they
+     * created, items targeted at them, and items marked {@code SHARED}.
+     * Admins see every item in the system.
+     *
+     * @param currentUser the currently authenticated user
+     * @return the visible items, ordered most recent first
      */
     List<ShoppingItemDto> findVisibleItems(ApplicationUser currentUser);
 
     /**
+     * Lists only the items where the current user is the explicit target — the
+     * "incoming requests" view.
+     *
+     * @param currentUser the currently authenticated user
+     * @return the items targeted at the current user, ordered most recent first
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException
+     *     if the user is not a member of any active household
+     */
+    List<ShoppingItemDto> findTargetedAtCurrentUser(ApplicationUser currentUser);
+
+    /**
      * Returns a shopping item by its id.
      *
-     * @param id the id of the shopping item
+     * @param id          the id of the shopping item
      * @param currentUser the currently authenticated user
      * @return the requested shopping item
      * @throws at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException
@@ -42,25 +65,28 @@ public interface ShoppingItemService {
     ShoppingItemDto findOne(Long id, ApplicationUser currentUser);
 
     /**
-     * Updates an existing shopping item.
+     * Updates an existing shopping item, including its visibility and target user.
+     * Only the creator (or an admin) may update an item.
      *
-     * @param id the id of the shopping item to update
-     * @param dto the updated shopping item data
+     * @param id          the id of the shopping item to update
+     * @param dto         the updated shopping item data
      * @param currentUser the currently authenticated user
      * @return the updated shopping item
      * @throws at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException
      *     if no shopping item with the given id exists
      * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException
      *     if the user is not allowed to update the shopping item
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException
+     *     if targeting fields are invalid
      */
-
     ShoppingItemDto update(Long id, ShoppingItemUpdateDto dto, ApplicationUser currentUser);
 
     /**
-     * Updates the status of an existing shopping item.
+     * Updates the status of an existing shopping item. Allowed for anyone who can
+     * see the item (creator, targeted recipient, household member for SHARED, admin).
      *
-     * @param id the id of the shopping item
-     * @param dto the status update data
+     * @param id          the id of the shopping item
+     * @param dto         the status update data
      * @param currentUser the currently authenticated user
      * @return the updated shopping item
      * @throws at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException
@@ -71,9 +97,9 @@ public interface ShoppingItemService {
     ShoppingItemDto updateStatus(Long id, ShoppingItemStatusUpdateDto dto, ApplicationUser currentUser);
 
     /**
-     * Deletes a shopping item.
+     * Deletes a shopping item. Only the creator (or an admin) may delete an item.
      *
-     * @param id the id of the shopping item to delete
+     * @param id          the id of the shopping item to delete
      * @param currentUser the currently authenticated user
      * @throws at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException
      *     if no shopping item with the given id exists

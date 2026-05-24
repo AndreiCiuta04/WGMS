@@ -18,6 +18,7 @@ import {InvitationAcceptComponent} from './components/invitation-accept/invitati
 import {TaskListComponent} from './components/task-list/task-list.component';
 import {TaskCreateComponent} from './components/task-create/task-create.component';
 import {TaskEditComponent} from './components/task-edit/task-edit.component';
+import {ExpensesComponent} from './components/expenses/expenses.component';
 import {ShoppingItemListComponent} from './components/shopping-item-list/shopping-item-list.component';
 import {ShoppingItemCreateComponent} from './components/shopping-item-create/shopping-item-create.component';
 import {ShoppingItemEditComponent} from './components/shopping-item-edit/shopping-item-edit.component';
@@ -28,7 +29,7 @@ import {SidebarComponent} from './components/sidebar/sidebar.component';
 import {BottomTabBarComponent} from './components/bottom-tab-bar/bottom-tab-bar.component';
 import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
 import {httpInterceptorProviders} from './interceptors';
-import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw} from 'lucide-angular';
+import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw, ReceiptText} from 'lucide-angular';
 
 @NgModule({
   declarations: [
@@ -46,6 +47,7 @@ import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users,
     TaskListComponent,
     TaskCreateComponent,
     TaskEditComponent,
+    ExpensesComponent,
     ShoppingItemListComponent,
     ShoppingItemCreateComponent,
     ShoppingItemEditComponent,
@@ -61,7 +63,7 @@ import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users,
     ReactiveFormsModule,
     NgbModule,
     FormsModule,
-    LucideAngularModule.pick({LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw})],
+    LucideAngularModule.pick({LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw, ReceiptText})],
   providers: [
     httpInterceptorProviders,
     provideHttpClient(withInterceptorsFromDi()),
@@ -69,4 +71,3 @@ import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users,
   ] })
 export class AppModule {
 }
-

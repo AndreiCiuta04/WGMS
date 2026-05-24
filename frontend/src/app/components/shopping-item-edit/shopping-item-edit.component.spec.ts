@@ -5,37 +5,60 @@ import { ActivatedRoute, Router, RouterModule, convertToParamMap } from '@angula
 import { of, throwError } from 'rxjs';
 import { ShoppingItemEditComponent } from './shopping-item-edit.component';
 import { ShoppingItemService } from '../../services/shopping-item.service';
-import { ShoppingItemDto, ShoppingItemStatus } from '../../dtos/shopping-item';
+import { HouseholdService } from '../../services/household.service';
+import { AuthService } from '../../services/auth.service';
+import { ShoppingItemDto, ShoppingItemStatus, ShoppingItemVisibility } from '../../dtos/shopping-item';
+import { Roommate } from '../../dtos/roommate';
 
 describe('ShoppingItemEditComponent', () => {
   let component: ShoppingItemEditComponent;
   let fixture: ComponentFixture<ShoppingItemEditComponent>;
-  let serviceSpy: jasmine.SpyObj<ShoppingItemService>;
+  let shoppingSpy: jasmine.SpyObj<ShoppingItemService>;
+  let householdSpy: jasmine.SpyObj<HouseholdService>;
+  let authSpy: jasmine.SpyObj<AuthService>;
   let routerSpy: jasmine.SpyObj<Router>;
 
   const existing: ShoppingItemDto = {
     id: 42, name: 'Milk', quantity: '2L', notes: 'whole',
-    status: ShoppingItemStatus.NEEDED, householdId: 10, createdById: 100,
-    createdByEmail: 'a@test.com', createdByFirstName: 'A', createdByLastName: 'B',
-    createdAt: '2026-05-17T10:00:00', updatedAt: '2026-05-17T10:00:00'
+    status: ShoppingItemStatus.NEEDED, visibility: ShoppingItemVisibility.TARGETED,
+    householdId: 10, createdById: 100,
+    createdByEmail: 'me@test.com', createdByFirstName: 'Me', createdByLastName: '!',
+    targetUserId: 200, targetUserEmail: 'bob@test.com',
+    targetUserFirstName: 'Bob', targetUserLastName: 'X',
+    createdAt: '', updatedAt: ''
+  };
+  const me: Roommate = {
+    id: 1, userId: 100, firstName: 'Me', lastName: '!', email: 'me@test.com',
+    role: 'MAIN_TENANT', joinedAt: ''
+  };
+  const otherRoommate: Roommate = {
+    id: 2, userId: 200, firstName: 'Bob', lastName: 'X', email: 'bob@test.com',
+    role: 'ROOMMATE', joinedAt: ''
   };
 
   beforeEach(async () => {
-    serviceSpy = jasmine.createSpyObj('ShoppingItemService', ['findOne', 'update']);
-    serviceSpy.findOne.and.returnValue(of(existing));
-    serviceSpy.update.and.returnValue(of(existing));
+    shoppingSpy = jasmine.createSpyObj('ShoppingItemService', ['findOne', 'update']);
+    shoppingSpy.findOne.and.returnValue(of(existing));
+    shoppingSpy.update.and.returnValue(of(existing));
+
+    householdSpy = jasmine.createSpyObj('HouseholdService', ['getMyHousehold', 'getMembers']);
+    householdSpy.getMyHousehold.and.returnValue(of({ id: 10, name: 'WG' } as any));
+    householdSpy.getMembers.and.returnValue(of([me, otherRoommate]));
+
+    authSpy = jasmine.createSpyObj('AuthService', ['getUserEmail']);
+    authSpy.getUserEmail.and.returnValue('me@test.com');
+
     routerSpy = jasmine.createSpyObj('Router', ['navigate']);
 
     await TestBed.configureTestingModule({
       declarations: [ShoppingItemEditComponent],
       imports: [HttpClientTestingModule, ReactiveFormsModule, RouterModule.forRoot([])],
       providers: [
-        { provide: ShoppingItemService, useValue: serviceSpy },
+        { provide: ShoppingItemService, useValue: shoppingSpy },
+        { provide: HouseholdService, useValue: householdSpy },
+        { provide: AuthService, useValue: authSpy },
         { provide: Router, useValue: routerSpy },
-        {
-          provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap({ id: '42' }) } }
-        }
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: '42' }) } } }
       ]
     }).compileComponents();
 
@@ -47,35 +70,43 @@ describe('ShoppingItemEditComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('ngOnInit() should load the item and patch the form', () => {
+  it('loads existing item with visibility + target', () => {
     fixture.detectChanges();
-    expect(serviceSpy.findOne).toHaveBeenCalledWith(42);
-    expect(component.itemForm.value.name).toBe('Milk');
-    expect(component.itemForm.value.quantity).toBe('2L');
-    expect(component.itemForm.value.notes).toBe('whole');
+    expect(shoppingSpy.findOne).toHaveBeenCalledWith(42);
+    expect(component.itemForm.value.visibility).toBe(ShoppingItemVisibility.TARGETED);
+    expect(component.itemForm.value.targetUserEmail).toBe('bob@test.com');
     expect(component.loading).toBeFalse();
   });
 
-  it('onSubmit() should call update and navigate', () => {
+  it('filters current user from roommates', () => {
     fixture.detectChanges();
-    component.itemForm.patchValue({ name: 'Milk', quantity: '1L', notes: '' });
+    expect(component.roommates.length).toBe(1);
+    expect(component.roommates[0].email).toBe('bob@test.com');
+  });
+
+  it('onSubmit() updates with the chosen visibility', () => {
+    fixture.detectChanges();
+    component.itemForm.patchValue({
+      name: 'Milk', visibility: ShoppingItemVisibility.SHARED
+    });
     component.onSubmit();
-    expect(serviceSpy.update).toHaveBeenCalledWith(42,
-      { name: 'Milk', quantity: '1L', notes: '' });
+    const dto = shoppingSpy.update.calls.mostRecent().args[1] as any;
+    expect(dto.visibility).toBe(ShoppingItemVisibility.SHARED);
+    expect(dto.targetUserEmail).toBeUndefined();
     expect(routerSpy.navigate).toHaveBeenCalledWith(['/shopping-items']);
   });
 
-  it('should show error when loading the item fails', () => {
-    serviceSpy.findOne.and.returnValue(throwError(() => ({ status: 404 })));
+  it('handles loading errors', () => {
+    shoppingSpy.findOne.and.returnValue(throwError(() => ({ status: 404 })));
     fixture.detectChanges();
     expect(component.error).toBeTrue();
     expect(component.errorMessage).toContain('Failed to load');
   });
 
-  it('onSubmit() should ignore repeated calls while submitting', () => {
+  it('blocks repeated submission while submitting', () => {
     fixture.detectChanges();
     component.submitting = true;
     component.onSubmit();
-    expect(serviceSpy.update).not.toHaveBeenCalled();
+    expect(shoppingSpy.update).not.toHaveBeenCalled();
   });
 });

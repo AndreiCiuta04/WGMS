@@ -90,7 +90,8 @@ export class AuthService {
   }
 
   private setToken(authResponse: string) {
-    localStorage.setItem('authToken', authResponse);
+    const token = authResponse.startsWith('Bearer ') ? authResponse.substring('Bearer '.length) : authResponse;
+    localStorage.setItem('authToken', token);
   }
 
   private getTokenExpirationDate(token: string): Date | null {

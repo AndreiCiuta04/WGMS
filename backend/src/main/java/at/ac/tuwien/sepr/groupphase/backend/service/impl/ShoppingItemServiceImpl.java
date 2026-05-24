@@ -4,17 +4,21 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemStatusUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemUpdateDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.mapper.ShoppingItemMapper;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItem;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItemStatus;
+import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItemVisibility;
+import at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException;
+import at.ac.tuwien.sepr.groupphase.backend.exception.ValidationException;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ShoppingItemRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.ShoppingItemService;
-import at.ac.tuwien.sepr.groupphase.backend.endpoint.mapper.ShoppingItemMapper;
+import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.invoke.MethodHandles;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 @Service
@@ -31,31 +36,40 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
 
     private final ShoppingItemRepository shoppingItemRepository;
     private final RoommateRepository roommateRepository;
+    private final UserService userService;
     private final ShoppingItemMapper shoppingItemMapper;
 
     @Autowired
     public ShoppingItemServiceImpl(ShoppingItemRepository shoppingItemRepository,
                                    RoommateRepository roommateRepository,
+                                   UserService userService,
                                    ShoppingItemMapper shoppingItemMapper) {
         this.shoppingItemRepository = shoppingItemRepository;
         this.roommateRepository = roommateRepository;
+        this.userService = userService;
         this.shoppingItemMapper = shoppingItemMapper;
     }
 
     @Override
     @Transactional
     public ShoppingItemDto create(ShoppingItemCreateDto dto, ApplicationUser currentUser) {
-        LOGGER.debug("Create shopping item {} for user {}", dto.name(), currentUser.getEmail());
+        LOGGER.debug("Create shopping item {} ({}) for user {}",
+            dto.name(), dto.visibility(), currentUser.getEmail());
 
         Roommate roommate = requireActiveRoommate(currentUser);
+
+        ApplicationUser target = resolveAndValidateTarget(
+            dto.visibility(), dto.targetUserEmail(), currentUser, roommate.getHousehold(), null);
 
         ShoppingItem item = new ShoppingItem();
         item.setName(dto.name());
         item.setQuantity(dto.quantity());
         item.setNotes(dto.notes());
         item.setStatus(ShoppingItemStatus.NEEDED);
+        item.setVisibility(dto.visibility());
         item.setHousehold(roommate.getHousehold());
         item.setCreatedBy(currentUser);
+        item.setTargetUser(target);
 
         return shoppingItemMapper.entityToDto(shoppingItemRepository.save(item));
     }
@@ -70,11 +84,20 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         }
 
         Roommate roommate = requireActiveRoommate(currentUser);
+        Long householdId = roommate.getHousehold().getId();
+        Long userId = currentUser.getId();
 
-        // FR-07: only items the current user created within their household.
-        // FR-08 will broaden this to include TARGETED-at-me and SHARED items.
+        List<ShoppingItem> items = shoppingItemRepository.findVisibleItems(householdId, userId, ShoppingItemVisibility.SHARED);
+        return shoppingItemMapper.entityToDto(items);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ShoppingItemDto> findTargetedAtCurrentUser(ApplicationUser currentUser) {
+        LOGGER.debug("Find shopping items targeted at user {}", currentUser.getEmail());
+        Roommate roommate = requireActiveRoommate(currentUser);
         return shoppingItemMapper.entityToDto(
-            shoppingItemRepository.findAllByHouseholdIdAndCreatedByIdOrderByCreatedAtDesc(
+            shoppingItemRepository.findAllByHouseholdIdAndTargetUserIdOrderByCreatedAtDesc(
                 roommate.getHousehold().getId(), currentUser.getId())
         );
     }
@@ -93,9 +116,14 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
 
         ShoppingItem item = loadAndAuthorizeManage(id, currentUser);
 
+        ApplicationUser target = resolveAndValidateTarget(
+            dto.visibility(), dto.targetUserEmail(), currentUser, item.getHousehold(), item.getTargetUser());
+
         item.setName(dto.name());
         item.setQuantity(dto.quantity());
         item.setNotes(dto.notes());
+        item.setVisibility(dto.visibility());
+        item.setTargetUser(target);
 
         return shoppingItemMapper.entityToDto(shoppingItemRepository.save(item));
     }
@@ -152,26 +180,23 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         return item;
     }
 
-    /**
-     * Who can see / change-status an item. In FR-07 this collapses to "creator
-     * (in their household) or admin". FR-08 makes it more permissive by adding
-     * branches for TARGETED recipients and SHARED items inside the same household.
-     */
     private boolean canView(ShoppingItem item, ApplicationUser currentUser) {
         if (Boolean.TRUE.equals(currentUser.getAdmin())) {
             return true;
         }
-        // Household gate: only members of the item's household can see it at all.
         if (!isMemberOfItemHousehold(item, currentUser)) {
             return false;
         }
-        return item.getCreatedBy().getId().equals(currentUser.getId());
+        if (item.getCreatedBy().getId().equals(currentUser.getId())) {
+            return true;
+        }
+        if (item.getTargetUser() != null
+            && item.getTargetUser().getId().equals(currentUser.getId())) {
+            return true;
+        }
+        return item.getVisibility() == ShoppingItemVisibility.SHARED;
     }
 
-    /**
-     * Who can edit or delete an item. Stricter than {@link #canView}: only the
-     * creator (or an admin) can manage. FR-08 keeps this rule but loosens canView.
-     */
     private boolean canManage(ShoppingItem item, ApplicationUser currentUser) {
         if (Boolean.TRUE.equals(currentUser.getAdmin())) {
             return true;
@@ -187,5 +212,38 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
             currentUser.getId(), item.getHousehold().getId());
     }
 
+    private ApplicationUser resolveAndValidateTarget(ShoppingItemVisibility visibility,
+                                                     String targetEmail,
+                                                     ApplicationUser currentUser,
+                                                     Household household,
+                                                     ApplicationUser existingTarget) {
+        if (visibility != ShoppingItemVisibility.TARGETED) {
+            return null;
+        }
+        if (targetEmail == null || targetEmail.isBlank()) {
+            throw new ValidationException("targetUserEmail is required for TARGETED visibility.");
+        }
+        String sanitizedEmail = targetEmail.trim().toLowerCase();
+        if (sanitizedEmail.equalsIgnoreCase(currentUser.getEmail().trim().toLowerCase())) {
+            throw new ConflictException(
+                "Cannot target a shopping request at yourself; use PERSONAL visibility instead.");
+        }
+        ApplicationUser target = userService.findApplicationUserByEmail(sanitizedEmail);
+        if (target == null) {
+            throw new NotFoundException("Target user " + targetEmail + " not found.");
+        }
+        
+        // Relax check: if target is the same as existing target, bypass active validation
+        if (existingTarget != null && existingTarget.getId().equals(target.getId())) {
+            return target;
+        }
 
+        boolean targetInSameHousehold = roommateRepository
+            .existsByUserIdAndHouseholdIdAndActiveTrue(target.getId(), household.getId());
+        if (!targetInSameHousehold) {
+            throw new ConflictException(
+                "Target user " + targetEmail + " is not an active member of this household.");
+        }
+        return target;
+    }
 }

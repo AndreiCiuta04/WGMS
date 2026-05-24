@@ -61,6 +61,14 @@ public class ShoppingItemEndpoint {
         return shoppingItemService.findVisibleItems(currentUser);
     }
 
+    @GetMapping("/targeted-at-me")
+    @PreAuthorize("hasRole('USER')")
+    public List<ShoppingItemDto> findTargetedAtMe(Authentication authentication) {
+        LOGGER.info("GET /api/v1/shopping-items/targeted-at-me");
+        ApplicationUser currentUser = userService.findApplicationUserByEmail(authentication.getName());
+        return shoppingItemService.findTargetedAtCurrentUser(currentUser);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('USER')")
     public ShoppingItemDto findOne(@PathVariable("id") Long id, Authentication authentication) {

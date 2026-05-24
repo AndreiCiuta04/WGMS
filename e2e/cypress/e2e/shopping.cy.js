@@ -124,4 +124,55 @@ describe('FR-07 Shopping List E2E Workflow', () => {
         // Verify it is gone entirely
         cy.contains(updatedItem.name).should('not.exist');
     });
+
+    it('shows the All Items and Targeted at Me tabs', () => {
+        const u = {
+            firstName: 'Tab',
+            lastName: 'Tester',
+            email: `tab.tester.${Date.now()}@test.com`,
+            password
+        };
+        cy.registerUser(u);
+        cy.createHousehold({ name: `Tab WG ${Date.now()}`, address: 'Vienna' });
+
+        cy.visit('/#/shopping-items');
+        cy.contains('.nav-link', 'All Items').should('be.visible');
+        cy.contains('.nav-link', 'Targeted at Me').should('be.visible');
+    });
+
+    it('creates a SHARED item and shows the visibility badge', () => {
+        const u = {
+            firstName: 'Badge',
+            lastName: 'Tester',
+            email: `badge.tester.${Date.now()}@test.com`,
+            password
+        };
+        cy.registerUser(u);
+        cy.createHousehold({ name: `Badge WG ${Date.now()}`, address: 'Vienna' });
+
+        cy.visit('/#/shopping-items/create');
+        cy.get('#name').type(`Shared Item ${Date.now()}`);
+        cy.get('#visibility').select('SHARED');
+
+        cy.intercept('POST', '**/api/v1/shopping-items').as('createRequest');
+        cy.contains('button', 'Add Item').click();
+        cy.wait('@createRequest').its('response.statusCode').should('eq', 201);
+
+        cy.location('hash').should('eq', '#/shopping-items');
+        cy.contains('SHARED').should('be.visible');
+    });
+
+    it('shows the visibility dropdown on the create form, defaulting to Personal', () => {
+        const u = {
+            firstName: 'Dropdown',
+            lastName: 'Tester',
+            email: `dropdown.tester.${Date.now()}@test.com`,
+            password
+        };
+        cy.registerUser(u);
+        cy.createHousehold({ name: `Dropdown WG ${Date.now()}`, address: 'Vienna' });
+
+        cy.visit('/#/shopping-items/create');
+        cy.get('#visibility').should('be.visible').and('have.value', 'PERSONAL');
+    });
 });

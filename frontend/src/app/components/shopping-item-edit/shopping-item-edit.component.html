@@ -52,6 +52,31 @@
               }
             </div>
 
+            <div class="form-group mb-3">
+              <label for="visibility" class="font-weight-bold">Visibility *</label>
+              <select id="visibility" class="form-control" formControlName="visibility">
+                <option [value]="ShoppingItemVisibility.PERSONAL">Personal &mdash; only you see it</option>
+                <option [value]="ShoppingItemVisibility.TARGETED">Targeted &mdash; ask a specific roommate to buy it</option>
+                <option [value]="ShoppingItemVisibility.SHARED">Shared &mdash; visible to all roommates</option>
+              </select>
+            </div>
+
+            @if (isTargeted()) {
+              <div class="form-group mb-3">
+                @let targetCtrl = itemForm.get('targetUserEmail');
+                <label for="targetUserEmail" class="font-weight-bold">Ask which roommate? *</label>
+                <select id="targetUserEmail" class="form-control" formControlName="targetUserEmail">
+                  <option value="" disabled>Select a roommate</option>
+                  @for (roommate of roommates; track roommate.email) {
+                    <option [value]="roommate.email">{{ roommate.firstName }} {{ roommate.lastName }} ({{ roommate.email }})</option>
+                  }
+                </select>
+                @if (submitted && !targetCtrl?.value) {
+                  <small class="text-danger">Please pick the roommate you're asking.</small>
+                }
+              </div>
+            }
+
             <div class="d-flex justify-content-end mt-4">
               <button type="submit" class="btn btn-primary px-5" [disabled]="submitting">
                 {{ submitting ? 'Saving…' : 'Save Changes' }}
