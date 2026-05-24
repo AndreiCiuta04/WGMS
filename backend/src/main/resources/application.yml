@@ -30,7 +30,7 @@ security:
     prefix: "Bearer "
     login-uri: /api/v1/authentication
   jwt:
-    secret: ${JWT_SECRET}
+    secret: ${JWT_SECRET:default-jwt-secret-for-development-and-testing-purposes-only-32-chars-long}
     type: JWT
     issuer: secure-backend
     audience: secure-app
