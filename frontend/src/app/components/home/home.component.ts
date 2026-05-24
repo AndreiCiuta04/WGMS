@@ -3,9 +3,11 @@ import { AuthService } from '../../services/auth.service';
 import { TaskService } from '../../services/task.service';
 import { CleaningScheduleService } from '../../services/cleaning-schedule.service';
 import { HouseholdService } from '../../services/household.service';
+import { ExpenseService } from '../../services/expense.service';
 import { ShoppingItemService } from '../../services/shopping-item.service';
 import { TaskDetailDto, TaskStatus } from '../../dtos/task';
 import { CleaningScheduleDetailDto } from '../../dtos/cleaning-schedule';
+import { BalanceDto } from '../../dtos/expense';
 import { ShoppingItemDto, ShoppingItemStatus } from '../../dtos/shopping-item';
 
 @Component({
@@ -27,6 +29,13 @@ export class HomeComponent implements OnInit {
   householdSchedules: CleaningScheduleDetailDto[] = [];
   wgShoppingList: ShoppingItemDto[] = [];
 
+  // Financial status
+  netBalance = 0;
+  totalOwedToMe = 0;
+  totalIOwe = 0;
+  whoOwesMe: { name: string, amount: number }[] = [];
+  whoIOwe: { name: string, amount: number }[] = [];
+
   dashboardLoading = true;
   currentUserEmail: string | null = null;
 
@@ -35,6 +44,7 @@ export class HomeComponent implements OnInit {
     private taskService: TaskService,
     private cleaningScheduleService: CleaningScheduleService,
     private householdService: HouseholdService,
+    private expenseService: ExpenseService,
     private shoppingItemService: ShoppingItemService
   ) { }
 
@@ -116,6 +126,48 @@ export class HomeComponent implements OnInit {
       },
       error: () => checkDone()
     });
+
+    // 6. Expense balances (loaded in parallel, won't block main dashboard loader)
+    this.expenseService.calculateBalances().subscribe({
+      next: (balances) => {
+        this.processBalances(balances);
+      },
+      error: () => {}
+    });
+  }
+
+  private processBalances(balances: BalanceDto[]) {
+    this.totalOwedToMe = 0;
+    this.totalIOwe = 0;
+    this.whoOwesMe = [];
+    this.whoIOwe = [];
+
+    if (!balances || !this.currentUserEmail) {
+      this.netBalance = 0;
+      return;
+    }
+
+    balances.forEach(b => {
+      if (b.fromRoommateEmail === this.currentUserEmail) {
+        this.totalIOwe += b.amount;
+        const existing = this.whoIOwe.find(x => x.name === b.toRoommateName);
+        if (existing) {
+          existing.amount += b.amount;
+        } else {
+          this.whoIOwe.push({ name: b.toRoommateName, amount: b.amount });
+        }
+      } else if (b.toRoommateEmail === this.currentUserEmail) {
+        this.totalOwedToMe += b.amount;
+        const existing = this.whoOwesMe.find(x => x.name === b.fromRoommateName);
+        if (existing) {
+          existing.amount += b.amount;
+        } else {
+          this.whoOwesMe.push({ name: b.fromRoommateName, amount: b.amount });
+        }
+      }
+    });
+
+    this.netBalance = this.totalOwedToMe - this.totalIOwe;
   }
 
   isOverdue(dueDateStr: string): boolean {

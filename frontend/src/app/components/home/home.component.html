@@ -69,96 +69,253 @@
 @if (authService.isLoggedIn()) {
   <div class="dashboard wgms-container">
 
-    <!-- Greeting -->
-    <div class="dashboard-greeting">
-      <h2>Welcome home, {{ getUserFirstName() }} 👋</h2>
-      <p class="caption">Here's what's happening in your WG today.</p>
+    <!-- Greeting & Header -->
+    <div class="dashboard-greeting-section">
+      <div class="greeting-text">
+        <h2>Welcome home, {{ getUserFirstName() }} 👋</h2>
+        <p class="caption">Here is a quick overview of your current responsibilities.</p>
+      </div>
+      
+      <!-- Quick Info / Net Balance Banner -->
+      <div class="balance-card" [class.positive]="netBalance > 0" [class.negative]="netBalance < 0" [class.neutral]="netBalance === 0">
+        <div class="balance-icon">
+          <lucide-icon name="receipt-text" [size]="24" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <div class="balance-details">
+          @if (netBalance > 0) {
+            <span class="balance-status">You are owed</span>
+            <h3 class="balance-amount">{{ netBalance | currency:'EUR':'symbol':'1.2-2' }}</h3>
+          } @else if (netBalance < 0) {
+            <span class="balance-status">You owe</span>
+            <h3 class="balance-amount">{{ -netBalance | currency:'EUR':'symbol':'1.2-2' }}</h3>
+          } @else {
+            <span class="balance-status">All settled up</span>
+            <h3 class="balance-amount">€0.00</h3>
+          }
+        </div>
+      </div>
     </div>
 
-    <!-- Stat Cards -->
-    <div class="dashboard-stats">
-      <a routerLink="/tasks" class="stat-card">
-        <div class="stat-icon">
-          <lucide-icon name="check-square" [size]="22" [strokeWidth]="1.75"></lucide-icon>
+    <!-- Quick Stats Grid -->
+    <div class="dashboard-stats-grid">
+      <a routerLink="/tasks" class="stat-card glass-card">
+        <div class="stat-card-icon">
+          <lucide-icon name="check-square" [size]="20" [strokeWidth]="1.75"></lucide-icon>
         </div>
-        <span class="stat-number">{{ openTaskCount }}</span>
-        <span class="stat-label">Open Tasks</span>
-        <span class="stat-link">View tasks →</span>
+        <div class="stat-card-info">
+          <span class="stat-label">My Open Tasks</span>
+          <span class="stat-number">{{ myTaskCount }}</span>
+        </div>
       </a>
 
-      <a routerLink="/tasks" [queryParams]="{ tab: 'mine' }" class="stat-card">
-        <div class="stat-icon">
-          <lucide-icon name="user" [size]="22" [strokeWidth]="1.75"></lucide-icon>
+      <a routerLink="/tasks" class="stat-card glass-card">
+        <div class="stat-card-icon shopping-icon">
+          <lucide-icon name="check-square" [size]="20" [strokeWidth]="1.75"></lucide-icon>
         </div>
-        <span class="stat-number">{{ myTaskCount }}</span>
-        <span class="stat-label">My Tasks</span>
-        <span class="stat-link">View mine →</span>
+        <div class="stat-card-info">
+          <span class="stat-label">Active Chores</span>
+          <span class="stat-number">{{ openTaskCount }}</span>
+        </div>
       </a>
 
-      <a routerLink="/cleaning-schedules" class="stat-card">
-        <div class="stat-icon">
-          <lucide-icon name="calendar-check" [size]="22" [strokeWidth]="1.75"></lucide-icon>
+      <a routerLink="/cleaning-schedules" class="stat-card glass-card">
+        <div class="stat-card-icon schedule-icon">
+          <lucide-icon name="calendar-check" [size]="20" [strokeWidth]="1.75"></lucide-icon>
         </div>
-        <span class="stat-number">{{ activeScheduleCount }}</span>
-        <span class="stat-label">Schedules</span>
-        <span class="stat-link">View all →</span>
+        <div class="stat-card-info">
+          <span class="stat-label">Schedules</span>
+          <span class="stat-number">{{ activeScheduleCount }}</span>
+        </div>
       </a>
 
-      <a routerLink="/household/members" class="stat-card">
-        <div class="stat-icon">
-          <lucide-icon name="users" [size]="22" [strokeWidth]="1.75"></lucide-icon>
+      <a routerLink="/household/members" class="stat-card glass-card">
+        <div class="stat-card-icon members-icon">
+          <lucide-icon name="users" [size]="20" [strokeWidth]="1.75"></lucide-icon>
         </div>
-        <span class="stat-number">{{ housemateCount }}</span>
-        <span class="stat-label">Housemates</span>
-        <span class="stat-link">View all →</span>
+        <div class="stat-card-info">
+          <span class="stat-label">Housemates</span>
+          <span class="stat-number">{{ housemateCount }}</span>
+        </div>
       </a>
     </div>
 
-    <!-- Feed Widgets -->
-    <div class="dashboard-feeds">
+    <!-- Main Dashboard Grid Layout -->
+    <div class="dashboard-main-grid">
 
-      <!-- Today's Tasks -->
-      <div class="feed-widget wgms-card">
-        <div class="feed-header">
-          <h3 class="feed-title">Today</h3>
-          <a routerLink="/tasks" class="feed-view-all">View all</a>
-        </div>
-        @if (todayTasks.length === 0) {
-          <p class="feed-empty">Nothing due today! 🎉</p>
+      <!-- COLUMN 1: My Responsibilities -->
+      <div class="grid-column">
+        
+        <!-- Overdue Tasks Warning -->
+        @if (myPendingTasks.length > 0) {
+          @for (task of myPendingTasks; track task.id) {
+            @if (isOverdue(task.dueDate)) {
+              <div class="warning-banner animated pulse">
+                <lucide-icon name="clock" [size]="18" class="warning-icon"></lucide-icon>
+                <span>Task <strong>"{{ task.title }}"</strong> is overdue (Due: {{ task.dueDate }})!</span>
+              </div>
+            }
+          }
         }
-        @for (task of todayTasks; track task.id) {
-          <div class="feed-item">
-            <div class="feed-item-icon">
-              <lucide-icon name="check-square" [size]="16" [strokeWidth]="1.75"></lucide-icon>
-            </div>
-            <div class="feed-item-content">
-              <span class="feed-item-title">{{ task.title }}</span>
-              <span class="feed-item-meta">Due: {{ task.dueDate }}</span>
-            </div>
+
+        <!-- Pending Tasks Card -->
+        <div class="wgms-card glass-card responsibilities-card">
+          <div class="card-header">
+            <h3>My Pending Tasks</h3>
+            <a routerLink="/tasks" [queryParams]="{ tab: 'mine' }" class="view-all-link">View all</a>
           </div>
-        }
+
+          @if (myPendingTasks.length === 0) {
+            <div class="empty-state">
+              <span class="empty-emoji">🎉</span>
+              <p>All caught up! No pending chores assigned to you.</p>
+            </div>
+          } @else {
+            <div class="checklist">
+              @for (task of myPendingTasks; track task.id) {
+                <div class="checklist-item" [class.overdue]="isOverdue(task.dueDate)">
+                  <div class="checklist-control">
+                    <label class="custom-checkbox">
+                      <input type="checkbox" (change)="completeTask(task.id)">
+                      <span class="checkmark"></span>
+                    </label>
+                    <div class="checklist-text">
+                      <span class="task-title">{{ task.title }}</span>
+                      <span class="task-due" [class.overdue-text]="isOverdue(task.dueDate)">
+                        {{ isOverdue(task.dueDate) ? 'Overdue: ' : 'Due: ' }}{{ task.dueDate }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Roommate Debts / Settlement Status -->
+        <div class="wgms-card glass-card debts-card">
+          <div class="card-header">
+            <h3>Settlement & Debts Breakdown</h3>
+            <a routerLink="/expenses" class="view-all-link">Manage Expenses</a>
+          </div>
+
+          @if (whoOwesMe.length === 0 && whoIOwe.length === 0) {
+            <div class="empty-state">
+              <span class="empty-emoji">🤝</span>
+              <p>Everything is perfectly balanced! No active debts.</p>
+            </div>
+          } @else {
+            <div class="debt-lists">
+              @if (whoOwesMe.length > 0) {
+                <div class="debt-section positive">
+                  <h4>Owed to You</h4>
+                  @for (debt of whoOwesMe; track debt.name) {
+                    <div class="debt-row">
+                      <div class="debt-user">
+                        <lucide-icon name="user" [size]="16"></lucide-icon>
+                        <span>{{ debt.name }}</span>
+                      </div>
+                      <span class="debt-amount positive-text">+{{ debt.amount | currency:'EUR':'symbol':'1.2-2' }}</span>
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (whoIOwe.length > 0) {
+                <div class="debt-section negative">
+                  <h4>You Owe</h4>
+                  @for (debt of whoIOwe; track debt.name) {
+                    <div class="debt-row">
+                      <div class="debt-user">
+                        <lucide-icon name="user" [size]="16"></lucide-icon>
+                        <span>{{ debt.name }}</span>
+                      </div>
+                      <span class="debt-amount negative-text">-{{ debt.amount | currency:'EUR':'symbol':'1.2-2' }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
       </div>
 
-      <!-- Upcoming Schedules -->
-      <div class="feed-widget wgms-card">
-        <div class="feed-header">
-          <h3 class="feed-title">Upcoming Schedules</h3>
-          <a routerLink="/cleaning-schedules" class="feed-view-all">View all</a>
-        </div>
-        @if (upcomingSchedules.length === 0) {
-          <p class="feed-empty">No active schedules yet.</p>
-        }
-        @for (schedule of upcomingSchedules; track schedule.id) {
-          <div class="feed-item">
-            <div class="feed-item-icon schedule-icon">
-              <lucide-icon name="calendar-check" [size]="16" [strokeWidth]="1.75"></lucide-icon>
-            </div>
-            <div class="feed-item-content">
-              <span class="feed-item-title">{{ schedule.title }}</span>
-              <span class="feed-item-meta">{{ formatFrequency(schedule.frequency) }} · Next: {{ schedule.nextDueDate }}</span>
-            </div>
+      <!-- COLUMN 2: WG Flat Coordination -->
+      <div class="grid-column">
+
+        <!-- WG Shopping List -->
+        <div class="wgms-card glass-card shopping-card">
+          <div class="card-header">
+            <h3>Needed Shopping Items</h3>
+            <a routerLink="/shopping-items" class="view-all-link">View all</a>
           </div>
-        }
+
+          @if (wgShoppingList.length === 0) {
+            <div class="empty-state">
+              <span class="empty-emoji">🛒</span>
+              <p>No active shopping requests. Flat is fully stocked!</p>
+            </div>
+          } @else {
+            <div class="shopping-list">
+              @for (item of wgShoppingList; track item.id) {
+                <div class="shopping-item">
+                  <div class="shopping-info">
+                    <span class="item-name">{{ item.name }}</span>
+                    @if (item.quantity) {
+                      <span class="item-quantity">({{ item.quantity }})</span>
+                    }
+                    @if (item.notes) {
+                      <span class="item-notes">{{ item.notes }}</span>
+                    }
+                    <span class="item-meta">
+                      Requested by {{ item.createdByFirstName }}
+                      @if (item.targetUserFirstName) {
+                        for {{ item.targetUserFirstName }}
+                      }
+                    </span>
+                  </div>
+                  <button class="buy-action-btn" (click)="buyShoppingItem(item.id)" title="Mark as Bought">
+                    <lucide-icon name="shopping-cart" [size]="16"></lucide-icon>
+                    <span>Bought</span>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Upcoming Cleaning Routines -->
+        <div class="wgms-card glass-card routines-card">
+          <div class="card-header">
+            <h3>Upcoming Cleaning Schedules</h3>
+            <a routerLink="/cleaning-schedules" class="view-all-link">View all</a>
+          </div>
+
+          @if (householdSchedules.length === 0) {
+            <div class="empty-state">
+              <span class="empty-emoji">🧹</span>
+              <p>No active cleaning schedules configured.</p>
+            </div>
+          } @else {
+            <div class="schedules-list">
+              @for (schedule of householdSchedules; track schedule.id) {
+                <div class="schedule-item">
+                  <div class="schedule-info">
+                    <span class="schedule-title">{{ schedule.title }}</span>
+                    <span class="schedule-meta">
+                      {{ formatFrequency(schedule.frequency) }} · Next due: {{ schedule.nextDueDate }}
+                    </span>
+                  </div>
+                  <div class="schedule-badge">
+                    <lucide-icon name="calendar-check" [size]="14"></lucide-icon>
+                    <span>Active</span>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
       </div>
 
     </div>
