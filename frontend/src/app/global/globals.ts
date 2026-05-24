@@ -7,7 +7,11 @@ export class Globals {
   readonly backendUri: string = this.findBackendUrl();
 
   private findBackendUrl(): string {
-    if (window.location.port === '4200') { // local `ng serve`, backend at localhost:8080
+    const isLocalAngularDevServer =
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      && window.location.port.startsWith('42');
+
+    if (isLocalAngularDevServer) { // local `ng serve`, backend at localhost:8080
       return 'http://localhost:8080/api/v1';
     } else {
       // assume deployed somewhere and backend is available at same host/port as frontend

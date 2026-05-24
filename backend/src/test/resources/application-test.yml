@@ -7,3 +7,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create
+
+security:
+  jwt:
+    secret: test-only-jwt-secret-not-for-production-0123456789-abcdefghijklmnopqrstuvwxyz
