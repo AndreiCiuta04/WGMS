@@ -29,6 +29,7 @@ export class ExpensesComponent implements OnInit {
   editingExpense: ExpenseDto | null = null;
   expensePendingDelete: ExpenseDto | null = null;
   submitted = false;
+  isSaving = false;
   errorMessage = '';
   successMessage = '';
 
@@ -102,6 +103,10 @@ export class ExpensesComponent implements OnInit {
   }
 
   submit(): void {
+    if (this.isSaving) {
+      return;
+    }
+
     this.submitted = true;
     this.clearMessages();
 
@@ -119,6 +124,7 @@ export class ExpensesComponent implements OnInit {
       ? this.expenseService.update(this.editingExpense.id, payload)
       : this.expenseService.create(payload);
 
+    this.isSaving = true;
     request.subscribe({
       next: () => {
         this.successMessage = this.editingExpense ? 'Expense updated.' : 'Expense created.';
@@ -126,7 +132,11 @@ export class ExpensesComponent implements OnInit {
         this.loadExpenses();
         this.loadBalances();
       },
-      error: err => this.errorMessage = this.extractErrorMessage(err, 'Could not save expense.')
+      error: err => {
+        this.errorMessage = this.extractErrorMessage(err, 'Could not save expense.');
+        this.isSaving = false;
+      },
+      complete: () => this.isSaving = false
     });
   }
 
@@ -189,10 +199,7 @@ export class ExpensesComponent implements OnInit {
   }
 
   visibleExpenses(): ExpenseDto[] {
-    if (!this.currentRoommate) {
-      return [];
-    }
-    return this.expenses.filter(expense => expense.createdByRoommateId === this.currentRoommate?.id);
+    return this.expenses;
   }
 
   resetForm(): void {
@@ -305,7 +312,7 @@ export class ExpensesComponent implements OnInit {
   }
 
   private today(): string {
-    return new Date().toISOString().slice(0, 10);
+    return this.toLocalIsoDate(new Date());
   }
 
   private parseAmount(value: string | number | null | undefined): number | null {
@@ -323,5 +330,10 @@ export class ExpensesComponent implements OnInit {
 
   private formatAmount(value: number): string {
     return value.toFixed(2).replace('.', ',');
+  }
+
+  private toLocalIsoDate(date: Date): string {
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return localDate.toISOString().slice(0, 10);
   }
 }

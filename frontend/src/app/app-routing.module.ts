@@ -32,7 +32,7 @@ const routes: Routes = [
   {path: 'tasks', component: TaskListComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'tasks/create', component: TaskCreateComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'tasks/:id/edit', component: TaskEditComponent, canActivate: mapToCanActivate([AuthGuard])},
-  {path: 'expenses', component: ExpensesComponent, canActivate: mapToCanActivate([AuthGuard])}
+  {path: 'expenses', component: ExpensesComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'shopping-items', component: ShoppingItemListComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'shopping-items/create', component: ShoppingItemCreateComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'shopping-items/:id/edit', component: ShoppingItemEditComponent, canActivate: mapToCanActivate([AuthGuard])},

@@ -1,207 +1,223 @@
-<div class="wgms-container">
-  <div class="mb-4 expenses-header">
-    <h2 class="mb-1">Expenses</h2>
-    <p class="caption mb-0">Track shared purchases and current balances in your WG.</p>
+<div class="wgms-container expenses-page">
+  <div class="expenses-header">
+    <h2>Expenses</h2>
+    <span class="accent-text">Shared spending and household balances</span>
   </div>
+
+  @if (successMessage) {
+    <div class="success-toast">
+      <lucide-icon name="circle-check" [size]="16" [strokeWidth]="2"></lucide-icon>
+      {{ successMessage }}
+    </div>
+  }
 
   @if (errorMessage) {
     <div class="alert alert-danger" role="alert">{{ errorMessage }}</div>
   }
-  @if (successMessage) {
-    <div class="alert alert-success" role="alert">{{ successMessage }}</div>
-  }
 
-  <div class="row">
-    <div class="col-lg-7 mb-4">
-      <div class="wgms-card h-100">
-        <h3 class="mb-4">{{ editingExpense ? 'Edit Expense' : 'Create Expense' }}</h3>
-
-        <form [formGroup]="expenseForm" (ngSubmit)="submit()">
-          <div class="form-group mb-3">
-            <label for="description" class="font-weight-bold">Description *</label>
-            <input id="description" type="text" class="form-control" formControlName="description" placeholder="e.g. Groceries">
-            @if (submitted && expenseForm.get('description')?.errors?.['required']) {
-              <small class="text-danger">Description is required.</small>
-            }
-            @if (submitted && expenseForm.get('description')?.errors?.['maxlength']) {
-              <small class="text-danger">Description cannot be longer than 500 characters.</small>
-            }
-          </div>
-
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label for="totalAmount" class="font-weight-bold">Total Amount *</label>
-              <div class="amount-field">
-                <input id="totalAmount" type="text" inputmode="decimal" class="form-control" formControlName="totalAmount" placeholder="0,00" (blur)="normalizeTotalAmount()">
-                <span class="amount-currency">€</span>
-              </div>
-              @if (submitted && expenseForm.get('totalAmount')?.invalid) {
-                <small class="text-danger">Enter a positive amount.</small>
-              }
-            </div>
-            <div class="col-md-6">
-              <label for="date" class="font-weight-bold">Date *</label>
-              <input id="date" type="date" class="form-control" formControlName="date">
-              @if (submitted && expenseForm.get('date')?.errors?.['required']) {
-                <small class="text-danger">Date is required.</small>
-              }
-            </div>
-          </div>
-
-          <div class="d-flex justify-content-between align-items-center mt-4 mb-3 split-toolbar">
-            <div>
-              <h4 class="mb-0">Splits</h4>
-              <p class="caption mb-0">You are the payer and must be included.</p>
-            </div>
-            <button type="button" class="btn btn-outline-primary btn-sm" (click)="calculateEqualSplit()" [disabled]="!!editingExpense">
-              Equal Split
-            </button>
-          </div>
-
-          <div class="split-list">
-            @for (row of splitRows; track row.roommate.id) {
-              <div class="split-row">
-                <label class="split-member mb-0">
-                  <input
-                    type="checkbox"
-                    [checked]="row.selected"
-                    [disabled]="!!editingExpense || currentRoommate?.id === row.roommate.id"
-                    (change)="updateSplitSelection(row, $any($event.target).checked)">
-                  <span>
-                    {{ row.roommate.firstName }} {{ row.roommate.lastName }}
-                    @if (currentRoommate?.id === row.roommate.id) {
-                      <span class="badge badge-wgms-active ml-2">You</span>
-                    }
-                  </span>
-                </label>
-                <div class="amount-field split-amount">
-                  <input
-                    type="text"
-                    inputmode="decimal"
-                    class="form-control"
-                    [disabled]="!row.selected"
-                    [(ngModel)]="row.amountOwed"
-                    [ngModelOptions]="{standalone: true}"
-                    placeholder="0,00"
-                    (blur)="normalizeSplitAmount(row)">
-                  <span class="amount-currency">€</span>
-                </div>
-              </div>
-            } @empty {
-              <p class="caption mb-0">No household members found.</p>
-            }
-          </div>
-
-          @if (editingExpense) {
-            <p class="caption mt-3 mb-0">Participants cannot be changed while editing; only amounts and expense details are updated.</p>
-          }
-
-          <div class="expense-actions mt-4">
-            @if (editingExpense) {
-              <button type="button" class="btn btn-outline-secondary" (click)="resetForm()">Cancel</button>
-            }
-            <button type="submit" class="btn btn-primary px-5">
-              {{ editingExpense ? 'Update Expense' : 'Create Expense' }}
-            </button>
-          </div>
-        </form>
+  <section class="section expense-form-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <lucide-icon name="receipt-text" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+        <h3 class="section-title">{{ editingExpense ? 'Edit Expense' : 'Create Expense' }}</h3>
       </div>
+      @if (editingExpense) {
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="resetForm()">Cancel</button>
+      }
     </div>
 
-    <div class="col-lg-5 mb-4">
-      <div class="wgms-card h-100">
-        <h3 class="mb-4">{{ isMainTenant() ? 'WG Balances' : 'My Balances' }}</h3>
-
-        @if (isMainTenant()) {
-          <section class="balance-section">
-            @if (balances.length === 0) {
-              <p class="caption mb-0">There are no open WG balances.</p>
-            } @else {
-              <div class="balance-list">
-                @for (balance of balances; track balance.fromRoommateId + '-' + balance.toRoommateId) {
-                  <div class="balance-row">
-                    <div>
-                      <strong>{{ balance.fromRoommateName }}</strong>
-                      <span class="caption d-block">owes {{ balance.toRoommateName }}</span>
-                    </div>
-                    <span class="balance-amount">{{ balance.amount | currency:'EUR':'symbol':'1.2-2' }}</span>
-                  </div>
-                }
-              </div>
-            }
-          </section>
-        } @else {
-          <section class="balance-section">
-            <h4 class="mb-3">You owe</h4>
-          @if (balancesIOwe().length === 0) {
-            <p class="caption mb-0">You do not owe anyone right now.</p>
-          } @else {
-            <div class="balance-list">
-              @for (balance of balancesIOwe(); track balance.fromRoommateId + '-' + balance.toRoommateId) {
-                <div class="balance-row">
-                  <div>
-                    <strong>{{ balance.toRoommateName }}</strong>
-                    <span class="caption d-block">to settle your share</span>
-                  </div>
-                  <span class="balance-amount balance-negative">{{ balance.amount | currency:'EUR':'symbol':'1.2-2' }}</span>
-                </div>
-              }
-            </div>
+    <form [formGroup]="expenseForm" (ngSubmit)="submit()">
+      <div class="form-grid">
+        <div class="form-group description-field">
+          <label for="description">Description *</label>
+          <input id="description" type="text" class="form-control" formControlName="description" placeholder="e.g. Groceries">
+          @if (submitted && expenseForm.get('description')?.errors?.['required']) {
+            <small class="text-danger">Description is required.</small>
           }
-          </section>
+          @if (submitted && expenseForm.get('description')?.errors?.['maxlength']) {
+            <small class="text-danger">Description cannot be longer than 500 characters.</small>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="totalAmount">Total Amount *</label>
+          <div class="amount-field">
+            <input id="totalAmount" type="text" inputmode="decimal" class="form-control" formControlName="totalAmount" placeholder="0,00" (blur)="normalizeTotalAmount()">
+            <span class="amount-currency">EUR</span>
+          </div>
+          @if (submitted && expenseForm.get('totalAmount')?.invalid) {
+            <small class="text-danger">Enter a positive amount.</small>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="date">Date *</label>
+          <input id="date" type="date" class="form-control" formControlName="date">
+          @if (submitted && expenseForm.get('date')?.errors?.['required']) {
+            <small class="text-danger">Date is required.</small>
+          }
+        </div>
+      </div>
+
+      <div class="split-header">
+        <div>
+          <h4>Splits</h4>
+          <p class="caption mb-0">You are the payer and must be included.</p>
+        </div>
+        <button type="button" class="btn btn-outline-primary btn-sm" (click)="calculateEqualSplit()" [disabled]="!!editingExpense">
+          Equal Split
+        </button>
+      </div>
+
+      <div class="split-list">
+        @for (row of splitRows; track row.roommate.id) {
+          <div class="split-row">
+            <label class="split-member">
+              <input
+                type="checkbox"
+                [checked]="row.selected"
+                [disabled]="!!editingExpense || currentRoommate?.id === row.roommate.id"
+                (change)="updateSplitSelection(row, $any($event.target).checked)">
+              <span class="split-member-name">
+                {{ row.roommate.firstName }} {{ row.roommate.lastName }}
+                @if (currentRoommate?.id === row.roommate.id) {
+                  <span class="badge badge-wgms-active">You</span>
+                }
+              </span>
+            </label>
+            <div class="amount-field split-amount">
+              <input
+                type="text"
+                inputmode="decimal"
+                class="form-control"
+                [disabled]="!row.selected"
+                [(ngModel)]="row.amountOwed"
+                [ngModelOptions]="{standalone: true}"
+                placeholder="0,00"
+                (blur)="normalizeSplitAmount(row)">
+              <span class="amount-currency">EUR</span>
+            </div>
+          </div>
+        } @empty {
+          <div class="empty-state">
+            <p class="empty-text">No household members found.</p>
+          </div>
         }
       </div>
-    </div>
-  </div>
 
-  <div class="wgms-card">
-    <h3 class="mb-4">Expense History</h3>
-    @if (visibleExpenses().length === 0) {
-      <p class="body-text text-muted mb-0">No expenses found.</p>
+      @if (editingExpense) {
+        <p class="caption mt-3 mb-0">Participants cannot be changed while editing; only amounts and expense details are updated.</p>
+      }
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="isSaving" [attr.aria-busy]="isSaving">
+          {{ isSaving ? 'Saving...' : (editingExpense ? 'Update Expense' : 'Create Expense') }}
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="section balances-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <lucide-icon name="circle-check" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+        <h3 class="section-title">{{ isMainTenant() ? 'WG Balances' : 'My Balances' }}</h3>
+      </div>
+      @if (isMainTenant() && balances.length > 0) {
+        <span class="section-count">{{ balances.length }}</span>
+      } @else if (!isMainTenant() && balancesIOwe().length > 0) {
+        <span class="section-count">{{ balancesIOwe().length }}</span>
+      }
+    </div>
+
+    @if (isMainTenant()) {
+      @if (balances.length === 0) {
+        <div class="empty-state">
+          <p class="empty-text">There are no open WG balances.</p>
+        </div>
+      }
+      @for (balance of balances; track balance.fromRoommateId + '-' + balance.toRoommateId) {
+        <div class="balance-row">
+          <div class="balance-info">
+            <span class="balance-title">{{ balance.fromRoommateName }}</span>
+            <span class="balance-meta">owes {{ balance.toRoommateName }}</span>
+          </div>
+          <span class="balance-amount">{{ balance.amount | currency:'EUR':'symbol':'1.2-2' }}</span>
+        </div>
+      }
     } @else {
-      <div class="table-responsive">
-        <table class="table expense-table">
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th>Date</th>
-              <th>Paid By</th>
-              <th>Total</th>
-              <th>Splits</th>
-              <th class="text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (expense of visibleExpenses(); track expense.id) {
-              <tr>
-                <td class="font-weight-bold">{{ expense.description }}</td>
-                <td>{{ expense.date | date:'mediumDate' }}</td>
-                <td>{{ expense.paidByName }}</td>
-                <td>{{ expense.totalAmount | currency:'EUR':'symbol':'1.2-2' }}</td>
-                <td>
-                  <span class="caption">
-                    @for (split of expense.splits; track split.id; let last = $last) {
-                      {{ split.roommateName }} {{ split.amountOwed | currency:'EUR':'symbol':'1.2-2' }}{{ last ? '' : ', ' }}
-                    }
-                  </span>
-                </td>
-                <td class="text-right table-actions">
-                  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="editExpense(expense)">Edit</button>
-                  <button type="button" class="btn btn-outline-danger btn-sm" (click)="deleteExpense(expense)">Delete</button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
+      @if (balancesIOwe().length === 0) {
+        <div class="empty-state">
+          <p class="empty-text">You do not owe anyone right now.</p>
+        </div>
+      }
+      @for (balance of balancesIOwe(); track balance.fromRoommateId + '-' + balance.toRoommateId) {
+        <div class="balance-row">
+          <div class="balance-info">
+            <span class="balance-title">{{ balance.toRoommateName }}</span>
+            <span class="balance-meta">to settle your share</span>
+          </div>
+          <span class="balance-amount balance-negative">{{ balance.amount | currency:'EUR':'symbol':'1.2-2' }}</span>
+        </div>
+      }
+    }
+  </section>
+
+  <section class="section history-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <lucide-icon name="clock" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+        <h3 class="section-title">Expense History</h3>
+      </div>
+      @if (visibleExpenses().length > 0) {
+        <span class="section-count completed-count">{{ visibleExpenses().length }}</span>
+      }
+    </div>
+
+    @if (visibleExpenses().length === 0) {
+      <div class="empty-state">
+        <p class="empty-text">No expenses found.</p>
       </div>
     }
-  </div>
+
+    @for (expense of visibleExpenses(); track expense.id) {
+      <div class="expense-item">
+        <div class="expense-item-left">
+          <div class="expense-indicator">
+            <lucide-icon name="receipt-text" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+          </div>
+          <div class="expense-item-info">
+            <span class="expense-item-title">{{ expense.description }}</span>
+            <span class="expense-item-meta">
+              {{ expense.date | date:'mediumDate' }} &middot; Paid by {{ expense.paidByName }}
+            </span>
+            <span class="expense-splits">
+              @for (split of expense.splits; track split.id; let last = $last) {
+                {{ split.roommateName }} {{ split.amountOwed | currency:'EUR':'symbol':'1.2-2' }}{{ last ? '' : ', ' }}
+              }
+            </span>
+          </div>
+        </div>
+        <div class="expense-item-right">
+          <span class="expense-total">{{ expense.totalAmount | currency:'EUR':'symbol':'1.2-2' }}</span>
+          <div class="item-actions">
+            <button type="button" class="action-btn" (click)="editExpense(expense)" title="Edit expense">
+              <lucide-icon name="pencil" [size]="14" [strokeWidth]="2"></lucide-icon>
+            </button>
+            <button type="button" class="action-btn danger" (click)="deleteExpense(expense)" title="Delete expense">
+              <lucide-icon name="trash-2" [size]="14" [strokeWidth]="2"></lucide-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  </section>
 
   @if (expensePendingDelete) {
     <div class="modal-backdrop-custom" role="presentation">
       <div class="delete-dialog" role="dialog" aria-modal="true" aria-labelledby="deleteExpenseTitle">
-        <h3 id="deleteExpenseTitle" class="mb-3">Delete expense?</h3>
-        <p class="body-text mb-4">
+        <h3 id="deleteExpenseTitle">Delete expense?</h3>
+        <p>
           {{ expensePendingDelete.description }} will be permanently removed from the shared expense history.
         </p>
         <div class="dialog-actions">
