@@ -118,6 +118,39 @@ export class HomeComponent implements OnInit {
     });
   }
 
+  isOverdue(dueDateStr: string): boolean {
+    if (!dueDateStr) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(dueDateStr);
+    dueDate.setHours(0, 0, 0, 0);
+    return dueDate < today;
+  }
+
+  completeTask(id: number) {
+    this.taskService.updateStatus(id, { status: TaskStatus.DONE }).subscribe({
+      next: () => {
+        this.myPendingTasks = this.myPendingTasks.filter(t => t.id !== id);
+        this.myTaskCount = this.myPendingTasks.length;
+        this.openTaskCount = Math.max(0, this.openTaskCount - 1);
+      },
+      error: (err) => {
+        console.error('Error completing task:', err);
+      }
+    });
+  }
+
+  buyShoppingItem(id: number) {
+    this.shoppingItemService.updateStatus(id, { status: ShoppingItemStatus.BOUGHT }).subscribe({
+      next: () => {
+        this.wgShoppingList = this.wgShoppingList.filter(item => item.id !== id);
+      },
+      error: (err) => {
+        console.error('Error buying shopping item:', err);
+      }
+    });
+  }
+
   formatFrequency(frequency: string): string {
     switch (frequency) {
       case 'DAILY': return 'Daily';
