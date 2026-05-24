@@ -51,31 +51,28 @@ public class SimpleHistoryService implements HistoryService {
             List.of(TaskStatus.DONE, TaskStatus.CANCELLED)
         );
 
-        HistoryDto historyDto = new HistoryDto();
-        historyDto.setTasks(taskHistory.stream()
-            .map(this::taskToTaskHistoryDto)
-            .toList());
-        historyDto.setPayments(List.of());
-
-        return historyDto;
+        return new HistoryDto(
+            taskHistory.stream()
+                .map(this::taskToTaskHistoryDto)
+                .toList(),
+            List.of()
+        );
     }
 
     private TaskHistoryDto taskToTaskHistoryDto(Task task) {
-        TaskHistoryDto dto = new TaskHistoryDto();
-
-        dto.setId(task.getId());
-        dto.setHouseholdId(task.getHouseholdId());
-        dto.setCleaningScheduleId(task.getCleaningScheduleId());
-        dto.setTitle(task.getTitle());
-        dto.setDescription(task.getDescription());
-        dto.setDueDate(task.getDueDate());
-        dto.setStatus(task.getStatus());
-        dto.setCreatedByEmail(task.getCreatedByEmail());
-        dto.setAssignedToEmail(task.getAssignedToEmail());
-        dto.setCreatedAt(task.getCreatedAt());
-        dto.setUpdatedAt(task.getUpdatedAt());
-
-        return dto;
+        return new TaskHistoryDto(
+            task.getId(),
+            task.getHouseholdId(),
+            task.getCleaningScheduleId(),
+            task.getTitle(),
+            task.getDescription(),
+            task.getDueDate(),
+            task.getStatus(),
+            task.getCreatedByEmail(),
+            task.getAssignedToEmail(),
+            task.getCreatedAt(),
+            task.getUpdatedAt()
+        );
     }
 
     private ApplicationUser getUserByEmail(String email) {

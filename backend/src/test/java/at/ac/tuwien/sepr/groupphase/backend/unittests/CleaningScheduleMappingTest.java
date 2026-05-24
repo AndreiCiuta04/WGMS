@@ -66,19 +66,19 @@ public class CleaningScheduleMappingTest implements TestData {
         CleaningScheduleDetailDto dto = cleaningScheduleMapper.cleaningScheduleToCleaningScheduleDetailDto(cleaningSchedule);
 
         assertAll(
-            () -> assertEquals(99L, dto.getId()),
-            () -> assertEquals(10L, dto.getHouseholdId()),
-            () -> assertEquals(TEST_CLEANING_TITLE, dto.getTitle()),
-            () -> assertEquals(TEST_CLEANING_DESCRIPTION, dto.getDescription()),
-            () -> assertEquals(CleaningFrequency.WEEKLY, dto.getFrequency()),
-            () -> assertEquals(TEST_START_DATE, dto.getStartDate()),
-            () -> assertEquals(TEST_END_DATE, dto.getEndDate()),
-            () -> assertEquals(TEST_NEXT_DUE_DATE, dto.getNextDueDate()),
-            () -> assertTrue(dto.isActive()),
-            () -> assertEquals(MAIN_TENANT_EMAIL, dto.getCreatedByEmail()),
-            () -> assertEquals(ROOMMATE_EMAIL, dto.getAssignedToEmail()),
-            () -> assertEquals(TEST_CREATED_AT, dto.getCreatedAt()),
-            () -> assertEquals(TEST_UPDATED_AT, dto.getUpdatedAt())
+            () -> assertEquals(99L, dto.id()),
+            () -> assertEquals(10L, dto.householdId()),
+            () -> assertEquals(TEST_CLEANING_TITLE, dto.title()),
+            () -> assertEquals(TEST_CLEANING_DESCRIPTION, dto.description()),
+            () -> assertEquals(CleaningFrequency.WEEKLY, dto.frequency()),
+            () -> assertEquals(TEST_START_DATE, dto.startDate()),
+            () -> assertEquals(TEST_END_DATE, dto.endDate()),
+            () -> assertEquals(TEST_NEXT_DUE_DATE, dto.nextDueDate()),
+            () -> assertTrue(dto.active()),
+            () -> assertEquals(MAIN_TENANT_EMAIL, dto.createdByEmail()),
+            () -> assertEquals(ROOMMATE_EMAIL, dto.assignedToEmail()),
+            () -> assertEquals(TEST_CREATED_AT, dto.createdAt()),
+            () -> assertEquals(TEST_UPDATED_AT, dto.updatedAt())
         );
     }
 

@@ -49,14 +49,14 @@ public class TaskMappingTest implements TestData {
         TaskDetailDto dto = taskMapper.taskToTaskDetailDto(task);
 
         assertAll(
-            () -> assertEquals(99L, dto.getId()),
-            () -> assertEquals(10L, dto.getHouseholdId()),
-            () -> assertEquals(TEST_TASK_TITLE, dto.getTitle()),
-            () -> assertEquals(TEST_TASK_DESCRIPTION, dto.getDescription()),
-            () -> assertEquals(TEST_TASK_DUE_DATE, dto.getDueDate()),
-            () -> assertEquals(TaskStatus.OPEN, dto.getStatus()),
-            () -> assertEquals(MAIN_TENANT_EMAIL, dto.getCreatedByEmail()),
-            () -> assertEquals(ROOMMATE_EMAIL, dto.getAssignedToEmail())
+            () -> assertEquals(99L, dto.id()),
+            () -> assertEquals(10L, dto.householdId()),
+            () -> assertEquals(TEST_TASK_TITLE, dto.title()),
+            () -> assertEquals(TEST_TASK_DESCRIPTION, dto.description()),
+            () -> assertEquals(TEST_TASK_DUE_DATE, dto.dueDate()),
+            () -> assertEquals(TaskStatus.OPEN, dto.status()),
+            () -> assertEquals(MAIN_TENANT_EMAIL, dto.createdByEmail()),
+            () -> assertEquals(ROOMMATE_EMAIL, dto.assignedToEmail())
         );
     }
 

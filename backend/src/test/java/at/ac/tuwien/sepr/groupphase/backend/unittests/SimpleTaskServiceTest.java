@@ -228,8 +228,7 @@ public class SimpleTaskServiceTest {
     @Test
     public void givenAssignedUser_whenUpdateStatus_thenStatusIsUpdated() {
         Task task = task(1L, household, mainTenant, roommate, TEST_TASK_TITLE);
-        TaskStatusUpdateDto dto = new TaskStatusUpdateDto();
-        dto.setStatus(TaskStatus.DONE);
+        TaskStatusUpdateDto dto = new TaskStatusUpdateDto(TaskStatus.DONE);
 
         when(userService.findApplicationUserByEmail(ROOMMATE_EMAIL)).thenReturn(roommate);
         when(roommateRepository.findByUserIdAndActiveTrue(roommate.getId())).thenReturn(Optional.of(roommateMembership));
@@ -244,8 +243,7 @@ public class SimpleTaskServiceTest {
     @Test
     public void givenUnrelatedRoommate_whenUpdateStatus_thenForbidden() {
         Task task = task(1L, household, mainTenant, roommate, TEST_TASK_TITLE);
-        TaskStatusUpdateDto dto = new TaskStatusUpdateDto();
-        dto.setStatus(TaskStatus.DONE);
+        TaskStatusUpdateDto dto = new TaskStatusUpdateDto(TaskStatus.DONE);
 
         when(userService.findApplicationUserByEmail(SECOND_ROOMMATE_EMAIL)).thenReturn(secondRoommate);
         when(roommateRepository.findByUserIdAndActiveTrue(secondRoommate.getId())).thenReturn(Optional.of(secondRoommateMembership));
@@ -278,21 +276,21 @@ public class SimpleTaskServiceTest {
     }
 
     private TaskCreateDto createDto(String assignedToEmail) {
-        TaskCreateDto dto = new TaskCreateDto();
-        dto.setTitle(TEST_TASK_TITLE);
-        dto.setDescription(TEST_TASK_DESCRIPTION);
-        dto.setDueDate(TEST_TASK_DUE_DATE);
-        dto.setAssignedToEmail(assignedToEmail);
-        return dto;
+        return new TaskCreateDto(
+            TEST_TASK_TITLE,
+            TEST_TASK_DESCRIPTION,
+            TEST_TASK_DUE_DATE,
+            assignedToEmail
+        );
     }
 
     private TaskUpdateDto updateDto(String assignedToEmail) {
-        TaskUpdateDto dto = new TaskUpdateDto();
-        dto.setTitle(UPDATED_TASK_TITLE);
-        dto.setDescription(UPDATED_TASK_DESCRIPTION);
-        dto.setDueDate(UPDATED_TASK_DUE_DATE);
-        dto.setAssignedToEmail(assignedToEmail);
-        return dto;
+        return new TaskUpdateDto(
+            UPDATED_TASK_TITLE,
+            UPDATED_TASK_DESCRIPTION,
+            UPDATED_TASK_DUE_DATE,
+            assignedToEmail
+        );
     }
 
     private ApplicationUser user(Long id, String email) {

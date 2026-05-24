@@ -89,15 +89,15 @@ public class SimpleTaskService implements TaskService {
 
         ApplicationUser currentUser = getUserByEmail(currentUserEmail);
         Roommate currentRoommate = getCurrentRoommate(currentUser);
-        ApplicationUser assignee = getUserByEmail(taskCreateDto.getAssignedToEmail());
+        ApplicationUser assignee = getUserByEmail(taskCreateDto.assignedToEmail());
 
         requireAssigneeInSameHousehold(assignee, currentRoommate);
 
         Task task = new Task();
         task.setHousehold(currentRoommate.getHousehold());
-        task.setTitle(taskCreateDto.getTitle());
-        task.setDescription(taskCreateDto.getDescription());
-        task.setDueDate(taskCreateDto.getDueDate());
+        task.setTitle(taskCreateDto.title());
+        task.setDescription(taskCreateDto.description());
+        task.setDueDate(taskCreateDto.dueDate());
         task.setStatus(TaskStatus.OPEN);
         task.setCreatedBy(currentUser);
         task.setAssignedTo(assignee);
@@ -117,12 +117,12 @@ public class SimpleTaskService implements TaskService {
         requireTaskInCurrentHousehold(task, currentRoommate);
         requireCanManage(task, currentUser, currentRoommate);
 
-        ApplicationUser assignee = getUserByEmail(taskUpdateDto.getAssignedToEmail());
+        ApplicationUser assignee = getUserByEmail(taskUpdateDto.assignedToEmail());
         requireAssigneeInSameHousehold(assignee, currentRoommate);
 
-        task.setTitle(taskUpdateDto.getTitle());
-        task.setDescription(taskUpdateDto.getDescription());
-        task.setDueDate(taskUpdateDto.getDueDate());
+        task.setTitle(taskUpdateDto.title());
+        task.setDescription(taskUpdateDto.description());
+        task.setDueDate(taskUpdateDto.dueDate());
         task.setAssignedTo(assignee);
 
         return taskRepository.save(task);
@@ -140,7 +140,7 @@ public class SimpleTaskService implements TaskService {
         requireTaskInCurrentHousehold(task, currentRoommate);
         requireCanUpdateStatus(task, currentUser, currentRoommate);
 
-        task.setStatus(taskStatusUpdateDto.getStatus());
+        task.setStatus(taskStatusUpdateDto.status());
 
         return taskRepository.save(task);
     }
