@@ -67,7 +67,24 @@
 <!-- DASHBOARD (Logged In)    -->
 <!-- ======================== -->
 @if (authService.isLoggedIn()) {
-  <div class="dashboard wgms-container">
+  @if (hasNoHousehold) {
+    <!-- Gorgeous Onboarding screen for users without WG -->
+    <div class="wgms-container" style="padding-top: 48px; min-height: calc(100vh - 80px); display: flex; align-items: center; justify-content: center; background-color: #FFFFFF;">
+      <div class="wgms-card glass-card text-center" style="max-width: 540px; padding: 48px; border: 1px solid rgba(52, 103, 57, 0.16); box-shadow: 0 20px 40px rgba(31, 42, 31, 0.06); border-radius: 20px; background: white; margin-bottom: 40px;">
+        <div style="font-size: 64px; margin-bottom: 24px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">🏡</div>
+        <h2 style="font-weight: 700; color: #1F2A1F; font-size: 32px; margin-bottom: 16px;">Welcome to WGMS!</h2>
+        <p style="color: #5F6B5F; font-size: 16px; line-height: 24px; margin-bottom: 32px;">
+          You don't belong to any shared household (WG) yet. 
+          WGMS works best when you share it with roommates! Create a new WG now, or check your active invitations.
+        </p>
+        <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+          <a class="btn btn-primary btn-lg" routerLink="/household/create" style="padding: 12px 28px; font-weight: 600;">Create a WG</a>
+          <a class="btn btn-outline-primary btn-lg" routerLink="/household/members" style="padding: 12px 28px; font-weight: 600;">View WG / Join</a>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <div class="dashboard wgms-container">
 
     <!-- Greeting & Header -->
     <div class="dashboard-greeting-section">
@@ -320,4 +337,5 @@
 
     </div>
   </div>
+  }
 }

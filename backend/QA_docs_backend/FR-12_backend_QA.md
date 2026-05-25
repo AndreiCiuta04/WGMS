@@ -13,11 +13,11 @@ Dependency: FR-03 Task creation/assignment, FR-04 Cleaning schedule management, 
 Backend technology: Java Spring Boot
 Security: Spring Security / JWT
 Database: H2 / Spring Data JPA
-Branch:
-Merge request:
-Developer:
-QA reviewer:
-Date:
+Branch: FR-12/Dashboard-with-current-responsibilities
+Merge request: 
+Developer: Dzovani Koller
+QA reviewer: Dzovani Koller
+Date: 2026-05-25
 
 ## How to Use This Checklist
 
@@ -25,95 +25,95 @@ Use this checklist before merging the backend implementation. A checked item mus
 
 ## 1. Critical Checks — API Contract
 
-- [ ] Backend endpoint(s) for dashboard/current responsibilities exist.
-- [ ] Endpoint naming follows project conventions, for example `/api/v1/dashboard`.
-- [ ] Endpoint uses appropriate HTTP method, usually `GET`.
-- [ ] Endpoint is authenticated.
-- [ ] Endpoint does not require the frontend to send `householdId`.
-- [ ] Endpoint derives household from the authenticated user.
-- [ ] Endpoint returns a stable DTO shape.
-- [ ] DTO fields are sufficient for the frontend dashboard.
-- [ ] Response contains current/open responsibility data.
-- [ ] Response contains task responsibility data.
-- [ ] Response contains overdue/upcoming data if in scope.
-- [ ] Response contains payment/expense summary if in scope.
-- [ ] Response contains reminder/notification data if in scope.
-- [ ] Empty result returns empty arrays/zero values, not a crash.
-- [ ] DTOs do not expose raw JPA entities.
-- [ ] DTOs do not expose passwords, tokens, invitation secrets, or unrelated user data.
+- [x] Backend endpoint(s) for dashboard/current responsibilities exist.
+- [x] Endpoint naming follows project conventions, for example `/api/v1/dashboard`.
+- [x] Endpoint uses appropriate HTTP method, usually `GET`.
+- [x] Endpoint is authenticated.
+- [x] Endpoint does not require the frontend to send `householdId`.
+- [x] Endpoint derives household from the authenticated user.
+- [x] Endpoint returns a stable DTO shape.
+- [x] DTO fields are sufficient for the frontend dashboard.
+- [x] Response contains current/open responsibility data.
+- [x] Response contains task responsibility data.
+- [x] Response contains overdue/upcoming data if in scope.
+- [x] Response contains payment/expense summary if in scope.
+- [x] Response contains reminder/notification data if in scope.
+- [x] Empty result returns empty arrays/zero values, not a crash.
+- [x] DTOs do not expose raw JPA entities.
+- [x] DTOs do not expose passwords, tokens, invitation secrets, or unrelated user data.
 
 Evidence:
 
 ```text
-Endpoint:
-Service:
-DTO:
-Integration test:
+Endpoint: GET /api/v1/dashboard
+Service: DashboardServiceImpl
+DTO: DashboardDto
+Integration test: DashboardEndpointTest
 ```
 
 ## 2. Critical Checks — Authentication and Authorization
 
-- [ ] Request without token is rejected.
-- [ ] Request with valid authenticated household user succeeds.
-- [ ] Backend uses authenticated principal, not client-provided user data.
-- [ ] Backend resolves current `ApplicationUser`.
-- [ ] Backend resolves active `Roommate` membership.
-- [ ] Backend derives household from active membership.
-- [ ] User from household A cannot see dashboard data from household B.
-- [ ] User without active household membership is rejected or handled safely.
-- [ ] Authorization is enforced in backend service/repository logic.
-- [ ] Frontend cannot override household scope through parameters.
+- [x] Request without token is rejected.
+- [x] Request with valid authenticated household user succeeds.
+- [x] Backend uses authenticated principal, not client-provided user data.
+- [x] Backend resolves current `ApplicationUser`.
+- [x] Backend resolves active `Roommate` membership.
+- [x] Backend derives household from active membership.
+- [x] User from household A cannot see dashboard data from household B.
+- [x] User without active household membership is rejected or handled safely.
+- [x] Authorization is enforced in backend service/repository logic.
+- [x] Frontend cannot override household scope through parameters.
 
 Evidence:
 
 ```text
-Security annotation:
-Membership lookup:
-Household isolation test:
+Security annotation: @Secured("ROLE_USER")
+Membership lookup: roommateRepository.findByUserIdAndActiveTrue(currentUser.getId())
+Household isolation test: DashboardEndpointTest#givenTwoHouseholds_whenGetDashboard_thenVerifyHouseholdIsolation
 ```
 
 ## 3. Critical Checks — Dashboard Correctness
 
-- [ ] Current/open tasks are included according to accepted scope.
-- [ ] Completed/cancelled historical tasks are excluded unless explicitly required.
-- [ ] Tasks assigned to current user are identified correctly if in scope.
-- [ ] Household-wide task summaries are identified correctly if in scope.
-- [ ] Overdue tasks are calculated with correct date comparison.
-- [ ] Upcoming tasks are calculated with correct due-date window if in scope.
-- [ ] Cleaning-schedule-generated tasks appear correctly if current responsibilities.
-- [ ] Expense/payment summary is based on household-scoped financial data if included.
-- [ ] Reminders/notifications summary is accurate if implemented.
-- [ ] Counts, totals, and lists do not double-count records.
-- [ ] Empty household data is handled correctly.
-- [ ] Multiple roommates and multiple records are handled.
-- [ ] Optional/null fields are handled safely.
-- [ ] No fake dashboard data is generated in production code.
+- [x] Current/open tasks are included according to accepted scope.
+- [x] Completed/cancelled historical tasks are excluded unless explicitly required.
+- [x] Tasks assigned to current user are identified correctly if in scope.
+- [x] Household-wide task summaries are identified correctly if in scope.
+- [x] Overdue tasks are calculated with correct date comparison.
+- [x] Upcoming tasks are calculated with correct due-date window if in scope.
+- [x] Cleaning-schedule-generated tasks appear correctly if current responsibilities.
+- [x] Expense/payment summary is based on household-scoped financial data if included.
+- [x] Reminders/notifications summary is accurate if implemented.
+- [x] Counts, totals, and lists do not double-count records.
+- [x] Empty household data is handled correctly.
+- [x] Multiple roommates and multiple records are handled.
+- [x] Optional/null fields are handled safely.
+- [x] No fake dashboard data is generated in production code.
 
 ## 4. Important Checks — Repository and Query Design
 
-- [ ] Repository queries are household-scoped.
-- [ ] Backend does not fetch all households globally and filter in memory.
-- [ ] Query filters by relevant status, due date, or assignment.
-- [ ] Query sorting is deterministic.
-- [ ] Query avoids obvious N+1 loading issues.
-- [ ] `@EntityGraph` or explicit fetch is used when mapped relations are needed.
-- [ ] Repository method names are readable and maintainable.
-- [ ] Dashboard service does not perform unnecessary repeated queries.
-- [ ] Integration test cleanup order respects foreign keys.
+- [x] Repository queries are household-scoped.
+- [x] Backend does not fetch all households globally and filter in memory.
+- [x] Query filters by relevant status, due date, or assignment.
+- [x] Query sorting is deterministic.
+- [x] Query avoids obvious N+1 loading issues.
+- [x] `@EntityGraph` or explicit fetch is used when mapped relations are needed.
+- [x] Repository method names are readable and maintainable.
+- [x] Dashboard service does not perform unnecessary repeated queries.
+- [x] Integration test cleanup order respects foreign keys.
 
 ## 5. Critical Checks — Backend Unit Tests Exist
 
-- [ ] Unit tests exist for dashboard service logic.
-- [ ] Unit tests cover successful dashboard retrieval.
-- [ ] Unit tests cover empty dashboard data.
-- [ ] Unit tests cover current/open task mapping.
-- [ ] Unit tests cover overdue/upcoming logic if implemented.
-- [ ] Unit tests cover payment/expense summary if implemented.
-- [ ] Unit tests cover reminder/notification mapping if implemented.
-- [ ] Unit tests cover household-scoped repository calls.
-- [ ] Unit tests cover user without active household.
-- [ ] Unit tests cover null/optional field handling.
-- [ ] No relevant unit tests are skipped or weakened.
+- [x] Unit tests exist for dashboard service logic.
+- [x] Unit tests cover successful dashboard retrieval.
+- [x] Unit tests cover empty dashboard data.
+- [x] Unit tests cover current/open task mapping.
+- [x] Unit tests cover overdue/upcoming logic if implemented.
+- [x] Unit tests cover payment/expense summary if implemented.
+- [x] Unit tests cover reminder/notification mapping if implemented.
+- [x] Unit tests cover household-scoped repository calls.
+- [x] Unit tests cover user without active household.
+- [x] Unit tests cover null/optional field handling.
+- [x] No relevant unit tests are skipped or weakened.
 
 Command evidence:
 
@@ -123,30 +123,30 @@ cd backend && mvn test
 
 ## 6. Critical Checks — Backend Integration Tests Exist
 
-- [ ] Integration test exists for dashboard endpoint.
-- [ ] Integration test rejects unauthenticated request.
-- [ ] Integration test accepts authenticated household user.
-- [ ] Integration test asserts JSON response shape.
-- [ ] Integration test creates at least two households.
-- [ ] Integration test proves no cross-household leakage.
-- [ ] Integration test covers empty dashboard data.
-- [ ] Integration test covers populated dashboard data.
-- [ ] Integration test covers task responsibility data.
-- [ ] Integration test covers financial/payment summary if in scope.
-- [ ] Integration test covers reminder data if in scope.
-- [ ] Integration tests use synthetic data only.
+- [x] Integration test exists for dashboard endpoint.
+- [x] Integration test rejects unauthenticated request.
+- [x] Integration test accepts authenticated household user.
+- [x] Integration test asserts JSON response shape.
+- [x] Integration test creates at least two households.
+- [x] Integration test proves no cross-household leakage.
+- [x] Integration test covers empty dashboard data.
+- [x] Integration test covers populated dashboard data.
+- [x] Integration test covers task responsibility data.
+- [x] Integration test covers financial/payment summary if in scope.
+- [x] Integration test covers reminder data if in scope.
+- [x] Integration tests use synthetic data only.
 
 ## 7. Critical Checks — E2E Evidence Exists
 
-- [ ] E2E test exists for dashboard user flow.
-- [ ] E2E user can log in.
-- [ ] E2E user can navigate to dashboard.
-- [ ] E2E creates or seeds relevant synthetic data.
-- [ ] E2E proves current responsibility data is displayed.
-- [ ] E2E proves payment/expense summary is displayed if in scope.
-- [ ] E2E proves empty dashboard state works or documents why not covered.
-- [ ] E2E proves no page crash.
-- [ ] E2E does not use production data.
+- [x] E2E test exists for dashboard user flow.
+- [x] E2E user can log in.
+- [x] E2E user can navigate to dashboard.
+- [x] E2E creates or seeds relevant synthetic data.
+- [x] E2E proves current responsibility data is displayed.
+- [x] E2E proves payment/expense summary is displayed if in scope.
+- [x] E2E proves empty dashboard state works or documents why not covered.
+- [x] E2E proves no page crash.
+- [x] E2E does not use production data.
 
 Command:
 
@@ -156,36 +156,36 @@ cd e2e && npx cypress run --spec cypress/e2e/dashboard.cy.js
 
 ## 8. Regression Checks
 
-- [ ] Existing auth tests still pass.
-- [ ] Existing household tests still pass.
-- [ ] Existing task tests still pass.
-- [ ] Existing cleaning schedule tests still pass.
-- [ ] Existing expense/payment tests still pass.
-- [ ] Existing shopping tests still pass.
-- [ ] Full backend test suite passes.
-- [ ] No existing tests were deleted to make this feature pass.
+- [x] Existing auth tests still pass.
+- [x] Existing household tests still pass.
+- [x] Existing task tests still pass.
+- [x] Existing cleaning schedule tests still pass.
+- [x] Existing expense/payment tests still pass.
+- [x] Existing shopping tests still pass.
+- [x] Full backend test suite passes.
+- [x] No existing tests were deleted to make this feature pass.
 
 ## 9. Backend Merge Blockers
 
-- [ ] Verified blocker not present: dashboard endpoint is missing.
-- [ ] Verified blocker not present: endpoint is unauthenticated.
-- [ ] Verified blocker not present: endpoint trusts frontend household id.
-- [ ] Verified blocker not present: cross-household dashboard data leaks.
-- [ ] Verified blocker not present: empty dashboard data crashes endpoint.
-- [ ] Verified blocker not present: current responsibilities are missing.
-- [ ] Verified blocker not present: DTO exposes raw entities or sensitive fields.
-- [ ] Verified blocker not present: backend unit tests are missing.
-- [ ] Verified blocker not present: backend integration tests are missing.
-- [ ] Verified blocker not present: e2e evidence is missing without justification.
+- [x] Verified blocker not present: dashboard endpoint is missing.
+- [x] Verified blocker not present: endpoint is unauthenticated.
+- [x] Verified blocker not present: endpoint trusts frontend household id.
+- [x] Verified blocker not present: cross-household dashboard data leaks.
+- [x] Verified blocker not present: empty dashboard data crashes endpoint.
+- [x] Verified blocker not present: current responsibilities are missing.
+- [x] Verified blocker not present: DTO exposes raw entities or sensitive fields.
+- [x] Verified blocker not present: backend unit tests are missing.
+- [x] Verified blocker not present: backend integration tests are missing.
+- [x] Verified blocker not present: e2e evidence is missing without justification.
 
 ## 10. Backend Final Approval
 
-- [ ] Backend implementation complete.
-- [ ] Backend unit tests exist and pass.
-- [ ] Backend integration tests exist and pass.
-- [ ] E2E evidence exists or justified.
-- [ ] Household isolation verified.
-- [ ] Dashboard data correctness verified.
-- [ ] Regression tests pass.
-- [ ] Known limitations documented.
-- [ ] Backend ready for merge review.
+- [x] Backend implementation complete.
+- [x] Backend unit tests exist and pass.
+- [x] Backend integration tests exist and pass.
+- [x] E2E evidence exists or justified.
+- [x] Household isolation verified.
+- [x] Dashboard data correctness verified.
+- [x] Regression tests pass.
+- [x] Known limitations documented.
+- [x] Backend ready for merge review.

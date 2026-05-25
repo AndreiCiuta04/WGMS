@@ -1,13 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { AuthService } from '../../services/auth.service';
 import { TaskService } from '../../services/task.service';
-import { CleaningScheduleService } from '../../services/cleaning-schedule.service';
-import { HouseholdService } from '../../services/household.service';
-import { ExpenseService } from '../../services/expense.service';
 import { ShoppingItemService } from '../../services/shopping-item.service';
+import { DashboardService } from '../../services/dashboard.service';
 import { TaskDetailDto, TaskStatus } from '../../dtos/task';
 import { CleaningScheduleDetailDto } from '../../dtos/cleaning-schedule';
-import { BalanceDto } from '../../dtos/expense';
 import { ShoppingItemDto, ShoppingItemStatus } from '../../dtos/shopping-item';
 
 @Component({
@@ -38,14 +35,13 @@ export class HomeComponent implements OnInit {
 
   dashboardLoading = true;
   currentUserEmail: string | null = null;
+  hasNoHousehold = false;
 
   constructor(
     public authService: AuthService,
     private taskService: TaskService,
-    private cleaningScheduleService: CleaningScheduleService,
-    private householdService: HouseholdService,
-    private expenseService: ExpenseService,
-    private shoppingItemService: ShoppingItemService
+    private shoppingItemService: ShoppingItemService,
+    private dashboardService: DashboardService
   ) { }
 
   ngOnInit() {
@@ -66,108 +62,31 @@ export class HomeComponent implements OnInit {
   private loadDashboard() {
     this.dashboardLoading = true;
     this.currentUserEmail = this.authService.getUserEmail();
-    let completed = 0;
-    const checkDone = () => { completed++; if (completed >= 5) { this.dashboardLoading = false; } };
+    this.hasNoHousehold = false;
 
-    // 1. All household tasks (to calculate general stats)
-    this.taskService.findAll().subscribe({
-      next: (tasks) => {
-        this.openTaskCount = tasks.filter(t => t.status !== TaskStatus.DONE && t.status !== TaskStatus.CANCELLED).length;
-        checkDone();
+    this.dashboardService.getDashboardData().subscribe({
+      next: (data) => {
+        this.openTaskCount = data.openTaskCount;
+        this.myTaskCount = data.myTaskCount;
+        this.activeScheduleCount = data.activeScheduleCount;
+        this.housemateCount = data.housemateCount;
+        this.myPendingTasks = data.myPendingTasks || [];
+        this.householdSchedules = data.householdSchedules || [];
+        this.wgShoppingList = data.wgShoppingList || [];
+        this.netBalance = data.netBalance || 0;
+        this.whoOwesMe = (data.whoOwesMe || []).map(b => ({ name: b.fromRoommateName, amount: b.amount }));
+        this.whoIOwe = (data.whoIowe || []).map(b => ({ name: b.toRoommateName, amount: b.amount }));
+        this.dashboardLoading = false;
+        this.hasNoHousehold = false;
       },
-      error: () => checkDone()
-    });
-
-    // 2. Tasks assigned to current user
-    this.taskService.findAssignedToMe().subscribe({
-      next: (tasks) => {
-        this.myPendingTasks = tasks.filter(t => t.status !== TaskStatus.DONE && t.status !== TaskStatus.CANCELLED)
-          .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-        this.myTaskCount = this.myPendingTasks.length;
-        checkDone();
-      },
-      error: () => checkDone()
-    });
-
-    // 3. Active schedules
-    this.cleaningScheduleService.findActive().subscribe({
-      next: (schedules) => {
-        this.activeScheduleCount = schedules.length;
-        this.householdSchedules = schedules
-          .sort((a, b) => a.nextDueDate.localeCompare(b.nextDueDate))
-          .slice(0, 5);
-        checkDone();
-      },
-      error: () => checkDone()
-    });
-
-    // 4. Housemates
-    this.householdService.getMyHousehold().subscribe({
-      next: (household) => {
-        if (household && household.id) {
-          this.householdService.getMembers(household.id).subscribe({
-            next: (members) => { this.housemateCount = members.length; checkDone(); },
-            error: () => checkDone()
-          });
-        } else {
-          checkDone();
-        }
-      },
-      error: () => checkDone()
-    });
-
-    // 5. Shopping items
-    this.shoppingItemService.findAll().subscribe({
-      next: (items) => {
-        this.wgShoppingList = items.filter(item => item.status === ShoppingItemStatus.NEEDED)
-          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-          .slice(0, 5);
-        checkDone();
-      },
-      error: () => checkDone()
-    });
-
-    // 6. Expense balances (loaded in parallel, won't block main dashboard loader)
-    this.expenseService.calculateBalances().subscribe({
-      next: (balances) => {
-        this.processBalances(balances);
-      },
-      error: () => {}
-    });
-  }
-
-  private processBalances(balances: BalanceDto[]) {
-    this.totalOwedToMe = 0;
-    this.totalIOwe = 0;
-    this.whoOwesMe = [];
-    this.whoIOwe = [];
-
-    if (!balances || !this.currentUserEmail) {
-      this.netBalance = 0;
-      return;
-    }
-
-    balances.forEach(b => {
-      if (b.fromRoommateEmail === this.currentUserEmail) {
-        this.totalIOwe += b.amount;
-        const existing = this.whoIOwe.find(x => x.name === b.toRoommateName);
-        if (existing) {
-          existing.amount += b.amount;
-        } else {
-          this.whoIOwe.push({ name: b.toRoommateName, amount: b.amount });
-        }
-      } else if (b.toRoommateEmail === this.currentUserEmail) {
-        this.totalOwedToMe += b.amount;
-        const existing = this.whoOwesMe.find(x => x.name === b.fromRoommateName);
-        if (existing) {
-          existing.amount += b.amount;
-        } else {
-          this.whoOwesMe.push({ name: b.fromRoommateName, amount: b.amount });
+      error: (err) => {
+        console.error('Error loading dashboard:', err);
+        this.dashboardLoading = false;
+        if (err.status === 403) {
+          this.hasNoHousehold = true;
         }
       }
     });
-
-    this.netBalance = this.totalOwedToMe - this.totalIOwe;
   }
 
   isOverdue(dueDateStr: string): boolean {
