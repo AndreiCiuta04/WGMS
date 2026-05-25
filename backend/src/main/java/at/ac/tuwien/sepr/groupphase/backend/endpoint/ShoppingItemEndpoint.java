@@ -4,6 +4,7 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemStatusUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemUpdateDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.service.ShoppingItemService;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
@@ -104,5 +105,13 @@ public class ShoppingItemEndpoint {
         LOGGER.info("DELETE /api/v1/shopping-items/{}", id);
         ApplicationUser currentUser = userService.findApplicationUserByEmail(authentication.getName());
         shoppingItemService.delete(id, currentUser);
+    }
+
+    @GetMapping("/aggregated")
+    @PreAuthorize("hasRole('USER')")
+    public List<AggregatedShoppingItemDto> findAggregatedHouseholdShoppingList(Authentication authentication) {
+        LOGGER.info("GET /api/v1/shopping-items/aggregated");
+        ApplicationUser currentUser = userService.findApplicationUserByEmail(authentication.getName());
+        return shoppingItemService.findAggregatedHouseholdShoppingList(currentUser);
     }
 }

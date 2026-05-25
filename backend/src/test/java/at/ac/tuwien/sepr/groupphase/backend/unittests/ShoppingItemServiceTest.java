@@ -3,6 +3,7 @@ package at.ac.tuwien.sepr.groupphase.backend.unittests;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemStatusUpdateDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
@@ -298,6 +299,46 @@ public class ShoppingItemServiceTest {
         when(roommateRepository.existsByUserIdAndHouseholdIdAndActiveTrue(1L, 10L)).thenReturn(true);
 
         assertThrows(ForbiddenException.class, () -> shoppingItemService.delete(8L, user));
+    }
+
+    @Test
+    public void givenSharedNeededItems_whenFindAggregatedHouseholdShoppingList_thenGroupsByNormalizedNameAndQuantity() {
+        ShoppingItem milkA = sampleItem(1L, ShoppingItemVisibility.SHARED);
+        milkA.setName("Milk");
+        milkA.setQuantity("2L");
+
+        ShoppingItem milkB = sampleItem(2L, ShoppingItemVisibility.SHARED);
+        milkB.setName(" milk ");
+        milkB.setQuantity(" 2L ");
+
+        ShoppingItem bread = sampleItem(3L, ShoppingItemVisibility.SHARED);
+        bread.setName("Bread");
+        bread.setQuantity("1 pack");
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
+        when(shoppingItemRepository.findAllByHouseholdIdAndVisibilityAndStatusOrderByCreatedAtDesc(
+            10L,
+            ShoppingItemVisibility.SHARED,
+            ShoppingItemStatus.NEEDED
+        )).thenReturn(List.of(milkA, milkB, bread));
+
+        List<AggregatedShoppingItemDto> result =
+            shoppingItemService.findAggregatedHouseholdShoppingList(user);
+
+        assertEquals(2, result.size());
+        assertEquals("Bread", result.get(0).name());
+        assertEquals(1, result.get(0).itemCount());
+        assertEquals("Milk", result.get(1).name());
+        assertEquals(2, result.get(1).itemCount());
+        assertEquals(2, result.get(1).sourceItems().size());
+    }
+
+    @Test
+    public void givenUserWithoutHousehold_whenFindAggregatedHouseholdShoppingList_thenForbidden() {
+        when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.empty());
+
+        assertThrows(ForbiddenException.class,
+            () -> shoppingItemService.findAggregatedHouseholdShoppingList(user));
     }
 
     private ShoppingItem sampleItem(Long id, ShoppingItemVisibility visibility) {

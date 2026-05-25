@@ -148,4 +148,27 @@ public class ShoppingItemRepositoryTest {
         item.setUpdatedAt(createdAt);
         return shoppingItemRepository.save(item);
     }
+
+    @Test
+    public void findByHouseholdAndVisibilityAndStatus_returnsOnlySharedNeededItems() {
+        save("Milk", householdA, userA, null, ShoppingItemVisibility.SHARED, LocalDateTime.now());
+        ShoppingItem bought = save("Bread", householdA, userA, null, ShoppingItemVisibility.SHARED, LocalDateTime.now());
+        bought.setStatus(ShoppingItemStatus.BOUGHT);
+        shoppingItemRepository.save(bought);
+
+        save("Private", householdA, userA, null, ShoppingItemVisibility.PERSONAL, LocalDateTime.now());
+        save("Other household", householdB, userB, null, ShoppingItemVisibility.SHARED, LocalDateTime.now());
+
+        List<ShoppingItem> result = shoppingItemRepository
+            .findAllByHouseholdIdAndVisibilityAndStatusOrderByCreatedAtDesc(
+                householdA.getId(),
+                ShoppingItemVisibility.SHARED,
+                ShoppingItemStatus.NEEDED
+            );
+
+        assertEquals(1, result.size());
+        assertEquals("Milk", result.get(0).getName());
+        assertEquals(ShoppingItemVisibility.SHARED, result.get(0).getVisibility());
+        assertEquals(ShoppingItemStatus.NEEDED, result.get(0).getStatus());
+    }
 }
