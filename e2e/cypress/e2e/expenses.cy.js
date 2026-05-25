@@ -75,7 +75,15 @@ describe('FR-05 Expenses E2E Workflow', () => {
       cy.contains('.split-row', 'FR05 Room')
         .find('input[type="checkbox"]')
         .check();
+      cy.intercept('POST', '**/api/v1/expenses/equal-split').as('equalSplit');
       cy.contains('button', 'Equal Split').click();
+      cy.wait('@equalSplit').its('response.statusCode').should('eq', 200);
+      cy.contains('.split-row', 'FR05 Main')
+        .find('.split-amount input')
+        .should('have.value', '6,00');
+      cy.contains('.split-row', 'FR05 Room')
+        .find('.split-amount input')
+        .should('have.value', '6,00');
       cy.intercept('POST', '**/api/v1/expenses', (request) => {
         request.on('response', (response) => {
           response.setDelay(500);

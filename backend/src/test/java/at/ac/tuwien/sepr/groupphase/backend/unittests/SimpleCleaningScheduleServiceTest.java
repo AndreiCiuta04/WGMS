@@ -228,8 +228,7 @@ public class SimpleCleaningScheduleServiceTest {
     @Test
     public void givenCreator_whenDeactivateSchedule_thenScheduleBecomesInactive() {
         CleaningSchedule schedule = schedule(1L, household, mainTenant, roommate, TEST_CLEANING_TITLE);
-        CleaningScheduleActiveUpdateDto dto = new CleaningScheduleActiveUpdateDto();
-        dto.setActive(false);
+        CleaningScheduleActiveUpdateDto dto = new CleaningScheduleActiveUpdateDto(false);
 
         when(userService.findApplicationUserByEmail(MAIN_TENANT_EMAIL)).thenReturn(mainTenant);
         when(roommateRepository.findByUserIdAndActiveTrue(mainTenant.getId())).thenReturn(Optional.of(mainTenantMembership));
@@ -328,25 +327,25 @@ public class SimpleCleaningScheduleServiceTest {
     }
 
     private CleaningScheduleCreateDto createDto(String assignedToEmail) {
-        CleaningScheduleCreateDto dto = new CleaningScheduleCreateDto();
-        dto.setTitle(TEST_CLEANING_TITLE);
-        dto.setDescription(TEST_CLEANING_DESCRIPTION);
-        dto.setFrequency(CleaningFrequency.WEEKLY);
-        dto.setStartDate(TEST_START_DATE);
-        dto.setEndDate(TEST_END_DATE);
-        dto.setAssignedToEmail(assignedToEmail);
-        return dto;
+        return new CleaningScheduleCreateDto(
+            TEST_CLEANING_TITLE,
+            TEST_CLEANING_DESCRIPTION,
+            CleaningFrequency.WEEKLY,
+            TEST_START_DATE,
+            TEST_END_DATE,
+            assignedToEmail
+        );
     }
 
     private CleaningScheduleUpdateDto updateDto(String assignedToEmail) {
-        CleaningScheduleUpdateDto dto = new CleaningScheduleUpdateDto();
-        dto.setTitle(UPDATED_CLEANING_TITLE);
-        dto.setDescription(UPDATED_CLEANING_DESCRIPTION);
-        dto.setFrequency(CleaningFrequency.BIWEEKLY);
-        dto.setStartDate(UPDATED_START_DATE);
-        dto.setEndDate(UPDATED_END_DATE);
-        dto.setAssignedToEmail(assignedToEmail);
-        return dto;
+        return new CleaningScheduleUpdateDto(
+            UPDATED_CLEANING_TITLE,
+            UPDATED_CLEANING_DESCRIPTION,
+            CleaningFrequency.BIWEEKLY,
+            UPDATED_START_DATE,
+            UPDATED_END_DATE,
+            assignedToEmail
+        );
     }
 
     private ApplicationUser user(Long id, String email) {

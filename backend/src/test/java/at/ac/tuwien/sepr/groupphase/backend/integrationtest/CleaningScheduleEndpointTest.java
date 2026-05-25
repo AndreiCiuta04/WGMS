@@ -144,18 +144,18 @@ public class CleaningScheduleEndpointTest implements TestData {
         assertAll(
             () -> assertEquals(HttpStatus.CREATED.value(), response.getStatus()),
             () -> assertEquals(MediaType.APPLICATION_JSON_VALUE, response.getContentType()),
-            () -> assertNotNull(detailDto.getId()),
-            () -> assertEquals(household.getId(), detailDto.getHouseholdId()),
-            () -> assertEquals(TEST_CLEANING_TITLE, detailDto.getTitle()),
-            () -> assertEquals(TEST_CLEANING_DESCRIPTION, detailDto.getDescription()),
-            () -> assertEquals(CleaningFrequency.WEEKLY, detailDto.getFrequency()),
-            () -> assertEquals(TEST_START_DATE, detailDto.getStartDate()),
-            () -> assertEquals(TEST_END_DATE, detailDto.getEndDate()),
-            () -> assertEquals(TEST_START_DATE, detailDto.getNextDueDate()),
-            () -> assertEquals(MAIN_TENANT_EMAIL, detailDto.getCreatedByEmail()),
-            () -> assertEquals(ROOMMATE_EMAIL, detailDto.getAssignedToEmail()),
-            () -> assertNotNull(detailDto.getCreatedAt()),
-            () -> assertNotNull(detailDto.getUpdatedAt()),
+            () -> assertNotNull(detailDto.id()),
+            () -> assertEquals(household.getId(), detailDto.householdId()),
+            () -> assertEquals(TEST_CLEANING_TITLE, detailDto.title()),
+            () -> assertEquals(TEST_CLEANING_DESCRIPTION, detailDto.description()),
+            () -> assertEquals(CleaningFrequency.WEEKLY, detailDto.frequency()),
+            () -> assertEquals(TEST_START_DATE, detailDto.startDate()),
+            () -> assertEquals(TEST_END_DATE, detailDto.endDate()),
+            () -> assertEquals(TEST_START_DATE, detailDto.nextDueDate()),
+            () -> assertEquals(MAIN_TENANT_EMAIL, detailDto.createdByEmail()),
+            () -> assertEquals(ROOMMATE_EMAIL, detailDto.assignedToEmail()),
+            () -> assertNotNull(detailDto.createdAt()),
+            () -> assertNotNull(detailDto.updatedAt()),
             () -> assertEquals(1, cleaningScheduleRepository.findAll().size())
         );
     }
@@ -176,7 +176,14 @@ public class CleaningScheduleEndpointTest implements TestData {
     @Test
     public void givenBlankTitle_whenCreateSchedule_then400AndNoScheduleIsCreated() throws Exception {
         CleaningScheduleCreateDto createDto = validCreateDto(ROOMMATE_EMAIL);
-        createDto.setTitle("   ");
+        createDto = new CleaningScheduleCreateDto(
+            "   ",
+            createDto.description(),
+            createDto.frequency(),
+            createDto.startDate(),
+            createDto.endDate(),
+            createDto.assignedToEmail()
+        );
 
         MvcResult mvcResult = this.mockMvc.perform(post(CLEANING_SCHEDULE_BASE_URI)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -194,7 +201,14 @@ public class CleaningScheduleEndpointTest implements TestData {
     @Test
     public void givenEndDateBeforeStartDate_whenCreateSchedule_then400AndNoScheduleIsCreated() throws Exception {
         CleaningScheduleCreateDto createDto = validCreateDto(ROOMMATE_EMAIL);
-        createDto.setEndDate(TEST_START_DATE.minusDays(1));
+        createDto = new CleaningScheduleCreateDto(
+            createDto.title(),
+            createDto.description(),
+            createDto.frequency(),
+            createDto.startDate(),
+            TEST_START_DATE.minusDays(1),
+            createDto.assignedToEmail()
+        );
 
         MvcResult mvcResult = this.mockMvc.perform(post(CLEANING_SCHEDULE_BASE_URI)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -242,8 +256,8 @@ public class CleaningScheduleEndpointTest implements TestData {
         assertAll(
             () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
             () -> assertEquals(1, schedules.size()),
-            () -> assertEquals("Own WG schedule", schedules.get(0).getTitle()),
-            () -> assertEquals(household.getId(), schedules.get(0).getHouseholdId())
+            () -> assertEquals("Own WG schedule", schedules.get(0).title()),
+            () -> assertEquals(household.getId(), schedules.get(0).householdId())
         );
     }
 
@@ -263,7 +277,7 @@ public class CleaningScheduleEndpointTest implements TestData {
         assertAll(
             () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
             () -> assertEquals(1, schedules.size()),
-            () -> assertEquals("Active schedule", schedules.get(0).getTitle())
+            () -> assertEquals("Active schedule", schedules.get(0).title())
         );
     }
 
@@ -296,20 +310,19 @@ public class CleaningScheduleEndpointTest implements TestData {
 
         assertAll(
             () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
-            () -> assertEquals(UPDATED_CLEANING_TITLE, detailDto.getTitle()),
-            () -> assertEquals(UPDATED_CLEANING_DESCRIPTION, detailDto.getDescription()),
-            () -> assertEquals(CleaningFrequency.BIWEEKLY, detailDto.getFrequency()),
-            () -> assertEquals(UPDATED_START_DATE, detailDto.getStartDate()),
-            () -> assertEquals(UPDATED_END_DATE, detailDto.getEndDate()),
-            () -> assertEquals(SECOND_ROOMMATE_EMAIL, detailDto.getAssignedToEmail())
+            () -> assertEquals(UPDATED_CLEANING_TITLE, detailDto.title()),
+            () -> assertEquals(UPDATED_CLEANING_DESCRIPTION, detailDto.description()),
+            () -> assertEquals(CleaningFrequency.BIWEEKLY, detailDto.frequency()),
+            () -> assertEquals(UPDATED_START_DATE, detailDto.startDate()),
+            () -> assertEquals(UPDATED_END_DATE, detailDto.endDate()),
+            () -> assertEquals(SECOND_ROOMMATE_EMAIL, detailDto.assignedToEmail())
         );
     }
 
     @Test
     public void givenCreator_whenDeactivateSchedule_then200AndScheduleIsInactive() throws Exception {
         CleaningSchedule schedule = saveSchedule(household, mainTenant, roommate, TEST_CLEANING_TITLE, true);
-        CleaningScheduleActiveUpdateDto activeUpdateDto = new CleaningScheduleActiveUpdateDto();
-        activeUpdateDto.setActive(false);
+        CleaningScheduleActiveUpdateDto activeUpdateDto = new CleaningScheduleActiveUpdateDto(false);
 
         MvcResult mvcResult = this.mockMvc.perform(patch(CLEANING_SCHEDULE_BASE_URI + "/{id}/active", schedule.getId())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -323,7 +336,7 @@ public class CleaningScheduleEndpointTest implements TestData {
 
         assertAll(
             () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
-            () -> assertFalse(detailDto.isActive()),
+            () -> assertFalse(detailDto.active()),
             () -> assertFalse(cleaningScheduleRepository.findById(schedule.getId()).orElseThrow().isActive())
         );
     }
@@ -343,14 +356,14 @@ public class CleaningScheduleEndpointTest implements TestData {
 
         assertAll(
             () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
-            () -> assertEquals(TEST_CLEANING_TITLE, taskDetailDto.getTitle()),
-            () -> assertEquals(TEST_CLEANING_DESCRIPTION, taskDetailDto.getDescription()),
-            () -> assertEquals(TEST_START_DATE, taskDetailDto.getDueDate()),
-            () -> assertEquals(TaskStatus.OPEN, taskDetailDto.getStatus()),
-            () -> assertEquals(household.getId(), taskDetailDto.getHouseholdId()),
-            () -> assertEquals(schedule.getId(), taskDetailDto.getCleaningScheduleId()),
-            () -> assertEquals(MAIN_TENANT_EMAIL, taskDetailDto.getCreatedByEmail()),
-            () -> assertEquals(ROOMMATE_EMAIL, taskDetailDto.getAssignedToEmail()),
+            () -> assertEquals(TEST_CLEANING_TITLE, taskDetailDto.title()),
+            () -> assertEquals(TEST_CLEANING_DESCRIPTION, taskDetailDto.description()),
+            () -> assertEquals(TEST_START_DATE, taskDetailDto.dueDate()),
+            () -> assertEquals(TaskStatus.OPEN, taskDetailDto.status()),
+            () -> assertEquals(household.getId(), taskDetailDto.householdId()),
+            () -> assertEquals(schedule.getId(), taskDetailDto.cleaningScheduleId()),
+            () -> assertEquals(MAIN_TENANT_EMAIL, taskDetailDto.createdByEmail()),
+            () -> assertEquals(ROOMMATE_EMAIL, taskDetailDto.assignedToEmail()),
             () -> assertEquals(1, taskRepository.findAll().size()),
             () -> assertEquals(TEST_START_DATE.plusWeeks(1), updatedSchedule.getNextDueDate())
         );
@@ -408,25 +421,25 @@ public class CleaningScheduleEndpointTest implements TestData {
     }
 
     private CleaningScheduleCreateDto validCreateDto(String assignedToEmail) {
-        CleaningScheduleCreateDto createDto = new CleaningScheduleCreateDto();
-        createDto.setTitle(TEST_CLEANING_TITLE);
-        createDto.setDescription(TEST_CLEANING_DESCRIPTION);
-        createDto.setFrequency(CleaningFrequency.WEEKLY);
-        createDto.setStartDate(TEST_START_DATE);
-        createDto.setEndDate(TEST_END_DATE);
-        createDto.setAssignedToEmail(assignedToEmail);
-        return createDto;
+        return new CleaningScheduleCreateDto(
+            TEST_CLEANING_TITLE,
+            TEST_CLEANING_DESCRIPTION,
+            CleaningFrequency.WEEKLY,
+            TEST_START_DATE,
+            TEST_END_DATE,
+            assignedToEmail
+        );
     }
 
     private CleaningScheduleUpdateDto validUpdateDto(String assignedToEmail) {
-        CleaningScheduleUpdateDto updateDto = new CleaningScheduleUpdateDto();
-        updateDto.setTitle(UPDATED_CLEANING_TITLE);
-        updateDto.setDescription(UPDATED_CLEANING_DESCRIPTION);
-        updateDto.setFrequency(CleaningFrequency.BIWEEKLY);
-        updateDto.setStartDate(UPDATED_START_DATE);
-        updateDto.setEndDate(UPDATED_END_DATE);
-        updateDto.setAssignedToEmail(assignedToEmail);
-        return updateDto;
+        return new CleaningScheduleUpdateDto(
+            UPDATED_CLEANING_TITLE,
+            UPDATED_CLEANING_DESCRIPTION,
+            CleaningFrequency.BIWEEKLY,
+            UPDATED_START_DATE,
+            UPDATED_END_DATE,
+            assignedToEmail
+        );
     }
 
     private String tokenFor(String email) {

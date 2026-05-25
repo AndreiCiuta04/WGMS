@@ -1,0 +1,120 @@
+<div class="wgms-container history-page">
+  <div class="history-header">
+    <h2>History</h2>
+    <span class="accent-text">Completed tasks and recorded payment or expense activity</span>
+  </div>
+
+  @if (errorMessage) {
+    <div class="alert alert-danger" role="alert">{{ errorMessage }}</div>
+  }
+
+  @if (loading) {
+    <div class="section text-center p-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  } @else {
+    <section class="section task-history-section">
+      <div class="section-header">
+        <div class="section-title-group">
+          <lucide-icon name="check-square" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+          <h3 class="section-title">Task History</h3>
+        </div>
+        @if (tasks.length > 0) {
+          <span class="section-count completed-count">{{ tasks.length }}</span>
+        }
+      </div>
+
+      @if (tasks.length === 0) {
+        <div class="empty-state">
+          <p class="empty-text">No completed or cancelled tasks yet.</p>
+        </div>
+      }
+
+      @for (task of tasks; track task.id) {
+        <div class="history-item">
+          <div class="history-item-left">
+            <div class="history-indicator task-indicator">
+              <lucide-icon name="check-square" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+            </div>
+            <div class="history-item-info">
+              <div class="history-item-heading">
+                <span class="history-item-title">{{ task.title }}</span>
+                <span class="badge" [ngClass]="statusClass(task.status)">{{ displayStatus(task.status) }}</span>
+              </div>
+              @if (task.description) {
+                <span class="history-description">{{ task.description }}</span>
+              }
+              <span class="history-item-meta">
+                Due {{ task.dueDate | date:'mediumDate' }} &middot; Assigned to {{ task.assignedToEmail }}
+              </span>
+              <span class="history-item-meta">
+                Created by {{ task.createdByEmail }}
+                @if (task.cleaningScheduleId) {
+                  &middot; Schedule #{{ task.cleaningScheduleId }}
+                }
+              </span>
+            </div>
+          </div>
+          <div class="history-item-date">
+            {{ taskTimestamp(task) | date:'medium' }}
+          </div>
+        </div>
+      }
+    </section>
+
+    <section class="section payment-history-section">
+      <div class="section-header">
+        <div class="section-title-group">
+          <lucide-icon name="receipt-text" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+          <h3 class="section-title">Payment / Expense History</h3>
+        </div>
+        @if (payments.length > 0) {
+          <span class="section-count completed-count">{{ payments.length }}</span>
+        }
+      </div>
+
+      @if (payments.length === 0) {
+        <div class="empty-state">
+          <p class="empty-text">No payment or expense history yet.</p>
+        </div>
+      }
+
+      @for (payment of payments; track payment.id) {
+        <div class="history-item">
+          <div class="history-item-left">
+            <div class="history-indicator payment-indicator">
+              <lucide-icon name="receipt-text" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+            </div>
+            <div class="history-item-info">
+              <div class="history-item-heading">
+                <span class="history-item-title">{{ payment.title }}</span>
+                <span class="badge" [ngClass]="statusClass(payment.status)">{{ displayStatus(payment.status) }}</span>
+              </div>
+              <span class="history-item-meta">
+                @if (payment.payerEmail) {
+                  Paid by {{ payment.payerEmail }}
+                } @else {
+                  Payer not recorded
+                }
+                @if (payment.receiverEmail) {
+                  &middot; To {{ payment.receiverEmail }}
+                }
+              </span>
+              @if (payment.status === 'RECORDED') {
+                <span class="history-item-meta">Recorded expense/payment-related activity</span>
+              }
+            </div>
+          </div>
+          <div class="history-item-right">
+            <span class="history-amount">{{ payment.amount | currency:'EUR':'symbol':'1.2-2' }}</span>
+            @if (paymentTimestamp(payment)) {
+              <span class="history-item-date">{{ paymentTimestamp(payment) | date:'medium' }}</span>
+            }
+          </div>
+        </div>
+      }
+    </section>
+  }
+</div>
