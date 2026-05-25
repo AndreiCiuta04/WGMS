@@ -4,7 +4,7 @@ import { RouterModule } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { ShoppingItemListComponent } from './shopping-item-list.component';
 import { ShoppingItemService } from '../../services/shopping-item.service';
-import { ShoppingItemDto, ShoppingItemStatus, ShoppingItemVisibility } from '../../dtos/shopping-item';
+import { AggregatedShoppingItemDto, ShoppingItemDto, ShoppingItemStatus, ShoppingItemVisibility } from '../../dtos/shopping-item';
 import { LucideAngularModule, ShoppingCart, CircleCheck, CircleX, Pencil, Trash2, RotateCcw } from 'lucide-angular';
 
 describe('ShoppingItemListComponent', () => {
@@ -27,12 +27,42 @@ describe('ShoppingItemListComponent', () => {
     targetUserId: 200, targetUserEmail: 'b@test.com',
     targetUserFirstName: 'B', targetUserLastName: 'C'
   };
+  const aggregated: AggregatedShoppingItemDto = {
+    name: 'Milk',
+    quantity: '2L',
+    itemCount: 2,
+    sourceItems: [
+      {
+        id: 10,
+        name: 'Milk',
+        quantity: '2L',
+        notes: null,
+        createdById: 100,
+        createdByEmail: 'a@test.com',
+        createdByFirstName: 'A',
+        createdByLastName: 'B',
+        createdAt: '2026-05-17T10:00:00'
+      },
+      {
+        id: 11,
+        name: ' milk ',
+        quantity: ' 2L ',
+        notes: null,
+        createdById: 200,
+        createdByEmail: 'b@test.com',
+        createdByFirstName: 'B',
+        createdByLastName: 'C',
+        createdAt: '2026-05-17T10:05:00'
+      }
+    ]
+  };
 
   beforeEach(async () => {
     serviceSpy = jasmine.createSpyObj('ShoppingItemService',
-      ['findAll', 'findTargetedAtMe', 'updateStatus', 'delete']);
+      ['findAll', 'findTargetedAtMe', 'findAggregatedHouseholdShoppingList', 'updateStatus', 'delete']);
     serviceSpy.findAll.and.returnValue(of([personal, targeted]));
     serviceSpy.findTargetedAtMe.and.returnValue(of([targeted]));
+    serviceSpy.findAggregatedHouseholdShoppingList.and.returnValue(of([aggregated]));
     serviceSpy.updateStatus.and.returnValue(of({ ...personal, status: ShoppingItemStatus.BOUGHT }));
     serviceSpy.delete.and.returnValue(of(void 0));
 
@@ -54,12 +84,14 @@ describe('ShoppingItemListComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should fetch both all-items and targeted-at-me on init', () => {
+  it('should fetch all-items, targeted-at-me, and aggregated household list on init', () => {
     fixture.detectChanges();
     expect(serviceSpy.findAll).toHaveBeenCalled();
     expect(serviceSpy.findTargetedAtMe).toHaveBeenCalled();
+    expect(serviceSpy.findAggregatedHouseholdShoppingList).toHaveBeenCalled();
     expect(component.allItems.length).toBe(2);
     expect(component.targetedItems.length).toBe(1);
+    expect(component.aggregatedItems.length).toBe(1);
     expect(component.loading).toBeFalse();
   });
 
@@ -118,4 +150,16 @@ describe('ShoppingItemListComponent', () => {
     expect(component.actionError).toBe('Forbidden');
     expect(component.loading).toBeFalse();
   });
+
+  it('switchTab() can switch to aggregated household list', () => {
+    fixture.detectChanges();
+
+    component.switchTab('AGGREGATED');
+
+    expect(component.currentTab).toBe('AGGREGATED');
+    expect(component.isAggregatedTab).toBeTrue();
+    expect(component.aggregatedItems[0].name).toBe('Milk');
+    expect(component.aggregatedItems[0].itemCount).toBe(2);
+  });
 });
+

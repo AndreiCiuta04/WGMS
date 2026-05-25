@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { ShoppingItemService } from '../../services/shopping-item.service';
-import { ShoppingItemDto, ShoppingItemStatus, ShoppingItemVisibility } from '../../dtos/shopping-item';
+import { AggregatedShoppingItemDto, ShoppingItemDto, ShoppingItemStatus, ShoppingItemVisibility } from '../../dtos/shopping-item';
 
 @Component({
   selector: 'app-shopping-item-list',
@@ -13,8 +13,9 @@ export class ShoppingItemListComponent implements OnInit {
 
   allItems: ShoppingItemDto[] = [];
   targetedItems: ShoppingItemDto[] = [];
+  aggregatedItems: AggregatedShoppingItemDto[] = [];
 
-  currentTab: 'ALL' | 'TARGETED' = 'ALL';
+  currentTab: 'ALL' | 'TARGETED' | 'AGGREGATED' = 'ALL';
   loading = false;
   actionError: string | null = null;
   successMessage: string | null = null;
@@ -47,11 +48,15 @@ export class ShoppingItemListComponent implements OnInit {
     );
   }
 
+  get isAggregatedTab(): boolean {
+    return this.currentTab === 'AGGREGATED';
+  }
+
   toggleCompletedExpanded(): void {
     this.completedExpanded = !this.completedExpanded;
   }
 
-  switchTab(tab: 'ALL' | 'TARGETED') {
+  switchTab(tab: 'ALL' | 'TARGETED' | 'AGGREGATED') {
     this.currentTab = tab;
   }
 
@@ -60,11 +65,14 @@ export class ShoppingItemListComponent implements OnInit {
     this.actionError = null;
     forkJoin({
       all: this.shoppingItemService.findAll(),
-      targeted: this.shoppingItemService.findTargetedAtMe()
+      targeted: this.shoppingItemService.findTargetedAtMe(),
+      aggregated: this.shoppingItemService.findAggregatedHouseholdShoppingList()
+
     }).subscribe({
-      next: ({ all, targeted }) => {
+      next: ({ all, targeted, aggregated }) => {
         this.allItems = all;
         this.targetedItems = targeted;
+        this.aggregatedItems = aggregated;
         this.loading = false;
       },
       error: (err) => {
@@ -121,6 +129,8 @@ export class ShoppingItemListComponent implements OnInit {
     this.successMessage = message;
     setTimeout(() => { this.successMessage = null; }, 3000);
   }
+
+
 
   private extractError(err: any, fallback: string): string {
     if (err?.error?.message) {

@@ -27,12 +27,85 @@
     <li class="nav-item">
       <a class="nav-link cursor-pointer" [class.active]="currentTab === 'TARGETED'" (click)="switchTab('TARGETED')">Targeted at Me</a>
     </li>
+    <li class="nav-item">
+      <a class="nav-link cursor-pointer" [class.active]="currentTab === 'AGGREGATED'" (click)="switchTab('AGGREGATED')"> Household List </a>
+    </li>
   </ul>
 
-  <!-- ============================== -->
-  <!-- Section 1: Needed Items        -->
-  <!-- ============================== -->
-  <section class="section needed-section">
+
+
+  @if (isAggregatedTab) {
+    <section class="section aggregated-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <lucide-icon name="shopping-bag" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+        <h3 class="section-title">Aggregated Household List</h3>
+      </div>
+      <div class="section-header-actions">
+        @if (aggregatedItems.length > 0) {
+          <span class="section-count">{{ aggregatedItems.length }}</span>
+        }
+        <a routerLink="/shopping-items/create" class="btn btn-primary btn-sm">+ Add Shared Item</a>
+      </div>
+    </div>
+
+    @if (loading) {
+      <div class="text-center p-4">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    } @else if (aggregatedItems.length === 0) {
+      <div class="empty-state">
+        <lucide-icon name="shopping-bag" [size]="32" [strokeWidth]="1.5" style="color: #79AE6F; margin-bottom: 8px; display: inline-block;"></lucide-icon>
+        <p class="empty-text">No shared household shopping needs right now.</p>
+      </div>
+    }
+
+    @for (item of aggregatedItems; track item.name + '-' + item.quantity) {
+      <div class="aggregated-item">
+        <div class="needed-item-left">
+          <div class="needed-indicator aggregated-indicator">
+            <lucide-icon name="shopping-bag" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+          </div>
+          <div class="needed-item-info">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span class="needed-item-title">{{ item.name }}</span>
+              @if (item.itemCount > 1) {
+                <span class="badge aggregate-count">{{ item.itemCount }} requests</span>
+              } @else {
+                <span class="badge aggregate-count">1 request</span>
+              }
+            </div>
+            <span class="needed-item-meta">
+              @if (item.quantity) { {{ item.quantity }} · }
+              Requested by
+              @for (source of item.sourceItems; track source.id; let last = $last) {
+                {{ source.createdByFirstName }} {{ source.createdByLastName }}@if (!last) {,}
+              }
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="aggregate-source-list">
+        @for (source of item.sourceItems; track source.id) {
+          <div class="aggregate-source-item">
+            <span>
+              {{ source.createdByFirstName }} {{ source.createdByLastName }}
+              @if (source.notes) { · {{ source.notes }} }
+            </span>
+          </div>
+        }
+      </div>
+    }
+    </section>
+  } @else {
+  
+    <!-- ============================== -->
+    <!-- Section 1: Needed Items        -->
+    <!-- ============================== -->
+    <section class="section needed-section">
     <div class="section-header">
       <div class="section-title-group">
         <lucide-icon name="shopping-cart" [size]="18" [strokeWidth]="1.75"></lucide-icon>
@@ -101,12 +174,12 @@
         </div>
       </div>
     }
-  </section>
-
-  <!-- ============================== -->
-  <!-- Section 2: Bought / Cancelled  -->
-  <!-- ============================== -->
-  <section class="section completed-section">
+    </section>
+  
+    <!-- ============================== -->
+    <!-- Section 2: Bought / Cancelled  -->
+    <!-- ============================== -->
+    <section class="section completed-section">
     <div class="completed-header" (click)="toggleCompletedExpanded()">
       <div class="section-title-group">
         <lucide-icon name="circle-check" [size]="18" [strokeWidth]="1.75"></lucide-icon>
@@ -167,6 +240,6 @@
         </div>
       }
     }
-  </section>
-
+    </section>
+  }
 </div>
