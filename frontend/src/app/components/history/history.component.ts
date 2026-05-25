@@ -13,7 +13,7 @@ export class HistoryComponent implements OnInit {
 
   tasks: TaskHistoryDto[] = [];
   payments: PaymentHistoryDto[] = [];
-  loading = false;
+  loading = true;
   errorMessage = '';
 
   constructor(private historyService: HistoryService) { }

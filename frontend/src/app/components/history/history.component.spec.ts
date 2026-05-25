@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { HistoryComponent } from './history.component';
 import { HistoryService } from '../../services/history.service';
 import { HistoryDto } from '../../dtos/history';
@@ -65,6 +65,21 @@ describe('HistoryComponent', () => {
     expect(serviceSpy.getHistory).toHaveBeenCalled();
   });
 
+  it('renders the page title', () => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('History');
+  });
+
+  it('shows loading state while history is being fetched', () => {
+    const pendingHistory = new Subject<HistoryDto>();
+    serviceSpy.getHistory.and.returnValue(pendingHistory.asObservable());
+
+    fixture.detectChanges();
+
+    expect(component.loading).toBeTrue();
+    expect(fixture.nativeElement.textContent).toContain('Loading...');
+  });
+
   it('displays task history when returned', () => {
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent;
@@ -89,6 +104,60 @@ describe('HistoryComponent', () => {
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('No completed or cancelled tasks yet.');
     expect(text).toContain('No payment or expense history yet.');
+  });
+
+  it('handles null optional task and payment fields without rendering ugly values', () => {
+    serviceSpy.getHistory.and.returnValue(of({
+      tasks: [
+        {
+          id: 2,
+          householdId: 10,
+          cleaningScheduleId: null,
+          title: 'Manual task',
+          description: null,
+          dueDate: '2026-05-19',
+          status: 'CANCELLED',
+          createdByEmail: 'owner@test.com',
+          assignedToEmail: 'roommate@test.com',
+          createdAt: '2026-05-18T10:00:00',
+          updatedAt: '2026-05-19T11:00:00'
+        }
+      ],
+      payments: [
+        {
+          id: 6,
+          title: 'Unknown payer expense',
+          amount: 10,
+          status: 'RECORDED',
+          payerEmail: null,
+          receiverEmail: null,
+          createdAt: '2026-05-18T12:00:00',
+          updatedAt: null
+        }
+      ]
+    }));
+
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent;
+
+    expect(text).toContain('Manual task');
+    expect(text).not.toContain('Schedule #');
+    expect(text).toContain('Payer not recorded');
+    expect(text).not.toContain('undefined');
+    expect(text).not.toContain('NaN');
+    expect(text).not.toContain('[object Object]');
+  });
+
+  it('does not render fake production data before the backend response arrives', () => {
+    const pendingHistory = new Subject<HistoryDto>();
+    serviceSpy.getHistory.and.returnValue(pendingHistory.asObservable());
+
+    fixture.detectChanges();
+
+    expect(component.tasks).toEqual([]);
+    expect(component.payments).toEqual([]);
+    expect(fixture.nativeElement.textContent).not.toContain('Groceries');
+    expect(fixture.nativeElement.textContent).not.toContain('Clean kitchen');
   });
 
   it('displays an error message when loading fails', () => {

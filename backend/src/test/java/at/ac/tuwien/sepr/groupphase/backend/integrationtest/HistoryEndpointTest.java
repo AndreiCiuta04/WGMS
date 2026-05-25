@@ -4,6 +4,8 @@ import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
 import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.HistoryDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
+import at.ac.tuwien.sepr.groupphase.backend.entity.CleaningFrequency;
+import at.ac.tuwien.sepr.groupphase.backend.entity.CleaningSchedule;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Expense;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
@@ -125,7 +127,10 @@ public class HistoryEndpointTest implements TestData {
     public void givenAuthenticatedHouseholdUser_whenGetHistory_then200AndHistoryArraysAreReturned() throws Exception {
         Task doneTask = saveTask(household, mainTenant, roommate, "Done task", TaskStatus.DONE);
         Task cancelledTask = saveTask(household, mainTenant, roommate, "Cancelled task", TaskStatus.CANCELLED);
+        CleaningSchedule cleaningSchedule = saveCleaningSchedule(household, mainTenant, roommate);
+        Task generatedTask = saveTask(household, mainTenant, roommate, "Generated task", TaskStatus.DONE, cleaningSchedule);
         saveTask(household, mainTenant, roommate, "Open task", TaskStatus.OPEN);
+        saveTask(household, mainTenant, roommate, "In progress task", TaskStatus.IN_PROGRESS);
         saveTask(otherHousehold, outsider, outsider, "Other household task", TaskStatus.DONE);
         Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Groceries", money("12.00"));
         saveExpense(otherHousehold, outsiderRoommate, outsiderRoommate, "Private other expense", money("9.00"));
@@ -143,10 +148,14 @@ public class HistoryEndpointTest implements TestData {
             () -> assertTrue(response.getContentAsString().contains("\"payments\"")),
             () -> assertNotNull(historyDto.tasks()),
             () -> assertNotNull(historyDto.payments()),
-            () -> assertEquals(2, historyDto.tasks().size()),
+            () -> assertEquals(3, historyDto.tasks().size()),
             () -> assertTrue(historyDto.tasks().stream().anyMatch(task -> doneTask.getId().equals(task.id()))),
             () -> assertTrue(historyDto.tasks().stream().anyMatch(task -> cancelledTask.getId().equals(task.id()))),
+            () -> assertTrue(historyDto.tasks().stream()
+                .anyMatch(task -> generatedTask.getId().equals(task.id())
+                    && cleaningSchedule.getId().equals(task.cleaningScheduleId()))),
             () -> assertTrue(historyDto.tasks().stream().noneMatch(task -> "Open task".equals(task.title()))),
+            () -> assertTrue(historyDto.tasks().stream().noneMatch(task -> "In progress task".equals(task.title()))),
             () -> assertTrue(historyDto.tasks().stream().noneMatch(task -> "Other household task".equals(task.title()))),
             () -> assertEquals(1, historyDto.payments().size()),
             () -> assertEquals(expense.getId(), historyDto.payments().get(0).id()),
@@ -209,6 +218,17 @@ public class HistoryEndpointTest implements TestData {
         String title,
         TaskStatus status
     ) {
+        return saveTask(household, creator, assignee, title, status, null);
+    }
+
+    private Task saveTask(
+        Household household,
+        ApplicationUser creator,
+        ApplicationUser assignee,
+        String title,
+        TaskStatus status,
+        CleaningSchedule cleaningSchedule
+    ) {
         Task task = new Task();
         task.setHousehold(household);
         task.setTitle(title);
@@ -217,7 +237,22 @@ public class HistoryEndpointTest implements TestData {
         task.setStatus(status);
         task.setCreatedBy(creator);
         task.setAssignedTo(assignee);
+        task.setCleaningSchedule(cleaningSchedule);
         return taskRepository.save(task);
+    }
+
+    private CleaningSchedule saveCleaningSchedule(Household household, ApplicationUser creator, ApplicationUser assignee) {
+        CleaningSchedule cleaningSchedule = new CleaningSchedule();
+        cleaningSchedule.setHousehold(household);
+        cleaningSchedule.setTitle("Generated schedule");
+        cleaningSchedule.setDescription("Schedule used by history integration test");
+        cleaningSchedule.setFrequency(CleaningFrequency.WEEKLY);
+        cleaningSchedule.setStartDate(TEST_TASK_DUE_DATE);
+        cleaningSchedule.setNextDueDate(TEST_TASK_DUE_DATE);
+        cleaningSchedule.setActive(true);
+        cleaningSchedule.setCreatedBy(creator);
+        cleaningSchedule.setAssignedTo(assignee);
+        return cleaningScheduleRepository.save(cleaningSchedule);
     }
 
     private Expense saveExpense(Household household, Roommate paidBy, Roommate createdBy, String description, BigDecimal amount) {
