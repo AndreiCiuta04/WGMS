@@ -1,0 +1,337 @@
+$forest-green: #346739;
+$leaf-green: #79AE6F;
+$soft-green: #9FCB98;
+$text-primary: #1F2A1F;
+$text-secondary: #5F6B5F;
+
+// Page
+.shopping-page {
+  padding-top: 24px;
+}
+
+.shopping-header {
+  margin-bottom: 24px;
+
+  h2 {
+    font-size: 28px;
+    margin: 0;
+  }
+}
+
+// Success toast
+.success-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(52, 103, 57, 0.08);
+  border: 1px solid rgba(52, 103, 57, 0.2);
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: $forest-green;
+  animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// Sections
+.section {
+  background: white;
+  border: 1px solid rgba(52, 103, 57, 0.12);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: $text-primary;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: $text-primary;
+}
+
+.section-count {
+  background: rgba(198, 58, 58, 0.1);
+  color: #C63A3A;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.completed-count {
+  background: rgba(95, 107, 95, 0.1);
+  color: $text-secondary;
+}
+
+// Empty states
+.empty-state {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.empty-emoji {
+  font-size: 28px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: $text-secondary;
+  margin: 0;
+}
+
+// ===========================
+// Needed Section
+// ===========================
+.needed-section {
+  border-color: rgba(52, 103, 57, 0.2);
+}
+
+.needed-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(31, 42, 31, 0.06);
+  gap: 12px;
+
+  &:last-child  { border-bottom: none; padding-bottom: 0; }
+  &:first-child { padding-top: 0; }
+}
+
+.needed-item-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.needed-indicator {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(52, 103, 57, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $forest-green;
+  flex-shrink: 0;
+}
+
+.needed-item-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.needed-item-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: $text-primary;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.needed-item-meta {
+  font-size: 12px;
+  color: $text-secondary;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Badges
+.badge-visibility {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
+
+  &.badge-personal {
+    background-color: rgba(95, 107, 95, 0.1) !important;
+    color: #5F6B5F !important;
+  }
+
+  &.badge-shared {
+    background-color: rgba(52, 103, 57, 0.1) !important;
+    color: $forest-green !important;
+  }
+
+  &.badge-targeted {
+    background-color: rgba(121, 174, 111, 0.15) !important;
+    color: #2D5431 !important;
+  }
+}
+
+.badge-completed {
+  opacity: 0.7;
+}
+
+.target-user-label {
+  font-weight: 600;
+  color: #2D5431;
+}
+
+// ===========================
+// Completed Section
+// ===========================
+.completed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  margin-bottom: 0;
+
+  &:hover .section-title {
+    color: $forest-green;
+  }
+}
+
+.manage-toggle {
+  font-size: 14px;
+  color: $text-secondary;
+  margin-left: 4px;
+}
+
+.completed-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 1px solid rgba(31, 42, 31, 0.06);
+  gap: 8px;
+
+  opacity: 0.7;
+}
+
+.completed-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.completed-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &.bought    { background: $forest-green; }
+  &.cancelled { background: $text-secondary; }
+}
+
+.completed-item-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.completed-item-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: $text-primary;
+  text-decoration: line-through;
+}
+
+.completed-item-meta {
+  font-size: 12px;
+  color: $text-secondary;
+  margin-top: 1px;
+}
+
+.status-label {
+  font-weight: 500;
+
+  &.status-bought    { color: $forest-green; }
+  &.status-cancelled { color: $text-secondary; }
+}
+
+// ===========================
+// Action Buttons
+// ===========================
+.item-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid rgba(31, 42, 31, 0.1);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: $text-secondary;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+
+  &:hover {
+    background: rgba(52, 103, 57, 0.06);
+    color: $forest-green;
+    border-color: rgba(52, 103, 57, 0.2);
+  }
+
+  &.success:hover {
+    background: rgba(52, 103, 57, 0.1);
+    color: $forest-green;
+    border-color: rgba(52, 103, 57, 0.3);
+  }
+
+  &.muted:hover {
+    background: rgba(95, 107, 95, 0.08);
+    color: $text-secondary;
+    border-color: rgba(95, 107, 95, 0.2);
+  }
+
+  &.danger:hover {
+    background: rgba(198, 58, 58, 0.06);
+    color: #C63A3A;
+    border-color: rgba(198, 58, 58, 0.2);
+  }
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}

@@ -59,7 +59,7 @@ public class MessageEndpoint {
     @PostMapping
     @Operation(summary = "Publish a new message", security = @SecurityRequirement(name = "apiKey"))
     public DetailedMessageDto create(@Valid @RequestBody MessageInquiryDto messageDto) {
-        LOGGER.info("POST /api/v1/messages body: {}", messageDto);
+        LOGGER.info("POST /api/v1/messages");
         return messageMapper.messageToDetailedMessageDto(
             messageService.publishMessage(messageMapper.messageInquiryDtoToMessage(messageDto)));
     }

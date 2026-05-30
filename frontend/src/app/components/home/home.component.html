@@ -1,28 +1,341 @@
-<div class="wgms-container">
-  <div class="hero-section">
-    <h1 class="display-title">Welcome to <span class="brand-accent">WGMS</span></h1>
-    <p class="hero-tagline accent-text">One home. One system.</p>
-    
-    <div class="hero-content wgms-card text-center">
-      <p class="body-text">
-        WGMS makes shared household management easier, clearer, and less stressful. 
-        Track expenses, manage chores, and stay connected with your roommates in one practical, modern platform.
-      </p>
-      
-      <div class="hero-actions text-center">
-        @if (!authService.isLoggedIn()) {
-          <div class="d-flex justify-content-center">
-            <a class="btn btn-primary btn-lg" routerLink="/login" role="button">Get Started</a>
-            <a class="btn btn-outline-primary btn-lg" routerLink="/register" role="button">Register</a>
-          </div>
-        }
-        @if (authService.isLoggedIn()) {
-          <div class="logged-in-actions">
-            <p class="caption mb-3">Welcome back! Ready to manage your household?</p>
-            <a class="btn btn-primary btn-lg" routerLink="/message" role="button">Go to Dashboard</a>
-          </div>
-        }
+<!-- ======================== -->
+<!-- LANDING PAGE (Logged Out) -->
+<!-- ======================== -->
+@if (!authService.isLoggedIn()) {
+  <div class="landing">
+
+    <!-- Hero Section -->
+    <section class="landing-hero">
+      <div class="landing-hero-content">
+        <h1 class="landing-title">One home.<br>One system.</h1>
+        <p class="landing-subtitle">
+          A shared-flat management system that brings tasks, cleaning schedules
+          and household coordination into one calm workflow.
+        </p>
+        <div class="landing-cta">
+          <a class="btn btn-primary btn-lg" routerLink="/register">Get Started</a>
+          <a class="btn btn-outline-primary btn-lg" routerLink="/login">Login</a>
+        </div>
+      </div>
+      <div class="landing-hero-illustration">
+        <img src="assets/wgms-hero.png" alt="WGMS — organized home" class="hero-image">
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="landing-features">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <lucide-icon name="check-square" [size]="28" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <h3 class="feature-title">Tasks</h3>
+        <p class="feature-desc">Assign chores, track progress, and stay accountable together.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <lucide-icon name="calendar-check" [size]="28" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <h3 class="feature-title">Cleaning Schedules</h3>
+        <p class="feature-desc">Recurring routines that generate tasks automatically.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <lucide-icon name="users" [size]="28" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <h3 class="feature-title">Household</h3>
+        <p class="feature-desc">Invite roommates, manage roles, and see who does what.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <lucide-icon name="mail" [size]="28" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <h3 class="feature-title">Invitations</h3>
+        <p class="feature-desc">Join a WG with a single link — fast and frictionless.</p>
+      </div>
+    </section>
+
+    <!-- Bottom CTA -->
+    <section class="landing-bottom-cta">
+      <p class="landing-bottom-quote accent-text">Designed for shared living. Built for clarity, trust and balance.</p>
+      <a class="btn btn-primary" routerLink="/register">Create your WG now</a>
+    </section>
+
+  </div>
+}
+
+<!-- ======================== -->
+<!-- DASHBOARD (Logged In)    -->
+<!-- ======================== -->
+@if (authService.isLoggedIn()) {
+  @if (hasNoHousehold) {
+    <!-- Gorgeous Onboarding screen for users without WG -->
+    <div class="wgms-container" style="padding-top: 48px; min-height: calc(100vh - 80px); display: flex; align-items: center; justify-content: center; background-color: #FFFFFF;">
+      <div class="wgms-card glass-card text-center" style="max-width: 540px; padding: 48px; border: 1px solid rgba(52, 103, 57, 0.16); box-shadow: 0 20px 40px rgba(31, 42, 31, 0.06); border-radius: 20px; background: white; margin-bottom: 40px;">
+        <div style="font-size: 64px; margin-bottom: 24px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">🏡</div>
+        <h2 style="font-weight: 700; color: #1F2A1F; font-size: 32px; margin-bottom: 16px;">Welcome to WGMS!</h2>
+        <p style="color: #5F6B5F; font-size: 16px; line-height: 24px; margin-bottom: 32px;">
+          You don't belong to any shared household (WG) yet. 
+          WGMS works best when you share it with roommates! Create a new WG now, or check your active invitations.
+        </p>
+        <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+          <a class="btn btn-primary btn-lg" routerLink="/household/create" style="padding: 12px 28px; font-weight: 600;">Create a WG</a>
+          <a class="btn btn-outline-primary btn-lg" routerLink="/household/members" style="padding: 12px 28px; font-weight: 600;">View WG / Join</a>
+        </div>
       </div>
     </div>
+  } @else {
+    <div class="dashboard wgms-container">
+
+    <!-- Greeting & Header -->
+    <div class="dashboard-greeting-section">
+      <div class="greeting-text">
+        <h2>Welcome home, {{ getUserFirstName() }} 👋</h2>
+        <p class="caption">Here is a quick overview of your current responsibilities.</p>
+      </div>
+      
+      <!-- Quick Info / Net Balance Banner -->
+      <div class="balance-card" [class.positive]="netBalance > 0" [class.negative]="netBalance < 0" [class.neutral]="netBalance === 0">
+        <div class="balance-icon">
+          <lucide-icon name="receipt-text" [size]="24" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <div class="balance-details">
+          @if (netBalance > 0) {
+            <span class="balance-status">You are owed</span>
+            <h3 class="balance-amount">{{ netBalance | currency:'EUR':'symbol':'1.2-2' }}</h3>
+          } @else if (netBalance < 0) {
+            <span class="balance-status">You owe</span>
+            <h3 class="balance-amount">{{ -netBalance | currency:'EUR':'symbol':'1.2-2' }}</h3>
+          } @else {
+            <span class="balance-status">All settled up</span>
+            <h3 class="balance-amount">€0.00</h3>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Stats Grid -->
+    <div class="dashboard-stats-grid">
+      <a routerLink="/tasks" class="stat-card glass-card">
+        <div class="stat-card-icon">
+          <lucide-icon name="check-square" [size]="20" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <div class="stat-card-info">
+          <span class="stat-label">My Open Tasks</span>
+          <span class="stat-number">{{ myTaskCount }}</span>
+        </div>
+      </a>
+
+      <a routerLink="/tasks" class="stat-card glass-card">
+        <div class="stat-card-icon shopping-icon">
+          <lucide-icon name="check-square" [size]="20" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <div class="stat-card-info">
+          <span class="stat-label">Active Chores</span>
+          <span class="stat-number">{{ openTaskCount }}</span>
+        </div>
+      </a>
+
+      <a routerLink="/cleaning-schedules" class="stat-card glass-card">
+        <div class="stat-card-icon schedule-icon">
+          <lucide-icon name="calendar-check" [size]="20" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <div class="stat-card-info">
+          <span class="stat-label">Schedules</span>
+          <span class="stat-number">{{ activeScheduleCount }}</span>
+        </div>
+      </a>
+
+      <a routerLink="/household/members" class="stat-card glass-card">
+        <div class="stat-card-icon members-icon">
+          <lucide-icon name="users" [size]="20" [strokeWidth]="1.75"></lucide-icon>
+        </div>
+        <div class="stat-card-info">
+          <span class="stat-label">Housemates</span>
+          <span class="stat-number">{{ housemateCount }}</span>
+        </div>
+      </a>
+    </div>
+
+    <!-- Main Dashboard Grid Layout -->
+    <div class="dashboard-main-grid">
+
+      <!-- COLUMN 1: My Responsibilities -->
+      <div class="grid-column">
+        
+        <!-- Overdue Tasks Warning -->
+        @if (myPendingTasks.length > 0) {
+          @for (task of myPendingTasks; track task.id) {
+            @if (isOverdue(task.dueDate)) {
+              <div class="warning-banner animated pulse">
+                <lucide-icon name="clock" [size]="18" class="warning-icon"></lucide-icon>
+                <span>Task <strong>"{{ task.title }}"</strong> is overdue (Due: {{ task.dueDate }})!</span>
+              </div>
+            }
+          }
+        }
+
+        <!-- Pending Tasks Card -->
+        <div class="wgms-card glass-card responsibilities-card">
+          <div class="card-header">
+            <h3>My Pending Tasks</h3>
+            <a routerLink="/tasks" [queryParams]="{ tab: 'mine' }" class="view-all-link">View all</a>
+          </div>
+
+          @if (myPendingTasks.length === 0) {
+            <div class="empty-state">
+              <span class="empty-emoji">🎉</span>
+              <p>All caught up! No pending chores assigned to you.</p>
+            </div>
+          } @else {
+            <div class="checklist">
+              @for (task of myPendingTasks; track task.id) {
+                <div class="checklist-item" [class.overdue]="isOverdue(task.dueDate)">
+                  <div class="checklist-control">
+                    <label class="custom-checkbox">
+                      <input type="checkbox" (change)="completeTask(task.id)">
+                      <span class="checkmark"></span>
+                    </label>
+                    <div class="checklist-text">
+                      <span class="task-title">{{ task.title }}</span>
+                      <span class="task-due" [class.overdue-text]="isOverdue(task.dueDate)">
+                        {{ isOverdue(task.dueDate) ? 'Overdue: ' : 'Due: ' }}{{ task.dueDate }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Roommate Debts / Settlement Status -->
+        <div class="wgms-card glass-card debts-card">
+          <div class="card-header">
+            <h3>Settlement & Debts Breakdown</h3>
+            <a routerLink="/expenses" class="view-all-link">Manage Expenses</a>
+          </div>
+
+          @if (whoOwesMe.length === 0 && whoIOwe.length === 0) {
+            <div class="empty-state">
+              <span class="empty-emoji">🤝</span>
+              <p>Everything is perfectly balanced! No active debts.</p>
+            </div>
+          } @else {
+            <div class="debt-lists">
+              @if (whoOwesMe.length > 0) {
+                <div class="debt-section positive">
+                  <h4>Owed to You</h4>
+                  @for (debt of whoOwesMe; track debt.name) {
+                    <div class="debt-row">
+                      <div class="debt-user">
+                        <lucide-icon name="user" [size]="16"></lucide-icon>
+                        <span>{{ debt.name }}</span>
+                      </div>
+                      <span class="debt-amount positive-text">+{{ debt.amount | currency:'EUR':'symbol':'1.2-2' }}</span>
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (whoIOwe.length > 0) {
+                <div class="debt-section negative">
+                  <h4>You Owe</h4>
+                  @for (debt of whoIOwe; track debt.name) {
+                    <div class="debt-row">
+                      <div class="debt-user">
+                        <lucide-icon name="user" [size]="16"></lucide-icon>
+                        <span>{{ debt.name }}</span>
+                      </div>
+                      <span class="debt-amount negative-text">-{{ debt.amount | currency:'EUR':'symbol':'1.2-2' }}</span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+      </div>
+
+      <!-- COLUMN 2: WG Flat Coordination -->
+      <div class="grid-column">
+
+        <!-- WG Shopping List -->
+        <div class="wgms-card glass-card shopping-card">
+          <div class="card-header">
+            <h3>Needed Shopping Items</h3>
+            <a routerLink="/shopping-items" class="view-all-link">View all</a>
+          </div>
+
+          @if (wgShoppingList.length === 0) {
+            <div class="empty-state">
+              <span class="empty-emoji">🛒</span>
+              <p>No active shopping requests. Flat is fully stocked!</p>
+            </div>
+          } @else {
+            <div class="shopping-list">
+              @for (item of wgShoppingList; track item.id) {
+                <div class="shopping-item">
+                  <div class="shopping-info">
+                    <span class="item-name">{{ item.name }}</span>
+                    @if (item.quantity) {
+                      <span class="item-quantity">({{ item.quantity }})</span>
+                    }
+                    @if (item.notes) {
+                      <span class="item-notes">{{ item.notes }}</span>
+                    }
+                    <span class="item-meta">
+                      Requested by {{ item.createdByFirstName }}
+                      @if (item.targetUserFirstName) {
+                        for {{ item.targetUserFirstName }}
+                      }
+                    </span>
+                  </div>
+                  <button class="buy-action-btn" (click)="buyShoppingItem(item.id)" title="Mark as Bought">
+                    <lucide-icon name="shopping-cart" [size]="16"></lucide-icon>
+                    <span>Bought</span>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Upcoming Cleaning Routines -->
+        <div class="wgms-card glass-card routines-card">
+          <div class="card-header">
+            <h3>Upcoming Cleaning Schedules</h3>
+            <a routerLink="/cleaning-schedules" class="view-all-link">View all</a>
+          </div>
+
+          @if (householdSchedules.length === 0) {
+            <div class="empty-state">
+              <span class="empty-emoji">🧹</span>
+              <p>No active cleaning schedules configured.</p>
+            </div>
+          } @else {
+            <div class="schedules-list">
+              @for (schedule of householdSchedules; track schedule.id) {
+                <div class="schedule-item">
+                  <div class="schedule-info">
+                    <span class="schedule-title">{{ schedule.title }}</span>
+                    <span class="schedule-meta">
+                      {{ formatFrequency(schedule.frequency) }} · Next due: {{ schedule.nextDueDate }}
+                    </span>
+                  </div>
+                  <div class="schedule-badge">
+                    <lucide-icon name="calendar-check" [size]="14"></lucide-icon>
+                    <span>Active</span>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+      </div>
+
+    </div>
   </div>
-</div>
+  }
+}

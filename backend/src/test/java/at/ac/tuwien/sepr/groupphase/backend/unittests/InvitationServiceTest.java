@@ -102,7 +102,7 @@ public class InvitationServiceTest {
         InvitationCreateDto dto = new InvitationCreateDto("invited@test.com", 24);
 
         // Act & Assert
-        assertThrows(ForbiddenException.class, () -> 
+        assertThrows(ForbiddenException.class, () ->
             invitationService.createInvitation(1L, dto, roommateUser)
         );
     }
@@ -116,7 +116,7 @@ public class InvitationServiceTest {
         InvitationCreateDto dto = new InvitationCreateDto("invited@test.com", 24);
 
         // Act & Assert
-        assertThrows(ForbiddenException.class, () -> 
+        assertThrows(ForbiddenException.class, () ->
             invitationService.createInvitation(1L, dto, roommateUser)
         );
     }
@@ -128,7 +128,7 @@ public class InvitationServiceTest {
         invitation.setHousehold(household);
         invitation.setInvitedEmail("invited@test.com");
         invitation.setExpiresAt(LocalDateTime.now().plusDays(1));
-        
+
         // Use a dummy token and its hash (sha256 of "token123")
         String rawToken = "token123";
         String tokenHash = "b13ae34b9231f95675ff502761b64aedd0c278f5b6e8730ce99b72f35b2ddfb0";
@@ -152,7 +152,7 @@ public class InvitationServiceTest {
         invitation.setHousehold(household);
         invitation.setExpiresAt(LocalDateTime.now().plusDays(1));
         invitation.setRoleToAssign(HouseholdRole.ROOMMATE);
-        
+
         String rawToken = "token123";
         String tokenHash = "b13ae34b9231f95675ff502761b64aedd0c278f5b6e8730ce99b72f35b2ddfb0";
         invitation.setTokenHash(tokenHash);
@@ -175,7 +175,7 @@ public class InvitationServiceTest {
         HouseholdInvitation invitation = new HouseholdInvitation();
         invitation.setHousehold(household);
         invitation.setExpiresAt(LocalDateTime.now().minusHours(1));
-        
+
         String rawToken = "token123";
         String tokenHash = "b13ae34b9231f95675ff502761b64aedd0c278f5b6e8730ce99b72f35b2ddfb0";
         invitation.setTokenHash(tokenHash);
@@ -183,7 +183,7 @@ public class InvitationServiceTest {
         when(invitationRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(invitation));
 
         // Act & Assert
-        assertThrows(at.ac.tuwien.sepr.groupphase.backend.exception.GoneException.class, () -> 
+        assertThrows(at.ac.tuwien.sepr.groupphase.backend.exception.GoneException.class, () ->
             invitationService.acceptInvitation(rawToken, roommateUser)
         );
     }
@@ -195,7 +195,7 @@ public class InvitationServiceTest {
         invitation.setHousehold(household);
         invitation.setExpiresAt(LocalDateTime.now().plusDays(1));
         invitation.setUsedAt(LocalDateTime.now().minusHours(1));
-        
+
         String rawToken = "token123";
         String tokenHash = "b13ae34b9231f95675ff502761b64aedd0c278f5b6e8730ce99b72f35b2ddfb0";
         invitation.setTokenHash(tokenHash);
@@ -203,7 +203,7 @@ public class InvitationServiceTest {
         when(invitationRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(invitation));
 
         // Act & Assert
-        assertThrows(at.ac.tuwien.sepr.groupphase.backend.exception.GoneException.class, () -> 
+        assertThrows(at.ac.tuwien.sepr.groupphase.backend.exception.GoneException.class, () ->
             invitationService.acceptInvitation(rawToken, roommateUser)
         );
     }
@@ -215,7 +215,7 @@ public class InvitationServiceTest {
         invitation.setHousehold(household);
         invitation.setExpiresAt(LocalDateTime.now().plusDays(1));
         invitation.setInvitedEmail("other@test.com");
-        
+
         String rawToken = "token123";
         String tokenHash = "b13ae34b9231f95675ff502761b64aedd0c278f5b6e8730ce99b72f35b2ddfb0";
         invitation.setTokenHash(tokenHash);
@@ -224,8 +224,32 @@ public class InvitationServiceTest {
         when(roommateRepository.existsByUserIdAndActiveTrue(roommateUser.getId())).thenReturn(false);
 
         // Act & Assert
-        assertThrows(at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException.class, () -> 
+        assertThrows(at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException.class, () ->
             invitationService.acceptInvitation(rawToken, roommateUser)
         );
+    }
+
+    @Test
+    public void givenUserAlreadyBelongsToHousehold_whenAcceptInvitation_thenConflictAndNoPartialSave() {
+        // Arrange
+        HouseholdInvitation invitation = new HouseholdInvitation();
+        invitation.setHousehold(household);
+        invitation.setExpiresAt(LocalDateTime.now().plusDays(1));
+        invitation.setRoleToAssign(HouseholdRole.ROOMMATE);
+
+        String rawToken = "token123";
+        String tokenHash = "b13ae34b9231f95675ff502761b64aedd0c278f5b6e8730ce99b72f35b2ddfb0";
+        invitation.setTokenHash(tokenHash);
+
+        when(invitationRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(invitation));
+        when(roommateRepository.existsByUserIdAndActiveTrue(roommateUser.getId())).thenReturn(true);
+
+        // Act & Assert
+        assertThrows(at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException.class, () ->
+            invitationService.acceptInvitation(rawToken, roommateUser)
+        );
+
+        verify(roommateRepository, never()).save(any(Roommate.class));
+        verify(invitationRepository, never()).save(any(HouseholdInvitation.class));
     }
 }
