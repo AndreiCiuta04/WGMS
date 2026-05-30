@@ -61,14 +61,14 @@ public class InvitationEndpoint {
     @PermitAll
     @GetMapping("/invitations/{token}")
     public InvitationPreviewDto previewInvitation(@PathVariable("token") String token) {
-        LOGGER.info("GET /api/v1/invitations/{}", token);
+        LOGGER.info("GET /api/v1/invitations/{token}");
         return invitationService.previewInvitation(token);
     }
 
     @PostMapping("/invitations/{token}/accept")
     @PreAuthorize("hasRole('USER')")
     public InvitationAcceptResponseDto acceptInvitation(@PathVariable("token") String token, Authentication authentication) {
-        LOGGER.info("POST /api/v1/invitations/{}/accept", token);
+        LOGGER.info("POST /api/v1/invitations/{token}/accept");
         ApplicationUser currentUser = userService.findApplicationUserByEmail(authentication.getName());
         return invitationService.acceptInvitation(token, currentUser);
     }

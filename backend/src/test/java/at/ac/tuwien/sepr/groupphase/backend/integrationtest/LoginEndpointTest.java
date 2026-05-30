@@ -3,10 +3,7 @@ package at.ac.tuwien.sepr.groupphase.backend.integrationtest;
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserLoginDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
-import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdInvitationRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
-import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,7 +24,6 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -56,8 +52,16 @@ public class LoginEndpointTest implements TestData {
     @Autowired
     private JsonMapper jsonMapper;
 
+    @Autowired
+    private CleaningScheduleRepository cleaningScheduleRepository;
+
+    @Autowired
+    private TaskRepository taskRepository;
+
     @BeforeEach
     public void beforeEach() {
+        taskRepository.deleteAll();
+        cleaningScheduleRepository.deleteAll();
         invitationRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
@@ -78,7 +82,6 @@ public class LoginEndpointTest implements TestData {
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/authentication")
             .contentType(MediaType.APPLICATION_JSON)
             .content(body))
-            .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 
@@ -104,7 +107,6 @@ public class LoginEndpointTest implements TestData {
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/authentication")
             .contentType(MediaType.APPLICATION_JSON)
             .content(body))
-            .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 
@@ -127,7 +129,6 @@ public class LoginEndpointTest implements TestData {
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/authentication")
             .contentType(MediaType.APPLICATION_JSON)
             .content(body))
-            .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 
@@ -167,7 +168,6 @@ public class LoginEndpointTest implements TestData {
         MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/authentication")
             .contentType(MediaType.APPLICATION_JSON)
             .content(validBody))
-            .andDo(print())
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 

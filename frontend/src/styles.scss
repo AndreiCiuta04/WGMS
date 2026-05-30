@@ -43,7 +43,7 @@ html, body {
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-color: $eggwhite-bg;
+  background-color: $white;
   color: $text-primary;
   font-size: 18px;
   line-height: 1.5;
@@ -69,9 +69,13 @@ h3 { font-size: 24px; line-height: 32px; font-weight: 600; }
 
 // Layout Utilities
 .wgms-container {
-  max-width: 1200px;
+  max-width: 960px;
   margin: 0 auto;
-  padding: $space-8 $space-12;
+  padding: $space-6 $space-8;
+
+  @media (max-width: 576px) {
+    padding: $space-4 $space-3;
+  }
 }
 
 // Surfaces
@@ -80,7 +84,7 @@ h3 { font-size: 24px; line-height: 32px; font-weight: 600; }
   border: $border-subtle;
   box-shadow: $soft-shadow;
   border-radius: $space-3;
-  padding: $space-8;
+  padding: $space-6;
   margin-bottom: $space-6;
 }
 
@@ -111,6 +115,32 @@ h3 { font-size: 24px; line-height: 32px; font-weight: 600; }
   }
 }
 
+.btn-outline-danger {
+  color: #C63A3A !important;
+  border-color: rgba(198, 58, 58, 0.3) !important;
+  background-color: transparent !important;
+  font-weight: 500;
+  
+  &:hover {
+    background-color: rgba(198, 58, 58, 0.05) !important;
+    color: #A92E2E !important;
+    border-color: #A92E2E !important;
+  }
+}
+
+.btn-outline-secondary {
+  color: $text-secondary !important;
+  border-color: rgba(95, 107, 95, 0.3) !important;
+  background-color: transparent !important;
+  font-weight: 500;
+  
+  &:hover {
+    background-color: rgba(95, 107, 95, 0.05) !important;
+    color: color.adjust($text-secondary, $lightness: -10%) !important;
+    border-color: color.adjust($text-secondary, $lightness: -10%) !important;
+  }
+}
+
 // Form Controls
 .form-control {
   background-color: $white;
@@ -135,6 +165,33 @@ a {
     color: color.adjust($forest-green, $lightness: 10%);
   }
 }
+
+// Nav Tabs (Overriding Bootstrap)
+.nav-tabs {
+  border-bottom: 1px solid $divider;
+}
+
+.nav-tabs .nav-link {
+  color: $text-secondary;
+  font-weight: 500;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: $space-3 $space-4;
+  
+  &:hover {
+    color: $forest-green;
+    border-bottom: 2px solid rgba(52, 103, 57, 0.3);
+  }
+  
+  &.active {
+    color: $forest-green !important;
+    font-weight: 600;
+    border: none;
+    border-bottom: 2px solid $forest-green !important;
+    background-color: transparent !important;
+  }
+}
+
 
 // Typography Helpers
 .accent-text {

@@ -1,0 +1,96 @@
+<div class="wgms-container">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Create Cleaning Schedule</h2>
+        <a routerLink="/cleaning-schedules" class="btn btn-outline-primary">Back to Schedules</a>
+      </div>
+
+      <div class="wgms-card">
+        @if (error) {
+          <div class="alert alert-danger" role="alert">
+            {{ errorMessage }}
+          </div>
+        }
+
+        <form [formGroup]="scheduleForm" (ngSubmit)="onSubmit()">
+
+          <div class="form-group mb-3">
+            <label for="title" class="font-weight-bold">Title *</label>
+            <input type="text" id="title" class="form-control" formControlName="title" placeholder="e.g. Clean the kitchen">
+            @if (submitted && scheduleForm.get('title')?.errors?.['required']) {
+              <small class="text-danger">Title is required.</small>
+            }
+            @if (submitted && scheduleForm.get('title')?.errors?.['maxlength']) {
+              <small class="text-danger">Title cannot be longer than 100 characters.</small>
+            }
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="description" class="font-weight-bold">Description</label>
+            <textarea id="description" class="form-control" formControlName="description" rows="3" placeholder="Provide more details if needed"></textarea>
+            @if (submitted && scheduleForm.get('description')?.errors?.['maxlength']) {
+              <small class="text-danger">Description cannot be longer than 2000 characters.</small>
+            }
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="frequency" class="font-weight-bold">Frequency *</label>
+                <select id="frequency" class="form-control" formControlName="frequency">
+                  <option value="" disabled selected>Select frequency</option>
+                  @for (freq of frequencies; track freq) {
+                    <option [value]="freq">{{ formatFrequency(freq) }}</option>
+                  }
+                </select>
+                @if (submitted && scheduleForm.get('frequency')?.errors?.['required']) {
+                  <small class="text-danger">Frequency is required.</small>
+                }
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="assignedToEmail" class="font-weight-bold">Assign To *</label>
+                <select id="assignedToEmail" class="form-control" formControlName="assignedToEmail">
+                  <option value="" disabled selected>Select a roommate</option>
+                  @for (roommate of roommates; track roommate.email) {
+                    <option [value]="roommate.email">{{ roommate.firstName }} {{ roommate.lastName }} ({{ roommate.email }})</option>
+                  }
+                </select>
+                @if (submitted && scheduleForm.get('assignedToEmail')?.errors?.['required']) {
+                  <small class="text-danger">Please assign the schedule to someone.</small>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="startDate" class="font-weight-bold">Start Date *</label>
+                <input type="date" id="startDate" class="form-control" formControlName="startDate">
+                @if (submitted && scheduleForm.get('startDate')?.errors?.['required']) {
+                  <small class="text-danger">Start date is required.</small>
+                }
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="endDate" class="font-weight-bold">End Date</label>
+                <input type="date" id="endDate" class="form-control" formControlName="endDate">
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end mt-4">
+            <button type="submit" class="btn btn-primary px-5">Create Schedule</button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
