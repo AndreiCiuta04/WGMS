@@ -99,7 +99,7 @@ public class PaymentServiceTest {
         assertAll(
             () -> assertEquals(0, result.openBalances().size()),
             () -> assertEquals(0, result.payments().size()),
-            () -> assertEquals(money("0.00"), result.totalIOwe()),
+            () -> assertEquals(money("0.00"), result.totalIowe()),
             () -> assertEquals(money("0.00"), result.totalOwedToMe())
         );
     }
@@ -119,7 +119,7 @@ public class PaymentServiceTest {
             () -> assertEquals(roommate.getId(), result.openBalances().get(0).fromRoommateId()),
             () -> assertEquals(mainTenant.getId(), result.openBalances().get(0).toRoommateId()),
             () -> assertEquals(money("10.00"), result.openBalances().get(0).amount()),
-            () -> assertEquals(money("0.00"), result.totalIOwe()),
+            () -> assertEquals(money("0.00"), result.totalIowe()),
             () -> assertEquals(money("10.00"), result.totalOwedToMe())
         );
     }
@@ -156,7 +156,7 @@ public class PaymentServiceTest {
         assertAll(
             () -> assertEquals(0, result.openBalances().size()),
             () -> assertEquals(1, result.payments().size()),
-            () -> assertEquals(money("0.00"), result.totalIOwe()),
+            () -> assertEquals(money("0.00"), result.totalIowe()),
             () -> assertEquals(money("0.00"), result.totalOwedToMe())
         );
     }
@@ -178,10 +178,15 @@ public class PaymentServiceTest {
         PaymentOverviewDto result = paymentService.getOverview(ROOMMATE_EMAIL);
 
         assertAll(
-            () -> assertEquals(1, result.openBalances().size()),
+            () -> assertEquals(2, result.openBalances().size()),
             () -> assertEquals(roommate.getId(), result.openBalances().get(0).fromRoommateId()),
             () -> assertEquals(mainTenant.getId(), result.openBalances().get(0).toRoommateId()),
-            () -> assertEquals(money("10.00"), result.totalIOwe()),
+            () -> assertEquals(money("2.00"), result.openBalances().get(0).amount()),
+            () -> assertEquals(roommate.getId(), result.openBalances().get(1).fromRoommateId()),
+            () -> assertEquals(thirdRoommate.getId(), result.openBalances().get(1).toRoommateId()),
+            () -> assertEquals(money("8.00"), result.openBalances().get(1).amount()),
+            () -> assertEquals(0, result.payments().size()),
+            () -> assertEquals(money("10.00"), result.totalIowe()),
             () -> assertEquals(money("0.00"), result.totalOwedToMe())
         );
     }
