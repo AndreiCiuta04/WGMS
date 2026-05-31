@@ -16,7 +16,7 @@
 - Merge request:
 - Developer: Taras Trishch and Andrei Ciuta
 - QA reviewer: Andrei Ciuta
-- Date:
+- Date: 31.05.26
 
 ## How to Use This Checklist
 
