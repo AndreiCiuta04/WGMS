@@ -29,7 +29,8 @@ import {SidebarComponent} from './components/sidebar/sidebar.component';
 import {BottomTabBarComponent} from './components/bottom-tab-bar/bottom-tab-bar.component';
 import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
 import {httpInterceptorProviders} from './interceptors';
-import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw, ReceiptText} from 'lucide-angular';
+import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw, ReceiptText, HandCoins, Scale} from 'lucide-angular';
+import {PaymentStatusComponent} from './components/payment-status/payment-status.component';
 
 @NgModule({
   declarations: [
@@ -56,6 +57,7 @@ import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users,
     CleaningScheduleEditComponent,
     SidebarComponent,
     BottomTabBarComponent,
+    PaymentStatusComponent,
   ],
   bootstrap: [AppComponent],
   imports: [BrowserModule,
@@ -63,7 +65,7 @@ import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users,
     ReactiveFormsModule,
     NgbModule,
     FormsModule,
-    LucideAngularModule.pick({LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw, ReceiptText})],
+    LucideAngularModule.pick({LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw, ReceiptText, HandCoins, Scale})],
   providers: [
     httpInterceptorProviders,
     provideHttpClient(withInterceptorsFromDi()),
