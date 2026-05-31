@@ -2,6 +2,7 @@ package at.ac.tuwien.sepr.groupphase.backend.integrationtest;
 
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
 import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BalanceDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.EqualSplitRequestDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseDto;
@@ -12,11 +13,13 @@ import at.ac.tuwien.sepr.groupphase.backend.entity.Expense;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ExpenseSplit;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
+import at.ac.tuwien.sepr.groupphase.backend.entity.Payment;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
 import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ExpenseRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ExpenseSplitRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
@@ -67,6 +70,9 @@ public class ExpenseEndpointTest implements TestData {
 
     @Autowired
     private ExpenseSplitRepository expenseSplitRepository;
+
+    @Autowired
+    private PaymentRepository paymentRepository;
 
     @Autowired
     private TaskRepository taskRepository;
@@ -123,6 +129,7 @@ public class ExpenseEndpointTest implements TestData {
     }
 
     private void cleanDatabase() {
+        paymentRepository.deleteAll();
         expenseSplitRepository.deleteAll();
         expenseRepository.deleteAll();
         taskRepository.deleteAll();
@@ -261,6 +268,28 @@ public class ExpenseEndpointTest implements TestData {
             () -> assertEquals(1, expenses.length),
             () -> assertEquals(ownExpense.getId(), expenses[0].id()),
             () -> assertEquals(household.getId(), expenses[0].householdId())
+        );
+    }
+
+    @Test
+    public void givenRecordedPayment_whenCalculateBalances_thenOpenBalanceIsReduced() throws Exception {
+        Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Internet bill", money("20.00"));
+        saveSplit(expense, mainTenantRoommate, money("10.00"));
+        saveSplit(expense, roommateRecord, money("10.00"));
+        savePayment(roommateRecord, mainTenantRoommate, money("4.00"));
+
+        MvcResult mvcResult = this.mockMvc.perform(get(EXPENSE_BASE_URI + "/balances")
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        BalanceDto[] balances = jsonMapper.readValue(mvcResult.getResponse().getContentAsString(), BalanceDto[].class);
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals(1, balances.length),
+            () -> assertEquals(roommateRecord.getId(), balances[0].fromRoommateId()),
+            () -> assertEquals(mainTenantRoommate.getId(), balances[0].toRoommateId()),
+            () -> assertEquals(0, money("6.00").compareTo(balances[0].amount()))
         );
     }
 
@@ -435,5 +464,16 @@ public class ExpenseEndpointTest implements TestData {
         split.setRoommate(roommate);
         split.setAmountOwed(amount);
         return expenseSplitRepository.save(split);
+    }
+
+    private Payment savePayment(Roommate fromRoommate, Roommate toRoommate, BigDecimal amount) {
+        Payment payment = new Payment();
+        payment.setHousehold(fromRoommate.getHousehold());
+        payment.setFromRoommate(fromRoommate);
+        payment.setToRoommate(toRoommate);
+        payment.setCreatedBy(fromRoommate);
+        payment.setAmount(amount);
+        payment.setDate(EXPENSE_DATE);
+        return paymentRepository.save(payment);
     }
 }

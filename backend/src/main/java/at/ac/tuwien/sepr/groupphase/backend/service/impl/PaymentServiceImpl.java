@@ -25,11 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.lang.invoke.MethodHandles;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class PaymentServiceImpl implements PaymentService {
@@ -41,17 +37,20 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final RoommateRepository roommateRepository;
     private final UserService userService;
+    private final BalanceCalculator balanceCalculator;
 
     public PaymentServiceImpl(
         ExpenseSplitRepository expenseSplitRepository,
         PaymentRepository paymentRepository,
         RoommateRepository roommateRepository,
-        UserService userService
+        UserService userService,
+        BalanceCalculator balanceCalculator
     ) {
         this.expenseSplitRepository = expenseSplitRepository;
         this.paymentRepository = paymentRepository;
         this.roommateRepository = roommateRepository;
         this.userService = userService;
+        this.balanceCalculator = balanceCalculator;
     }
 
     @Override
@@ -61,7 +60,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         Roommate currentRoommate = getCurrentRoommateByEmail(currentUserEmail);
         Long householdId = currentRoommate.getHousehold().getId();
-        List<BalanceDto> allOpenBalances = buildOpenBalances(householdId);
+        List<BalanceDto> allOpenBalances = calculateOpenBalances(householdId);
         List<BalanceDto> visibleOpenBalances = visibleBalancesFor(currentRoommate, allOpenBalances);
         List<Payment> visiblePayments = visiblePaymentsFor(currentRoommate);
 
@@ -127,79 +126,10 @@ public class PaymentServiceImpl implements PaymentService {
             .orElseThrow(() -> new NotFoundException("Roommate is not an active member of your household."));
     }
 
-    private List<BalanceDto> buildOpenBalances(Long householdId) {
+    private List<BalanceDto> calculateOpenBalances(Long householdId) {
         List<ExpenseSplit> splits = expenseSplitRepository.findAllByExpenseHouseholdId(householdId);
         List<Payment> payments = paymentRepository.findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(householdId);
-        Map<Long, BigDecimal> netAmountsByRoommateId = new HashMap<>();
-        Map<Long, Roommate> roommatesById = new HashMap<>();
-
-        for (ExpenseSplit split : splits) {
-            Roommate paidBy = split.getExpense().getPaidBy();
-            Roommate owedBy = split.getRoommate();
-            BigDecimal amount = toMoney(split.getAmountOwed());
-
-            roommatesById.put(paidBy.getId(), paidBy);
-            roommatesById.put(owedBy.getId(), owedBy);
-            netAmountsByRoommateId.merge(paidBy.getId(), amount, BigDecimal::add);
-            netAmountsByRoommateId.merge(owedBy.getId(), amount.negate(), BigDecimal::add);
-        }
-
-        for (Payment payment : payments) {
-            Roommate fromRoommate = payment.getFromRoommate();
-            Roommate toRoommate = payment.getToRoommate();
-            BigDecimal amount = toMoney(payment.getAmount());
-
-            roommatesById.put(fromRoommate.getId(), fromRoommate);
-            roommatesById.put(toRoommate.getId(), toRoommate);
-            netAmountsByRoommateId.merge(fromRoommate.getId(), amount, BigDecimal::add);
-            netAmountsByRoommateId.merge(toRoommate.getId(), amount.negate(), BigDecimal::add);
-        }
-
-        return settleNetAmounts(netAmountsByRoommateId, roommatesById);
-    }
-
-    private List<BalanceDto> settleNetAmounts(Map<Long, BigDecimal> netAmountsByRoommateId, Map<Long, Roommate> roommatesById) {
-        List<RoommateBalance> debtors = new ArrayList<>(toRoommateBalances(netAmountsByRoommateId, roommatesById, -1));
-        List<RoommateBalance> creditors = new ArrayList<>(toRoommateBalances(netAmountsByRoommateId, roommatesById, 1));
-        List<BalanceDto> balances = new ArrayList<>();
-        int debtorIndex = 0;
-        int creditorIndex = 0;
-
-        while (debtorIndex < debtors.size() && creditorIndex < creditors.size()) {
-            RoommateBalance debtor = debtors.get(debtorIndex);
-            RoommateBalance creditor = creditors.get(creditorIndex);
-            BigDecimal amount = debtor.amount().min(creditor.amount());
-
-            if (amount.compareTo(BigDecimal.ZERO) > 0) {
-                balances.add(toBalanceDto(debtor.roommate(), creditor.roommate(), amount));
-            }
-
-            debtor = new RoommateBalance(debtor.roommate(), debtor.amount().subtract(amount));
-            creditor = new RoommateBalance(creditor.roommate(), creditor.amount().subtract(amount));
-            debtors.set(debtorIndex, debtor);
-            creditors.set(creditorIndex, creditor);
-
-            if (debtor.amount().compareTo(BigDecimal.ZERO) == 0) {
-                debtorIndex++;
-            }
-            if (creditor.amount().compareTo(BigDecimal.ZERO) == 0) {
-                creditorIndex++;
-            }
-        }
-
-        return balances;
-    }
-
-    private List<RoommateBalance> toRoommateBalances(
-        Map<Long, BigDecimal> netAmountsByRoommateId,
-        Map<Long, Roommate> roommatesById,
-        int sign
-    ) {
-        return netAmountsByRoommateId.entrySet().stream()
-            .filter(entry -> toMoney(entry.getValue()).signum() == sign)
-            .map(entry -> new RoommateBalance(roommatesById.get(entry.getKey()), toMoney(entry.getValue().abs())))
-            .sorted(Comparator.comparing(balance -> balance.roommate().getId()))
-            .toList();
+        return balanceCalculator.calculateOpenBalances(splits, payments);
     }
 
     private List<BalanceDto> visibleBalancesFor(Roommate currentRoommate, List<BalanceDto> balances) {
@@ -223,7 +153,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private void validatePaymentReducesOpenBalance(Roommate fromRoommate, Roommate toRoommate, BigDecimal amount) {
-        BigDecimal openAmount = buildOpenBalances(fromRoommate.getHousehold().getId()).stream()
+        BigDecimal openAmount = calculateOpenBalances(fromRoommate.getHousehold().getId()).stream()
             .filter(balance -> fromRoommate.getId().equals(balance.fromRoommateId())
                 && toRoommate.getId().equals(balance.toRoommateId()))
             .map(BalanceDto::amount)
@@ -264,18 +194,6 @@ public class PaymentServiceImpl implements PaymentService {
             .reduce(BigDecimal.ZERO.setScale(MONEY_SCALE, RoundingMode.HALF_UP), BigDecimal::add);
     }
 
-    private BalanceDto toBalanceDto(Roommate fromRoommate, Roommate toRoommate, BigDecimal amount) {
-        return new BalanceDto(
-            fromRoommate.getId(),
-            toDisplayName(fromRoommate),
-            fromRoommate.getUser().getEmail(),
-            toRoommate.getId(),
-            toDisplayName(toRoommate),
-            toRoommate.getUser().getEmail(),
-            toMoney(amount)
-        );
-    }
-
     private PaymentDto toDto(Payment payment) {
         Roommate fromRoommate = payment.getFromRoommate();
         Roommate toRoommate = payment.getToRoommate();
@@ -302,5 +220,4 @@ public class PaymentServiceImpl implements PaymentService {
         return amount.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
     }
 
-    private record RoommateBalance(Roommate roommate, BigDecimal amount) {}
 }
