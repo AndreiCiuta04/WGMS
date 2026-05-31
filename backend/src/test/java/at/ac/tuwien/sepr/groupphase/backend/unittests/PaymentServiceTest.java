@@ -1,0 +1,320 @@
+package at.ac.tuwien.sepr.groupphase.backend.unittests;
+
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.PaymentCreateDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.PaymentDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.PaymentOverviewDto;
+import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
+import at.ac.tuwien.sepr.groupphase.backend.entity.Expense;
+import at.ac.tuwien.sepr.groupphase.backend.entity.ExpenseSplit;
+import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
+import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
+import at.ac.tuwien.sepr.groupphase.backend.entity.Payment;
+import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
+import at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException;
+import at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException;
+import at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException;
+import at.ac.tuwien.sepr.groupphase.backend.repository.ExpenseSplitRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
+import at.ac.tuwien.sepr.groupphase.backend.service.PaymentService;
+import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
+import at.ac.tuwien.sepr.groupphase.backend.service.impl.PaymentServiceImpl;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+public class PaymentServiceTest {
+
+    private static final String MAIN_EMAIL = "main@test.com";
+    private static final String ROOMMATE_EMAIL = "roommate@test.com";
+
+    @Mock
+    private ExpenseSplitRepository expenseSplitRepository;
+
+    @Mock
+    private PaymentRepository paymentRepository;
+
+    @Mock
+    private RoommateRepository roommateRepository;
+
+    @Mock
+    private UserService userService;
+
+    private PaymentService paymentService;
+
+    private Household household;
+    private Household otherHousehold;
+    private ApplicationUser mainUser;
+    private ApplicationUser roommateUser;
+    private ApplicationUser outsiderUser;
+    private Roommate mainTenant;
+    private Roommate roommate;
+    private Roommate outsider;
+
+    @BeforeEach
+    public void setUp() {
+        paymentService = new PaymentServiceImpl(
+            expenseSplitRepository,
+            paymentRepository,
+            roommateRepository,
+            userService
+        );
+
+        household = createHousehold(1L, "Test WG");
+        otherHousehold = createHousehold(2L, "Other WG");
+        mainUser = createUser(1L, MAIN_EMAIL, "Main", "Tenant");
+        roommateUser = createUser(2L, ROOMMATE_EMAIL, "Normal", "Roommate");
+        outsiderUser = createUser(3L, "outsider@test.com", "Other", "User");
+        mainTenant = createRoommate(1L, mainUser, household, HouseholdRole.MAIN_TENANT);
+        roommate = createRoommate(2L, roommateUser, household, HouseholdRole.ROOMMATE);
+        outsider = createRoommate(3L, outsiderUser, otherHousehold, HouseholdRole.ROOMMATE);
+    }
+
+    @Test
+    public void givenEmptyHousehold_whenGetOverview_thenReturnsEmptyOverview() {
+        mockCurrentRoommate(MAIN_EMAIL, mainUser, mainTenant);
+        when(expenseSplitRepository.findAllByExpenseHouseholdId(household.getId())).thenReturn(List.of());
+        when(paymentRepository.findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(household.getId()))
+            .thenReturn(List.of());
+
+        PaymentOverviewDto result = paymentService.getOverview(MAIN_EMAIL);
+
+        assertAll(
+            () -> assertEquals(0, result.openBalances().size()),
+            () -> assertEquals(0, result.payments().size()),
+            () -> assertEquals(money("0.00"), result.totalIOwe()),
+            () -> assertEquals(money("0.00"), result.totalOwedToMe())
+        );
+    }
+
+    @Test
+    public void givenOneExpenseWithoutPayments_whenGetOverview_thenReturnsExpectedOpenBalance() {
+        mockCurrentRoommate(MAIN_EMAIL, mainUser, mainTenant);
+        when(expenseSplitRepository.findAllByExpenseHouseholdId(household.getId()))
+            .thenReturn(List.of(createSplit(createExpense(mainTenant), roommate, "10.00")));
+        when(paymentRepository.findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(household.getId()))
+            .thenReturn(List.of());
+
+        PaymentOverviewDto result = paymentService.getOverview(MAIN_EMAIL);
+
+        assertAll(
+            () -> assertEquals(1, result.openBalances().size()),
+            () -> assertEquals(roommate.getId(), result.openBalances().get(0).fromRoommateId()),
+            () -> assertEquals(mainTenant.getId(), result.openBalances().get(0).toRoommateId()),
+            () -> assertEquals(money("10.00"), result.openBalances().get(0).amount()),
+            () -> assertEquals(money("0.00"), result.totalIOwe()),
+            () -> assertEquals(money("10.00"), result.totalOwedToMe())
+        );
+    }
+
+    @Test
+    public void givenPartialPayment_whenGetOverview_thenReducesOpenBalance() {
+        mockCurrentRoommate(MAIN_EMAIL, mainUser, mainTenant);
+        when(expenseSplitRepository.findAllByExpenseHouseholdId(household.getId()))
+            .thenReturn(List.of(createSplit(createExpense(mainTenant), roommate, "10.00")));
+        when(paymentRepository.findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(household.getId()))
+            .thenReturn(List.of(createPayment(1L, roommate, mainTenant, "4.00")));
+
+        PaymentOverviewDto result = paymentService.getOverview(MAIN_EMAIL);
+
+        assertAll(
+            () -> assertEquals(1, result.openBalances().size()),
+            () -> assertEquals(money("6.00"), result.openBalances().get(0).amount()),
+            () -> assertEquals(1, result.payments().size()),
+            () -> assertEquals(money("4.00"), result.payments().get(0).amount()),
+            () -> assertEquals(money("6.00"), result.totalOwedToMe())
+        );
+    }
+
+    @Test
+    public void givenFullPayment_whenGetOverview_thenOpenBalanceIsRemoved() {
+        mockCurrentRoommate(MAIN_EMAIL, mainUser, mainTenant);
+        when(expenseSplitRepository.findAllByExpenseHouseholdId(household.getId()))
+            .thenReturn(List.of(createSplit(createExpense(mainTenant), roommate, "10.00")));
+        when(paymentRepository.findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(household.getId()))
+            .thenReturn(List.of(createPayment(1L, roommate, mainTenant, "10.00")));
+
+        PaymentOverviewDto result = paymentService.getOverview(MAIN_EMAIL);
+
+        assertAll(
+            () -> assertEquals(0, result.openBalances().size()),
+            () -> assertEquals(1, result.payments().size()),
+            () -> assertEquals(money("0.00"), result.totalIOwe()),
+            () -> assertEquals(money("0.00"), result.totalOwedToMe())
+        );
+    }
+
+    @Test
+    public void givenRoommate_whenGetOverview_thenOnlyOwnBalancesAndPaymentsAreReturned() {
+        ApplicationUser thirdUser = createUser(4L, "third@test.com", "Third", "Roommate");
+        Roommate thirdRoommate = createRoommate(4L, thirdUser, household, HouseholdRole.ROOMMATE);
+        mockCurrentRoommate(ROOMMATE_EMAIL, roommateUser, roommate);
+        when(expenseSplitRepository.findAllByExpenseHouseholdId(household.getId()))
+            .thenReturn(List.of(
+                createSplit(createExpense(mainTenant), roommate, "10.00"),
+                createSplit(createExpense(thirdRoommate), mainTenant, "8.00")
+            ));
+        when(paymentRepository.findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(household.getId()))
+            .thenReturn(List.of());
+        when(paymentRepository.findAllInvolvingRoommate(household.getId(), roommate.getId())).thenReturn(List.of());
+
+        PaymentOverviewDto result = paymentService.getOverview(ROOMMATE_EMAIL);
+
+        assertAll(
+            () -> assertEquals(1, result.openBalances().size()),
+            () -> assertEquals(roommate.getId(), result.openBalances().get(0).fromRoommateId()),
+            () -> assertEquals(mainTenant.getId(), result.openBalances().get(0).toRoommateId()),
+            () -> assertEquals(money("10.00"), result.totalIOwe()),
+            () -> assertEquals(money("0.00"), result.totalOwedToMe())
+        );
+    }
+
+    @Test
+    public void givenValidPayment_whenCreatePayment_thenPaymentIsSaved() {
+        mockCurrentRoommate(ROOMMATE_EMAIL, roommateUser, roommate);
+        when(roommateRepository.findByIdAndHouseholdIdAndActiveTrue(mainTenant.getId(), household.getId()))
+            .thenReturn(Optional.of(mainTenant));
+        when(expenseSplitRepository.findAllByExpenseHouseholdId(household.getId()))
+            .thenReturn(List.of(createSplit(createExpense(mainTenant), roommate, "10.00")));
+        when(paymentRepository.findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(household.getId()))
+            .thenReturn(List.of());
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
+            Payment payment = invocation.getArgument(0);
+            payment.setId(99L);
+            payment.setCreatedAt(LocalDateTime.of(2026, 5, 25, 12, 0));
+            return payment;
+        });
+
+        PaymentDto result = paymentService.createPayment(
+            new PaymentCreateDto(mainTenant.getId(), money("4.50"), LocalDate.of(2026, 5, 25)),
+            ROOMMATE_EMAIL
+        );
+
+        assertAll(
+            () -> assertEquals(99L, result.id()),
+            () -> assertEquals(roommate.getId(), result.fromRoommateId()),
+            () -> assertEquals(mainTenant.getId(), result.toRoommateId()),
+            () -> assertEquals(money("4.50"), result.amount())
+        );
+    }
+
+    @Test
+    public void givenUserWithoutActiveHousehold_whenGetOverview_thenForbidden() {
+        when(userService.findApplicationUserByEmail(MAIN_EMAIL)).thenReturn(mainUser);
+        when(roommateRepository.findByUserIdAndActiveTrue(mainUser.getId())).thenReturn(Optional.empty());
+
+        assertThrows(ForbiddenException.class, () -> paymentService.getOverview(MAIN_EMAIL));
+    }
+
+    @Test
+    public void givenPaymentToRoommateInOtherHousehold_whenCreatePayment_thenNotFoundAndNoSave() {
+        mockCurrentRoommate(ROOMMATE_EMAIL, roommateUser, roommate);
+        when(roommateRepository.findByIdAndHouseholdIdAndActiveTrue(outsider.getId(), household.getId()))
+            .thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () ->
+            paymentService.createPayment(
+                new PaymentCreateDto(outsider.getId(), money("1.00"), LocalDate.of(2026, 5, 25)),
+                ROOMMATE_EMAIL
+            )
+        );
+        verify(paymentRepository, never()).save(any(Payment.class));
+    }
+
+    @Test
+    public void givenInvalidAmount_whenCreatePayment_thenConflictAndNoSave() {
+        mockCurrentRoommate(ROOMMATE_EMAIL, roommateUser, roommate);
+
+        assertThrows(ConflictException.class, () ->
+            paymentService.createPayment(
+                new PaymentCreateDto(mainTenant.getId(), money("0.00"), LocalDate.of(2026, 5, 25)),
+                ROOMMATE_EMAIL
+            )
+        );
+        verify(paymentRepository, never()).save(any(Payment.class));
+    }
+
+    private void mockCurrentRoommate(String email, ApplicationUser user, Roommate currentRoommate) {
+        when(userService.findApplicationUserByEmail(email)).thenReturn(user);
+        when(roommateRepository.findByUserIdAndActiveTrue(user.getId())).thenReturn(Optional.of(currentRoommate));
+    }
+
+    private Household createHousehold(Long id, String name) {
+        Household household = new Household();
+        household.setId(id);
+        household.setName(name);
+        return household;
+    }
+
+    private ApplicationUser createUser(Long id, String email, String firstName, String lastName) {
+        ApplicationUser user = new ApplicationUser();
+        user.setId(id);
+        user.setEmail(email);
+        user.setFirstName(firstName);
+        user.setLastName(lastName);
+        return user;
+    }
+
+    private Roommate createRoommate(Long id, ApplicationUser user, Household household, HouseholdRole role) {
+        Roommate roommate = new Roommate();
+        roommate.setId(id);
+        roommate.setUser(user);
+        roommate.setHousehold(household);
+        roommate.setRole(role);
+        roommate.setActive(true);
+        return roommate;
+    }
+
+    private Expense createExpense(Roommate paidBy) {
+        Expense expense = new Expense();
+        expense.setHousehold(paidBy.getHousehold());
+        expense.setPaidBy(paidBy);
+        expense.setCreatedBy(paidBy);
+        expense.setDescription("Shared expense");
+        expense.setTotalAmount(money("10.00"));
+        expense.setDate(LocalDate.of(2026, 5, 25));
+        return expense;
+    }
+
+    private ExpenseSplit createSplit(Expense expense, Roommate roommate, String amount) {
+        ExpenseSplit split = new ExpenseSplit();
+        split.setExpense(expense);
+        split.setRoommate(roommate);
+        split.setAmountOwed(money(amount));
+        return split;
+    }
+
+    private Payment createPayment(Long id, Roommate fromRoommate, Roommate toRoommate, String amount) {
+        Payment payment = new Payment();
+        payment.setId(id);
+        payment.setHousehold(fromRoommate.getHousehold());
+        payment.setFromRoommate(fromRoommate);
+        payment.setToRoommate(toRoommate);
+        payment.setCreatedBy(fromRoommate);
+        payment.setAmount(money(amount));
+        payment.setDate(LocalDate.of(2026, 5, 25));
+        payment.setCreatedAt(LocalDateTime.of(2026, 5, 25, 12, 0));
+        return payment;
+    }
+
+    private BigDecimal money(String amount) {
+        return new BigDecimal(amount).setScale(2);
+    }
+}

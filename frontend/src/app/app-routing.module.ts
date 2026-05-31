@@ -20,6 +20,7 @@ import {CleaningScheduleListComponent} from './components/cleaning-schedule-list
 import {CleaningScheduleCreateComponent} from './components/cleaning-schedule-create/cleaning-schedule-create.component';
 import {CleaningScheduleEditComponent} from './components/cleaning-schedule-edit/cleaning-schedule-edit.component';
 import {HistoryComponent} from './components/history/history.component';
+import {PaymentStatusComponent} from './components/payment-status/payment-status.component';
 
 const routes: Routes = [
   {path: '', component: HomeComponent},
@@ -35,6 +36,7 @@ const routes: Routes = [
   {path: 'tasks/:id/edit', component: TaskEditComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'expenses', component: ExpensesComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'history', component: HistoryComponent, canActivate: mapToCanActivate([AuthGuard])},
+  {path: 'payment-status', component: PaymentStatusComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'shopping-items', component: ShoppingItemListComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'shopping-items/create', component: ShoppingItemCreateComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'shopping-items/:id/edit', component: ShoppingItemEditComponent, canActivate: mapToCanActivate([AuthGuard])},
