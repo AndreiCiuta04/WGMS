@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
@@ -33,6 +34,7 @@ public class ShoppingItemRepositoryTest {
     @Autowired private ShoppingItemRepository shoppingItemRepository;
     @Autowired private HouseholdRepository householdRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     private ApplicationUser userA;
     private ApplicationUser userB;
@@ -147,5 +149,67 @@ public class ShoppingItemRepositoryTest {
         item.setCreatedAt(createdAt);
         item.setUpdatedAt(createdAt);
         return shoppingItemRepository.save(item);
+    }
+
+    @Test
+    public void findByHouseholdAndVisibilityAndStatus_returnsOnlySharedNeededItems() {
+        save("Milk", householdA, userA, null, ShoppingItemVisibility.SHARED, LocalDateTime.now());
+        ShoppingItem bought = save("Bread", householdA, userA, null, ShoppingItemVisibility.SHARED, LocalDateTime.now());
+        bought.setStatus(ShoppingItemStatus.BOUGHT);
+        shoppingItemRepository.save(bought);
+
+        save("Private", householdA, userA, null, ShoppingItemVisibility.PERSONAL, LocalDateTime.now());
+        save("Other household", householdB, userB, null, ShoppingItemVisibility.SHARED, LocalDateTime.now());
+
+        List<ShoppingItem> result = shoppingItemRepository
+            .findAllByHouseholdIdAndVisibilityAndStatusOrderByCreatedAtDesc(
+                householdA.getId(),
+                ShoppingItemVisibility.SHARED,
+                ShoppingItemStatus.NEEDED
+            );
+
+        assertEquals(1, result.size());
+        assertEquals("Milk", result.get(0).getName());
+        assertEquals(ShoppingItemVisibility.SHARED, result.get(0).getVisibility());
+        assertEquals(ShoppingItemStatus.NEEDED, result.get(0).getStatus());
+    }
+
+    @Test
+    public void findByHouseholdAndStatusIn_returnsOnlyHistoryItemsOrderedByUpdatedAtDesc() {
+        LocalDateTime base = LocalDateTime.of(2026, 5, 31, 12, 0);
+
+        ShoppingItem bought = save("Bought old", householdA, userA, null, ShoppingItemVisibility.SHARED, base.minusDays(4));
+        markStatusAndUpdatedAt(bought, ShoppingItemStatus.BOUGHT, base.minusHours(2));
+
+        ShoppingItem cancelled = save("Cancelled new", householdA, userA, null, ShoppingItemVisibility.PERSONAL, base.minusDays(3));
+        markStatusAndUpdatedAt(cancelled, ShoppingItemStatus.CANCELLED, base);
+
+        ShoppingItem needed = save("Still needed", householdA, userA, null, ShoppingItemVisibility.SHARED, base.minusDays(2));
+        markStatusAndUpdatedAt(needed, ShoppingItemStatus.NEEDED, base.plusHours(1));
+
+        ShoppingItem otherHousehold = save("Other household bought", householdB, userB, null, ShoppingItemVisibility.SHARED, base.minusDays(1));
+        markStatusAndUpdatedAt(otherHousehold, ShoppingItemStatus.BOUGHT, base.plusHours(2));
+
+        List<ShoppingItem> result = shoppingItemRepository
+            .findAllByHouseholdIdAndStatusInOrderByUpdatedAtDesc(
+                householdA.getId(),
+                List.of(ShoppingItemStatus.BOUGHT, ShoppingItemStatus.CANCELLED)
+            );
+
+        assertEquals(2, result.size());
+        assertEquals("Cancelled new", result.get(0).getName());
+        assertEquals("Bought old", result.get(1).getName());
+        assertTrue(result.stream().allMatch(item -> item.getHousehold().getId().equals(householdA.getId())));
+        assertTrue(result.stream().noneMatch(item -> item.getStatus() == ShoppingItemStatus.NEEDED));
+    }
+
+    private void markStatusAndUpdatedAt(ShoppingItem item, ShoppingItemStatus status, LocalDateTime updatedAt) {
+        item.setStatus(status);
+        shoppingItemRepository.saveAndFlush(item);
+        jdbcTemplate.update(
+            "UPDATE shopping_item SET updated_at = ? WHERE id = ?",
+            updatedAt,
+            item.getId()
+        );
     }
 }

@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { ShoppingItemService } from '../../services/shopping-item.service';
-import { ShoppingItemDto, ShoppingItemStatus, ShoppingItemVisibility } from '../../dtos/shopping-item';
+import { AggregatedShoppingItemDto, ShoppingItemDto, ShoppingItemStatus, ShoppingItemVisibility } from '../../dtos/shopping-item';
 
 @Component({
   selector: 'app-shopping-item-list',
@@ -13,8 +13,10 @@ export class ShoppingItemListComponent implements OnInit {
 
   allItems: ShoppingItemDto[] = [];
   targetedItems: ShoppingItemDto[] = [];
+  aggregatedItems: AggregatedShoppingItemDto[] = [];
+  historyItems: ShoppingItemDto[] = [];
 
-  currentTab: 'ALL' | 'TARGETED' = 'ALL';
+  currentTab: 'ALL' | 'TARGETED' | 'AGGREGATED' | 'HISTORY' = 'ALL';
   loading = false;
   actionError: string | null = null;
   successMessage: string | null = null;
@@ -47,11 +49,19 @@ export class ShoppingItemListComponent implements OnInit {
     );
   }
 
+  get isAggregatedTab(): boolean {
+    return this.currentTab === 'AGGREGATED';
+  }
+
+  get isHistoryTab(): boolean {
+    return this.currentTab === 'HISTORY';
+  }
+
   toggleCompletedExpanded(): void {
     this.completedExpanded = !this.completedExpanded;
   }
 
-  switchTab(tab: 'ALL' | 'TARGETED') {
+  switchTab(tab: 'ALL' | 'TARGETED' | 'AGGREGATED' | 'HISTORY') {
     this.currentTab = tab;
   }
 
@@ -60,11 +70,16 @@ export class ShoppingItemListComponent implements OnInit {
     this.actionError = null;
     forkJoin({
       all: this.shoppingItemService.findAll(),
-      targeted: this.shoppingItemService.findTargetedAtMe()
+      targeted: this.shoppingItemService.findTargetedAtMe(),
+      aggregated: this.shoppingItemService.findAggregatedHouseholdShoppingList(),
+      history: this.shoppingItemService.findHouseholdShoppingHistory()
+
     }).subscribe({
-      next: ({ all, targeted }) => {
+      next: ({ all, targeted, aggregated, history }) => {
         this.allItems = all;
         this.targetedItems = targeted;
+        this.aggregatedItems = aggregated;
+        this.historyItems = history;
         this.loading = false;
       },
       error: (err) => {
@@ -121,6 +136,8 @@ export class ShoppingItemListComponent implements OnInit {
     this.successMessage = message;
     setTimeout(() => { this.successMessage = null; }, 3000);
   }
+
+
 
   private extractError(err: any, fallback: string): string {
     if (err?.error?.message) {

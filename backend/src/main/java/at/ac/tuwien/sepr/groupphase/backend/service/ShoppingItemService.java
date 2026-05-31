@@ -4,6 +4,7 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemStatusUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemUpdateDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 
 import java.util.List;
@@ -50,6 +51,31 @@ public interface ShoppingItemService {
      *     if the user is not a member of any active household
      */
     List<ShoppingItemDto> findTargetedAtCurrentUser(ApplicationUser currentUser);
+
+    /**
+     * Lists the aggregated household shopping list.
+     * The aggregation includes only active household items with
+     * {@code SHARED} visibility and {@code NEEDED} status. Personal items,
+     * targeted requests, bought items, cancelled items, and items from other
+     * households are excluded.
+     *
+     * @param currentUser the currently authenticated user
+     * @return aggregated household shopping-list entries
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException
+     *     if the user is not a member of any active household
+     */
+    List<AggregatedShoppingItemDto> findAggregatedHouseholdShoppingList(ApplicationUser currentUser);
+
+    /**
+     * Lists the current household's shopping history. History consists of items
+     * with {@code BOUGHT} or {@code CANCELLED} status.
+     *
+     * @param currentUser the currently authenticated user
+     * @return shopping history entries, ordered most recently updated first
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException
+     *     if the user is not a member of any active household
+     */
+    List<ShoppingItemDto> findHouseholdShoppingHistory(ApplicationUser currentUser);
 
     /**
      * Returns a shopping item by its id.

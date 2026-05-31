@@ -49,3 +49,22 @@ export interface ShoppingItemDto {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface AggregatedShoppingItemSourceDto {
+  id: number;
+  name: string;
+  quantity?: string | null;
+  notes?: string | null;
+  createdById: number;
+  createdByEmail: string;
+  createdByFirstName: string;
+  createdByLastName: string;
+  createdAt: string;
+}
+
+export interface AggregatedShoppingItemDto {
+  name: string;
+  quantity?: string | null;
+  itemCount: number;
+  sourceItems: AggregatedShoppingItemSourceDto[];
+}

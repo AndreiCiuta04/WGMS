@@ -22,17 +22,165 @@
   <!-- Tab Switcher -->
   <ul class="nav nav-tabs mb-4">
     <li class="nav-item">
-      <a class="nav-link cursor-pointer" [class.active]="currentTab === 'ALL'" (click)="switchTab('ALL')">All Items</a>
+      <a class="nav-link cursor-pointer" data-cy="shopping-tab-all" [class.active]="currentTab === 'ALL'" (click)="switchTab('ALL')">All Items</a>
     </li>
     <li class="nav-item">
-      <a class="nav-link cursor-pointer" [class.active]="currentTab === 'TARGETED'" (click)="switchTab('TARGETED')">Targeted at Me</a>
+      <a class="nav-link cursor-pointer" data-cy="shopping-tab-targeted" [class.active]="currentTab === 'TARGETED'" (click)="switchTab('TARGETED')">Targeted at Me</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link cursor-pointer" data-cy="shopping-tab-household-list" [class.active]="currentTab === 'AGGREGATED'" (click)="switchTab('AGGREGATED')"> Household List </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link cursor-pointer" data-cy="shopping-tab-history" [class.active]="currentTab === 'HISTORY'" (click)="switchTab('HISTORY')">History</a>
     </li>
   </ul>
 
-  <!-- ============================== -->
-  <!-- Section 1: Needed Items        -->
-  <!-- ============================== -->
-  <section class="section needed-section">
+
+
+  @if (isAggregatedTab) {
+    <section class="section aggregated-section" data-cy="household-list-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <lucide-icon name="shopping-bag" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+        <h3 class="section-title">Aggregated Household List</h3>
+      </div>
+      <div class="section-header-actions">
+        @if (aggregatedItems.length > 0) {
+          <span class="section-count">{{ aggregatedItems.length }}</span>
+        }
+        <a routerLink="/shopping-items/create" class="btn btn-primary btn-sm">+ Add Shared Item</a>
+      </div>
+    </div>
+
+    @if (loading) {
+      <div class="text-center p-4">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    } @else if (aggregatedItems.length === 0) {
+      <div class="empty-state">
+        <lucide-icon name="shopping-bag" [size]="32" [strokeWidth]="1.5" style="color: #79AE6F; margin-bottom: 8px; display: inline-block;"></lucide-icon>
+        <p class="empty-text" data-cy="household-list-empty">No shared household shopping needs right now.</p>
+      </div>
+    }
+
+    @for (item of aggregatedItems; track item.name + '-' + item.quantity) {
+      <div class="aggregated-item" data-cy="aggregated-shopping-item">
+        <div class="needed-item-left">
+          <div class="needed-indicator aggregated-indicator">
+            <lucide-icon name="shopping-bag" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+          </div>
+          <div class="needed-item-info">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span class="needed-item-title">{{ item.name }}</span>
+              @if (item.itemCount > 1) {
+                <span class="badge aggregate-count" data-cy="aggregate-request-count">{{ item.itemCount }} requests</span>
+              } @else {
+                <span class="badge aggregate-count" data-cy="aggregate-request-count">1 request</span>
+              }
+            </div>
+            <span class="needed-item-meta">
+              @if (item.quantity) { {{ item.quantity }} · }
+              Requested by
+              @for (source of item.sourceItems; track source.id; let last = $last) {
+                {{ source.createdByFirstName }} {{ source.createdByLastName }}@if (!last) {,}
+              }
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="aggregate-source-list">
+        @for (source of item.sourceItems; track source.id) {
+          <div class="aggregate-source-item">
+            <span>
+              {{ source.createdByFirstName }} {{ source.createdByLastName }}
+              @if (source.notes) { · {{ source.notes }} }
+            </span>
+          </div>
+        }
+      </div>
+    }
+    </section>
+  } @else if (isHistoryTab) {
+    <section class="section history-section" data-cy="shopping-history-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <lucide-icon name="circle-check" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+        <h3 class="section-title">Shopping History</h3>
+      </div>
+      <div class="section-header-actions">
+        @if (historyItems.length > 0) {
+          <span class="section-count completed-count">{{ historyItems.length }}</span>
+        }
+      </div>
+    </div>
+
+    @if (loading) {
+      <div class="text-center p-4">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    } @else if (historyItems.length === 0) {
+      <div class="empty-state">
+        <lucide-icon name="circle-check" [size]="28" [strokeWidth]="1.5" style="color: #9FCB98; margin-bottom: 8px; display: inline-block;"></lucide-icon>
+        <p class="empty-text" data-cy="shopping-history-empty">No bought or cancelled shopping items yet.</p>
+      </div>
+    }
+
+    @for (item of historyItems; track item.id) {
+      <div class="completed-item history-item" data-cy="shopping-history-item">
+        <div class="completed-item-left">
+          <span class="completed-status-dot"
+                [class.bought]="item.status === ShoppingItemStatus.BOUGHT"
+                [class.cancelled]="item.status === ShoppingItemStatus.CANCELLED"></span>
+          <div class="completed-item-info">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span class="completed-item-title">{{ item.name }}</span>
+              <span class="status-label" data-cy="shopping-history-status"
+                    [class.status-bought]="item.status === ShoppingItemStatus.BOUGHT"
+                    [class.status-cancelled]="item.status === ShoppingItemStatus.CANCELLED">
+                {{ item.status }}
+              </span>
+              <span class="badge badge-visibility badge-completed"
+                    [class.badge-personal]="item.visibility === ShoppingItemVisibility.PERSONAL"
+                    [class.badge-shared]="item.visibility === ShoppingItemVisibility.SHARED"
+                    [class.badge-targeted]="item.visibility === ShoppingItemVisibility.TARGETED">
+                {{ item.visibility }}
+              </span>
+            </div>
+            <span class="completed-item-meta">
+              @if (item.quantity) { {{ item.quantity }} · }
+              Added by {{ item.createdByFirstName }} {{ item.createdByLastName }}
+              @if (item.targetUserEmail || item.targetUserFirstName || item.targetUserLastName) {
+                · <span class="target-user-label">For: {{ item.targetUserFirstName }} {{ item.targetUserLastName }}</span>
+              }
+              · Updated {{ item.updatedAt | date:'medium' }}
+              @if (item.createdAt && item.createdAt !== item.updatedAt) {
+                · Created {{ item.createdAt | date:'mediumDate' }}
+              }
+            </span>
+          </div>
+        </div>
+        <div class="item-actions">
+          <button class="action-btn" data-cy="mark-needed-action" (click)="markAsNeeded(item)" title="Mark as Needed">
+            <lucide-icon name="rotate-ccw" [size]="14" [strokeWidth]="2"></lucide-icon>
+          </button>
+          <button class="action-btn danger" (click)="deleteItem(item)" title="Delete">
+            <lucide-icon name="trash-2" [size]="14" [strokeWidth]="2"></lucide-icon>
+          </button>
+        </div>
+      </div>
+    }
+    </section>
+  } @else {
+  
+    <!-- ============================== -->
+    <!-- Section 1: Needed Items        -->
+    <!-- ============================== -->
+    <section class="section needed-section">
     <div class="section-header">
       <div class="section-title-group">
         <lucide-icon name="shopping-cart" [size]="18" [strokeWidth]="1.75"></lucide-icon>
@@ -101,12 +249,12 @@
         </div>
       </div>
     }
-  </section>
-
-  <!-- ============================== -->
-  <!-- Section 2: Bought / Cancelled  -->
-  <!-- ============================== -->
-  <section class="section completed-section">
+    </section>
+  
+    <!-- ============================== -->
+    <!-- Section 2: Bought / Cancelled  -->
+    <!-- ============================== -->
+    <section class="section completed-section">
     <div class="completed-header" (click)="toggleCompletedExpanded()">
       <div class="section-title-group">
         <lucide-icon name="circle-check" [size]="18" [strokeWidth]="1.75"></lucide-icon>
@@ -167,6 +315,6 @@
         </div>
       }
     }
-  </section>
-
+    </section>
+  }
 </div>

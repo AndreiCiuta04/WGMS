@@ -5,6 +5,7 @@ import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemStatusUpdateDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
@@ -17,6 +18,7 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ShoppingItemRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepository;
 import at.ac.tuwien.sepr.groupphase.backend.security.JwtTokenizer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,15 +62,18 @@ public class ShoppingItemEndpointTest implements TestData {
     @Autowired private SecurityProperties securityProperties;
     @Autowired private JsonMapper jsonMapper;
     @Autowired private TaskRepository taskRepository;
+    @Autowired private CleaningScheduleRepository cleaningScheduleRepository;
 
     private ApplicationUser userA;
     private ApplicationUser userB;
     private ApplicationUser userC;
     private Household household;
+    private Household otherHousehold;
 
     @BeforeEach
     public void beforeEach() {
         taskRepository.deleteAll();
+        cleaningScheduleRepository.deleteAll();
         shoppingItemRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
@@ -98,7 +103,7 @@ public class ShoppingItemEndpointTest implements TestData {
         roommateRepository.saveAll(List.of(ra, rb));
 
         // userC lives in a different household — used to verify cross-household isolation
-        Household otherHousehold = new Household();
+        otherHousehold = new Household();
         otherHousehold.setName("Other WG");
         otherHousehold.setCreatedBy(userC);
         householdRepository.save(otherHousehold);
@@ -114,6 +119,7 @@ public class ShoppingItemEndpointTest implements TestData {
     @AfterEach
     public void afterEach() {
         taskRepository.deleteAll();
+        cleaningScheduleRepository.deleteAll();
         shoppingItemRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
@@ -334,7 +340,102 @@ public class ShoppingItemEndpointTest implements TestData {
         assertEquals(0, shoppingItemRepository.findAll().size());
     }
 
+    @Test
+    public void givenSharedNeededItems_whenGetAggregatedShoppingList_thenOnlyHouseholdSharedNeededItemsGrouped() throws Exception {
+        seedItem("Milk", userA, ShoppingItemVisibility.SHARED, null);
+        seedItem(" milk ", userB, ShoppingItemVisibility.SHARED, null);
+
+        ShoppingItem bought = seedItem("Bread", userA, ShoppingItemVisibility.SHARED, null);
+        bought.setStatus(ShoppingItemStatus.BOUGHT);
+        shoppingItemRepository.save(bought);
+
+        seedItem("Private item", userA, ShoppingItemVisibility.PERSONAL, null);
+
+        MvcResult result = mockMvc.perform(get(SHOPPING_ITEM_BASE_URI + "/aggregated")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("usera@test.com", USER_ROLES)))
+            .andReturn();
+
+        assertEquals(HttpStatus.OK.value(), result.getResponse().getStatus());
+
+        AggregatedShoppingItemDto[] items = jsonMapper.readValue(
+            result.getResponse().getContentAsString(),
+            AggregatedShoppingItemDto[].class
+        );
+
+        assertEquals(1, items.length);
+        assertEquals("Milk", items[0].name());
+        assertEquals(2, items[0].itemCount());
+        assertEquals(2, items[0].sourceItems().size());
+    }
+
+    @Test
+    public void givenUserFromOtherHousehold_whenGetAggregatedShoppingList_thenDoesNotLeakItems() throws Exception {
+        seedItem("Toilet paper", userA, ShoppingItemVisibility.SHARED, null);
+
+        MvcResult result = mockMvc.perform(get(SHOPPING_ITEM_BASE_URI + "/aggregated")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userc@test.com", USER_ROLES)))
+            .andReturn();
+
+        assertEquals(HttpStatus.OK.value(), result.getResponse().getStatus());
+
+        AggregatedShoppingItemDto[] items = jsonMapper.readValue(
+            result.getResponse().getContentAsString(),
+            AggregatedShoppingItemDto[].class
+        );
+
+        assertEquals(0, items.length);
+    }
+
+    @Test
+    public void givenHistoryItems_whenGetShoppingHistory_thenOnlyCurrentHouseholdBoughtAndCancelledItemsReturned() throws Exception {
+        ShoppingItem bought = seedItem("Bought milk", userA, ShoppingItemVisibility.SHARED, null);
+        bought.setStatus(ShoppingItemStatus.BOUGHT);
+        shoppingItemRepository.save(bought);
+
+        ShoppingItem cancelled = seedItem("Cancelled bread", userB, ShoppingItemVisibility.PERSONAL, null);
+        cancelled.setStatus(ShoppingItemStatus.CANCELLED);
+        shoppingItemRepository.save(cancelled);
+
+        seedItem("Needed eggs", userA, ShoppingItemVisibility.SHARED, null);
+
+        ShoppingItem otherHouseholdBought = seedItemInHousehold(
+            "Other household bought",
+            otherHousehold,
+            userC,
+            ShoppingItemVisibility.SHARED,
+            null
+        );
+        otherHouseholdBought.setStatus(ShoppingItemStatus.BOUGHT);
+        shoppingItemRepository.save(otherHouseholdBought);
+
+        MvcResult result = mockMvc.perform(get(SHOPPING_ITEM_BASE_URI + "/history")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("usera@test.com", USER_ROLES)))
+            .andReturn();
+
+        assertEquals(HttpStatus.OK.value(), result.getResponse().getStatus());
+
+        ShoppingItemDto[] items = jsonMapper.readValue(
+            result.getResponse().getContentAsString(),
+            ShoppingItemDto[].class
+        );
+        List<String> names = java.util.Arrays.stream(items).map(ShoppingItemDto::name).toList();
+
+        assertEquals(2, items.length);
+        assertTrue(names.contains("Bought milk"));
+        assertTrue(names.contains("Cancelled bread"));
+        assertTrue(!names.contains("Needed eggs"));
+        assertTrue(!names.contains("Other household bought"));
+        assertTrue(java.util.Arrays.stream(items).allMatch(item -> item.householdId().equals(household.getId())));
+        assertTrue(java.util.Arrays.stream(items).allMatch(item ->
+            item.status() == ShoppingItemStatus.BOUGHT || item.status() == ShoppingItemStatus.CANCELLED));
+    }
+
     private ShoppingItem seedItem(String name, ApplicationUser creator, ShoppingItemVisibility visibility, ApplicationUser target) {
+        return seedItemInHousehold(name, household, creator, visibility, target);
+    }
+
+    private ShoppingItem seedItemInHousehold(String name, Household household, ApplicationUser creator,
+                                             ShoppingItemVisibility visibility, ApplicationUser target) {
         ShoppingItem item = new ShoppingItem();
         item.setName(name);
         item.setHousehold(household);

@@ -4,6 +4,8 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemStatusUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemUpdateDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemSourceDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.mapper.ShoppingItemMapper;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
@@ -28,6 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.lang.invoke.MethodHandles;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Comparator;
+import java.util.Locale;
 
 @Service
 public class ShoppingItemServiceImpl implements ShoppingItemService {
@@ -148,6 +152,48 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         shoppingItemRepository.delete(item);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<AggregatedShoppingItemDto> findAggregatedHouseholdShoppingList(ApplicationUser currentUser) {
+        LOGGER.debug("Find aggregated household shopping list for user {}", currentUser.getEmail());
+
+        Roommate roommate = requireActiveRoommate(currentUser);
+
+        List<ShoppingItem> sharedNeededItems = shoppingItemRepository
+            .findAllByHouseholdIdAndVisibilityAndStatusOrderByCreatedAtDesc(
+                roommate.getHousehold().getId(),
+                ShoppingItemVisibility.SHARED,
+                ShoppingItemStatus.NEEDED
+            );
+
+        LinkedHashMap<AggregationKey, List<ShoppingItem>> groupedItems = sharedNeededItems.stream()
+            .collect(java.util.stream.Collectors.groupingBy(
+                item -> new AggregationKey(normalize(item.getName()), normalize(item.getQuantity())),
+                LinkedHashMap::new,
+                java.util.stream.Collectors.toList()
+            ));
+
+        return groupedItems.values().stream()
+            .map(this::toAggregatedShoppingItemDto)
+            .sorted(Comparator.comparing(AggregatedShoppingItemDto::name, String.CASE_INSENSITIVE_ORDER))
+            .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ShoppingItemDto> findHouseholdShoppingHistory(ApplicationUser currentUser) {
+        LOGGER.debug("Find household shopping history for user {}", currentUser.getEmail());
+
+        Roommate roommate = requireActiveRoommate(currentUser);
+
+        return shoppingItemMapper.entityToDto(
+            shoppingItemRepository.findAllByHouseholdIdAndStatusInOrderByUpdatedAtDesc(
+                roommate.getHousehold().getId(),
+                List.of(ShoppingItemStatus.BOUGHT, ShoppingItemStatus.CANCELLED)
+            )
+        );
+    }
+
     // ------------------------------------------------------------------------
     // helpers
     // ------------------------------------------------------------------------
@@ -232,7 +278,7 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         if (target == null) {
             throw new NotFoundException("Target user " + targetEmail + " not found.");
         }
-        
+
         // Relax check: if target is the same as existing target, bypass active validation
         if (existingTarget != null && existingTarget.getId().equals(target.getId())) {
             return target;
@@ -246,4 +292,56 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         }
         return target;
     }
+
+    private AggregatedShoppingItemDto toAggregatedShoppingItemDto(List<ShoppingItem> items) {
+        ShoppingItem representative = items.stream()
+            .filter(item -> item.getCreatedAt() != null)
+            .min(Comparator.comparing(ShoppingItem::getCreatedAt))
+            .orElseGet(() -> items.stream()
+                .filter(item -> item.getName() != null && item.getName().equals(cleanDisplayValue(item.getName())))
+                .findFirst()
+                .orElse(items.get(0)));
+
+        List<AggregatedShoppingItemSourceDto> sourceItems = items.stream()
+            .map(this::toAggregatedShoppingItemSourceDto)
+            .toList();
+
+        return new AggregatedShoppingItemDto(
+            cleanDisplayValue(representative.getName()),
+            cleanDisplayValue(representative.getQuantity()),
+            items.size(),
+            sourceItems
+        );
+    }
+
+    private String cleanDisplayValue(String value) {
+        if (value == null) {
+            return null;
+        }
+        String cleaned = value.trim().replaceAll("\\s+", " ");
+        return cleaned.isEmpty() ? null : cleaned;
+    }
+
+    private AggregatedShoppingItemSourceDto toAggregatedShoppingItemSourceDto(ShoppingItem item) {
+        return new AggregatedShoppingItemSourceDto(
+            item.getId(),
+            item.getName(),
+            item.getQuantity(),
+            item.getNotes(),
+            item.getCreatedBy().getId(),
+            item.getCreatedBy().getEmail(),
+            item.getCreatedBy().getFirstName(),
+            item.getCreatedBy().getLastName(),
+            item.getCreatedAt()
+        );
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+    }
+
+    private record AggregationKey(String normalizedName, String normalizedQuantity) {}
 }
