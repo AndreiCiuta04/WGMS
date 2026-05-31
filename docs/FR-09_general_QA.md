@@ -11,9 +11,9 @@
 - Dependency: FR-07 Shopping list management and FR-08 Targeted shopping request collection
 - Branch:
 - Merge request:
-- Developer:
-- QA reviewer:
-- Date:
+- Developer: Taras Trishch and Andrei Ciuta
+- QA reviewer: Andrei Ciuta
+- Date: 31.05.26
 
 ## How to Use This Checklist
 
@@ -21,25 +21,25 @@ This is the feature-level QA checklist. It verifies backend, frontend, e2e, docu
 
 ## 1. Critical Checks — Feature Scope
 
-- [ ] FR-09 implements the agreed feature: Aggregated Household Shopping List.
-- [ ] Feature behavior matches the use case: UC-04 — Collaborative Shopping Management.
-- [ ] Feature does not implement unrelated scope.
-- [ ] Feature uses existing project authentication and household model.
-- [ ] Feature is household-scoped.
-- [ ] Feature does not expose other household data.
-- [ ] Feature does not require frontend household selection unless explicitly required and securely validated.
-- [ ] Feature is reachable in the frontend.
-- [ ] Feature has backend support.
-- [ ] Known limitations are documented.
+- [x] FR-09 implements the agreed feature: Aggregated Household Shopping List.
+- [x] Feature behavior matches the use case: UC-04 — Collaborative Shopping Management.
+- [x] Feature does not implement unrelated scope.
+- [x] Feature uses existing project authentication and household model.
+- [x] Feature is household-scoped.
+- [x] Feature does not expose other household data.
+- [x] Feature does not require frontend household selection unless explicitly required and securely validated.
+- [x] Feature is reachable in the frontend.
+- [x] Feature has backend support.
+- [x] Known limitations are documented.
 
 ## 2. Critical Checks — Dependencies
 
-- [ ] Required previous features are available or limitations are documented.
-- [ ] Existing related features still work.
-- [ ] New code does not duplicate existing domain logic unnecessarily.
-- [ ] New code does not block future planned features.
-- [ ] Data model assumptions are documented.
-- [ ] Missing dependency behavior is documented if relevant.
+- [x] Required previous features are available or limitations are documented.
+- [x] Existing related features still work.
+- [x] New code does not duplicate existing domain logic unnecessarily.
+- [x] New code does not block future planned features.
+- [x] Data model assumptions are documented.
+- [x] Missing dependency behavior is documented if relevant.
 
 Dependency evidence:
 
@@ -49,17 +49,17 @@ FR-07 Shopping list management and FR-08 Targeted shopping request collection
 
 ## 3. Critical Checks — End-to-End Acceptance Criteria
 
-- [ ] User can log in.
-- [ ] User can navigate to the feature.
-- [ ] User can see relevant data for their own household.
-- [ ] User cannot see data from another household.
-- [ ] Empty state works.
-- [ ] Error state works.
-- [ ] Populated state works.
-- [ ] Frontend does not send household id.
-- [ ] Backend derives household from authenticated user.
-- [ ] Page/API does not crash.
-- [ ] Data shown is not fake production data.
+- [x] User can log in.
+- [x] User can navigate to the feature.
+- [x] User can see relevant data for their own household.
+- [x] User cannot see data from another household.
+- [x] Empty state works.
+- [x] Error state works.
+- [x] Populated state works.
+- [x] Frontend does not send household id.
+- [x] Backend derives household from authenticated user.
+- [x] Page/API does not crash.
+- [x] Data shown is not fake production data.
 
 Evidence:
 
@@ -74,14 +74,14 @@ Manual evidence:
 
 ## Backend
 
-- [ ] Backend unit tests exist.
-- [ ] Backend integration tests exist.
-- [ ] Backend tests cover auth.
-- [ ] Backend tests cover household isolation.
-- [ ] Backend tests cover empty data.
-- [ ] Backend tests cover populated data.
-- [ ] Backend tests cover feature-specific edge cases.
-- [ ] Backend full suite passes.
+- [x] Backend unit tests exist.
+- [x] Backend integration tests exist.
+- [x] Backend tests cover auth.
+- [x] Backend tests cover household isolation.
+- [x] Backend tests cover empty data.
+- [x] Backend tests cover populated data.
+- [x] Backend tests cover feature-specific edge cases.
+- [x] Backend full suite passes.
 
 Command:
 
@@ -100,14 +100,14 @@ Skipped:
 
 ## Frontend
 
-- [ ] Frontend service tests exist.
-- [ ] Frontend component tests exist.
-- [ ] Frontend tests cover loading.
-- [ ] Frontend tests cover error.
-- [ ] Frontend tests cover empty state.
-- [ ] Frontend tests cover populated rendering.
-- [ ] Frontend tests confirm no household id is sent.
-- [ ] Frontend tests pass.
+- [x] Frontend service tests exist.
+- [x] Frontend component tests exist.
+- [x] Frontend tests cover loading.
+- [x] Frontend tests cover error.
+- [x] Frontend tests cover empty state.
+- [x] Frontend tests cover populated rendering.
+- [x] Frontend tests confirm no household id is sent.
+- [x] Frontend tests pass.
 
 Command:
 
@@ -124,13 +124,13 @@ Failures:
 
 ## E2E
 
-- [ ] E2E spec exists for FR-09.
-- [ ] E2E covers login.
-- [ ] E2E covers navigation.
-- [ ] E2E covers populated data.
-- [ ] E2E covers empty/no-crash behavior if possible.
-- [ ] E2E uses synthetic data.
-- [ ] E2E passes.
+- [x] E2E spec exists for FR-09.
+- [x] E2E covers login.
+- [x] E2E covers navigation.
+- [x] E2E covers populated data.
+- [x] E2E covers empty/no-crash behavior if possible.
+- [x] E2E uses synthetic data.
+- [x] E2E passes.
 
 Command:
 
@@ -148,61 +148,61 @@ Failing:
 
 ## 5. Important Checks — Security and Privacy
 
-- [ ] Backend endpoint is authenticated.
-- [ ] Backend endpoint is household-scoped.
-- [ ] Frontend sends no household id.
-- [ ] Backend ignores client-side attempts to change household scope.
-- [ ] Cross-household leakage is tested.
-- [ ] Response exposes only necessary data.
-- [ ] No passwords, tokens, invitation secrets, or unrelated users are exposed.
-- [ ] Logs do not dump sensitive feature data.
-- [ ] Test data is synthetic.
+- [x] Backend endpoint is authenticated.
+- [x] Backend endpoint is household-scoped.
+- [x] Frontend sends no household id.
+- [x] Backend ignores client-side attempts to change household scope.
+- [x] Cross-household leakage is tested.
+- [x] Response exposes only necessary data.
+- [x] No passwords, tokens, invitation secrets, or unrelated users are exposed.
+- [x] Logs do not dump sensitive feature data.
+- [x] Test data is synthetic.
 
 ## 6. Important Checks — Documentation
 
-- [ ] Backend QA file exists: `backend/FR-09_backend_QA.md`.
-- [ ] Frontend QA file exists: `frontend/FR-09_frontend_QA.md`.
-- [ ] General QA file exists: `docs/FR-09_general_QA.md`.
-- [ ] MR description explains feature scope.
-- [ ] MR description lists endpoints/routes.
-- [ ] MR description lists tests run.
-- [ ] Known limitations are included.
-- [ ] Manual/e2e verification steps are documented.
-- [ ] Evidence is updated after actual test runs.
+- [x] Backend QA file exists: `backend/FR-09_backend_QA.md`.
+- [x] Frontend QA file exists: `frontend/FR-09_frontend_QA.md`.
+- [x] General QA file exists: `docs/FR-09_general_QA.md`.
+- [x] MR description explains feature scope.
+- [x] MR description lists endpoints/routes.
+- [x] MR description lists tests run.
+- [x] Known limitations are included.
+- [x] Manual/e2e verification steps are documented.
+- [x] Evidence is updated after actual test runs.
 
 ## 7. Important Checks — Regression
 
-- [ ] Existing auth still works.
-- [ ] Existing household membership still works.
-- [ ] Existing related feature pages/endpoints still work.
-- [ ] Full backend tests pass.
-- [ ] Frontend tests pass.
-- [ ] Frontend build passes.
-- [ ] E2E tests pass or limitations are documented.
-- [ ] No existing tests were deleted or weakened.
+- [x] Existing auth still works.
+- [x] Existing household membership still works.
+- [x] Existing related feature pages/endpoints still work.
+- [x] Full backend tests pass.
+- [x] Frontend tests pass.
+- [x] Frontend build passes.
+- [x] E2E tests pass or limitations are documented.
+- [x] No existing tests were deleted or weakened.
 
 ## 8. Merge Blockers
 
-- [ ] Verified blocker not present: backend tests missing.
-- [ ] Verified blocker not present: frontend tests missing.
-- [ ] Verified blocker not present: e2e test missing without justification.
-- [ ] Verified blocker not present: endpoint unauthenticated.
-- [ ] Verified blocker not present: cross-household data leaks.
-- [ ] Verified blocker not present: frontend sends household id.
-- [ ] Verified blocker not present: fake production data appears.
-- [ ] Verified blocker not present: empty state crashes.
-- [ ] Verified blocker not present: build/test commands fail.
-- [ ] Verified blocker not present: known limitations undocumented.
+- [x] Verified blocker not present: backend tests missing.
+- [x] Verified blocker not present: frontend tests missing.
+- [x] Verified blocker not present: e2e test missing without justification.
+- [x] Verified blocker not present: endpoint unauthenticated.
+- [x] Verified blocker not present: cross-household data leaks.
+- [x] Verified blocker not present: frontend sends household id.
+- [x] Verified blocker not present: fake production data appears.
+- [x] Verified blocker not present: empty state crashes.
+- [x] Verified blocker not present: build/test commands fail.
+- [x] Verified blocker not present: known limitations undocumented.
 
 ## 9. Final Approval
 
-- [ ] Backend QA completed.
-- [ ] Frontend QA completed.
-- [ ] General QA completed.
-- [ ] Backend tests exist and pass.
-- [ ] Frontend tests exist and pass.
-- [ ] E2E tests exist and pass, or absence is explicitly justified.
-- [ ] Household isolation verified.
-- [ ] Feature correctness verified.
-- [ ] Known limitations documented.
-- [ ] MR ready for review.
+- [x] Backend QA completed.
+- [x] Frontend QA completed.
+- [x] General QA completed.
+- [x] Backend tests exist and pass.
+- [x] Frontend tests exist and pass.
+- [x] E2E tests exist and pass, or absence is explicitly justified.
+- [x] Household isolation verified.
+- [x] Feature correctness verified.
+- [x] Known limitations documented.
+- [x] MR ready for review.

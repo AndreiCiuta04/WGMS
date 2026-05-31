@@ -40,4 +40,8 @@ public interface ShoppingItemRepository extends JpaRepository<ShoppingItem, Long
         Long householdId,
         ShoppingItemVisibility visibility,
         ShoppingItemStatus status);
+
+    List<ShoppingItem> findAllByHouseholdIdAndStatusInOrderByUpdatedAtDesc(
+        Long householdId,
+        List<ShoppingItemStatus> statuses);
 }

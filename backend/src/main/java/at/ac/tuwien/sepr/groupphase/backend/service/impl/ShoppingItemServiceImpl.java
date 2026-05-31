@@ -179,6 +179,21 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
             .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ShoppingItemDto> findHouseholdShoppingHistory(ApplicationUser currentUser) {
+        LOGGER.debug("Find household shopping history for user {}", currentUser.getEmail());
+
+        Roommate roommate = requireActiveRoommate(currentUser);
+
+        return shoppingItemMapper.entityToDto(
+            shoppingItemRepository.findAllByHouseholdIdAndStatusInOrderByUpdatedAtDesc(
+                roommate.getHousehold().getId(),
+                List.of(ShoppingItemStatus.BOUGHT, ShoppingItemStatus.CANCELLED)
+            )
+        );
+    }
+
     // ------------------------------------------------------------------------
     // helpers
     // ------------------------------------------------------------------------

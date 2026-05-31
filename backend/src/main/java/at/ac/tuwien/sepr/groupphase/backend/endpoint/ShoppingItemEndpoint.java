@@ -70,6 +70,14 @@ public class ShoppingItemEndpoint {
         return shoppingItemService.findTargetedAtCurrentUser(currentUser);
     }
 
+    @GetMapping("/history")
+    @PreAuthorize("hasRole('USER')")
+    public List<ShoppingItemDto> findHouseholdShoppingHistory(Authentication authentication) {
+        LOGGER.info("GET /api/v1/shopping-items/history");
+        ApplicationUser currentUser = userService.findApplicationUserByEmail(authentication.getName());
+        return shoppingItemService.findHouseholdShoppingHistory(currentUser);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('USER')")
     public ShoppingItemDto findOne(@PathVariable("id") Long id, Authentication authentication) {

@@ -14,8 +14,9 @@ export class ShoppingItemListComponent implements OnInit {
   allItems: ShoppingItemDto[] = [];
   targetedItems: ShoppingItemDto[] = [];
   aggregatedItems: AggregatedShoppingItemDto[] = [];
+  historyItems: ShoppingItemDto[] = [];
 
-  currentTab: 'ALL' | 'TARGETED' | 'AGGREGATED' = 'ALL';
+  currentTab: 'ALL' | 'TARGETED' | 'AGGREGATED' | 'HISTORY' = 'ALL';
   loading = false;
   actionError: string | null = null;
   successMessage: string | null = null;
@@ -52,11 +53,15 @@ export class ShoppingItemListComponent implements OnInit {
     return this.currentTab === 'AGGREGATED';
   }
 
+  get isHistoryTab(): boolean {
+    return this.currentTab === 'HISTORY';
+  }
+
   toggleCompletedExpanded(): void {
     this.completedExpanded = !this.completedExpanded;
   }
 
-  switchTab(tab: 'ALL' | 'TARGETED' | 'AGGREGATED') {
+  switchTab(tab: 'ALL' | 'TARGETED' | 'AGGREGATED' | 'HISTORY') {
     this.currentTab = tab;
   }
 
@@ -66,13 +71,15 @@ export class ShoppingItemListComponent implements OnInit {
     forkJoin({
       all: this.shoppingItemService.findAll(),
       targeted: this.shoppingItemService.findTargetedAtMe(),
-      aggregated: this.shoppingItemService.findAggregatedHouseholdShoppingList()
+      aggregated: this.shoppingItemService.findAggregatedHouseholdShoppingList(),
+      history: this.shoppingItemService.findHouseholdShoppingHistory()
 
     }).subscribe({
-      next: ({ all, targeted, aggregated }) => {
+      next: ({ all, targeted, aggregated, history }) => {
         this.allItems = all;
         this.targetedItems = targeted;
         this.aggregatedItems = aggregated;
+        this.historyItems = history;
         this.loading = false;
       },
       error: (err) => {

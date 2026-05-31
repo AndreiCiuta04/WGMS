@@ -68,6 +68,7 @@ public class ShoppingItemEndpointTest implements TestData {
     private ApplicationUser userB;
     private ApplicationUser userC;
     private Household household;
+    private Household otherHousehold;
 
     @BeforeEach
     public void beforeEach() {
@@ -102,7 +103,7 @@ public class ShoppingItemEndpointTest implements TestData {
         roommateRepository.saveAll(List.of(ra, rb));
 
         // userC lives in a different household — used to verify cross-household isolation
-        Household otherHousehold = new Household();
+        otherHousehold = new Household();
         otherHousehold.setName("Other WG");
         otherHousehold.setCreatedBy(userC);
         householdRepository.save(otherHousehold);
@@ -385,7 +386,56 @@ public class ShoppingItemEndpointTest implements TestData {
         assertEquals(0, items.length);
     }
 
+    @Test
+    public void givenHistoryItems_whenGetShoppingHistory_thenOnlyCurrentHouseholdBoughtAndCancelledItemsReturned() throws Exception {
+        ShoppingItem bought = seedItem("Bought milk", userA, ShoppingItemVisibility.SHARED, null);
+        bought.setStatus(ShoppingItemStatus.BOUGHT);
+        shoppingItemRepository.save(bought);
+
+        ShoppingItem cancelled = seedItem("Cancelled bread", userB, ShoppingItemVisibility.PERSONAL, null);
+        cancelled.setStatus(ShoppingItemStatus.CANCELLED);
+        shoppingItemRepository.save(cancelled);
+
+        seedItem("Needed eggs", userA, ShoppingItemVisibility.SHARED, null);
+
+        ShoppingItem otherHouseholdBought = seedItemInHousehold(
+            "Other household bought",
+            otherHousehold,
+            userC,
+            ShoppingItemVisibility.SHARED,
+            null
+        );
+        otherHouseholdBought.setStatus(ShoppingItemStatus.BOUGHT);
+        shoppingItemRepository.save(otherHouseholdBought);
+
+        MvcResult result = mockMvc.perform(get(SHOPPING_ITEM_BASE_URI + "/history")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("usera@test.com", USER_ROLES)))
+            .andReturn();
+
+        assertEquals(HttpStatus.OK.value(), result.getResponse().getStatus());
+
+        ShoppingItemDto[] items = jsonMapper.readValue(
+            result.getResponse().getContentAsString(),
+            ShoppingItemDto[].class
+        );
+        List<String> names = java.util.Arrays.stream(items).map(ShoppingItemDto::name).toList();
+
+        assertEquals(2, items.length);
+        assertTrue(names.contains("Bought milk"));
+        assertTrue(names.contains("Cancelled bread"));
+        assertTrue(!names.contains("Needed eggs"));
+        assertTrue(!names.contains("Other household bought"));
+        assertTrue(java.util.Arrays.stream(items).allMatch(item -> item.householdId().equals(household.getId())));
+        assertTrue(java.util.Arrays.stream(items).allMatch(item ->
+            item.status() == ShoppingItemStatus.BOUGHT || item.status() == ShoppingItemStatus.CANCELLED));
+    }
+
     private ShoppingItem seedItem(String name, ApplicationUser creator, ShoppingItemVisibility visibility, ApplicationUser target) {
+        return seedItemInHousehold(name, household, creator, visibility, target);
+    }
+
+    private ShoppingItem seedItemInHousehold(String name, Household household, ApplicationUser creator,
+                                             ShoppingItemVisibility visibility, ApplicationUser target) {
         ShoppingItem item = new ShoppingItem();
         item.setName(name);
         item.setHousehold(household);

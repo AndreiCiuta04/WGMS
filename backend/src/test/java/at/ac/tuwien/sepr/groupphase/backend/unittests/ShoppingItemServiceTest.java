@@ -34,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -339,6 +340,39 @@ public class ShoppingItemServiceTest {
 
         assertThrows(ForbiddenException.class,
             () -> shoppingItemService.findAggregatedHouseholdShoppingList(user));
+    }
+
+    @Test
+    public void givenUserInHousehold_whenFindHouseholdShoppingHistory_thenRepositoryUsesHouseholdAndHistoryStatuses() {
+        ShoppingItem bought = sampleItem(20L, ShoppingItemVisibility.SHARED);
+        bought.setStatus(ShoppingItemStatus.BOUGHT);
+
+        ShoppingItem cancelled = sampleItem(21L, ShoppingItemVisibility.PERSONAL);
+        cancelled.setStatus(ShoppingItemStatus.CANCELLED);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
+        when(shoppingItemRepository.findAllByHouseholdIdAndStatusInOrderByUpdatedAtDesc(
+            10L,
+            List.of(ShoppingItemStatus.BOUGHT, ShoppingItemStatus.CANCELLED)
+        )).thenReturn(List.of(bought, cancelled));
+
+        List<ShoppingItemDto> result = shoppingItemService.findHouseholdShoppingHistory(user);
+
+        assertEquals(2, result.size());
+        assertEquals(ShoppingItemStatus.BOUGHT, result.get(0).status());
+        assertEquals(ShoppingItemStatus.CANCELLED, result.get(1).status());
+        verify(shoppingItemRepository).findAllByHouseholdIdAndStatusInOrderByUpdatedAtDesc(
+            eq(10L),
+            eq(List.of(ShoppingItemStatus.BOUGHT, ShoppingItemStatus.CANCELLED))
+        );
+    }
+
+    @Test
+    public void givenUserWithoutHousehold_whenFindHouseholdShoppingHistory_thenForbidden() {
+        when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.empty());
+
+        assertThrows(ForbiddenException.class,
+            () -> shoppingItemService.findHouseholdShoppingHistory(user));
     }
 
     private ShoppingItem sampleItem(Long id, ShoppingItemVisibility visibility) {

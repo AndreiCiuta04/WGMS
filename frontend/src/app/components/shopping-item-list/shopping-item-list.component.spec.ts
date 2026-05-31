@@ -56,13 +56,23 @@ describe('ShoppingItemListComponent', () => {
       }
     ]
   };
+  const historyItem: ShoppingItemDto = {
+    ...personal,
+    id: 3,
+    name: 'Bought bread',
+    quantity: '1 loaf',
+    status: ShoppingItemStatus.BOUGHT,
+    visibility: ShoppingItemVisibility.SHARED,
+    updatedAt: '2026-05-18T08:00:00'
+  };
 
   beforeEach(async () => {
     serviceSpy = jasmine.createSpyObj('ShoppingItemService',
-      ['findAll', 'findTargetedAtMe', 'findAggregatedHouseholdShoppingList', 'updateStatus', 'delete']);
+      ['findAll', 'findTargetedAtMe', 'findAggregatedHouseholdShoppingList', 'findHouseholdShoppingHistory', 'updateStatus', 'delete']);
     serviceSpy.findAll.and.returnValue(of([personal, targeted]));
     serviceSpy.findTargetedAtMe.and.returnValue(of([targeted]));
     serviceSpy.findAggregatedHouseholdShoppingList.and.returnValue(of([aggregated]));
+    serviceSpy.findHouseholdShoppingHistory.and.returnValue(of([historyItem]));
     serviceSpy.updateStatus.and.returnValue(of({ ...personal, status: ShoppingItemStatus.BOUGHT }));
     serviceSpy.delete.and.returnValue(of(void 0));
 
@@ -84,14 +94,17 @@ describe('ShoppingItemListComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should fetch all-items, targeted-at-me, and aggregated household list on init', () => {
+  it('should fetch all-items, targeted-at-me, aggregated household list, and history on init', () => {
     fixture.detectChanges();
     expect(serviceSpy.findAll).toHaveBeenCalled();
     expect(serviceSpy.findTargetedAtMe).toHaveBeenCalled();
     expect(serviceSpy.findAggregatedHouseholdShoppingList).toHaveBeenCalled();
+    expect(serviceSpy.findHouseholdShoppingHistory).toHaveBeenCalled();
     expect(component.allItems.length).toBe(2);
     expect(component.targetedItems.length).toBe(1);
     expect(component.aggregatedItems.length).toBe(1);
+    expect(component.historyItems.length).toBe(1);
+    expect(component.historyItems[0].status).toBe(ShoppingItemStatus.BOUGHT);
     expect(component.loading).toBeFalse();
   });
 
@@ -116,8 +129,8 @@ describe('ShoppingItemListComponent', () => {
 
   it('markAsNeeded() should reopen an item by setting status to NEEDED', () => {
     fixture.detectChanges();
-    component.markAsNeeded({ ...personal, status: ShoppingItemStatus.BOUGHT });
-    expect(serviceSpy.updateStatus).toHaveBeenCalledWith(1,
+    component.markAsNeeded(historyItem);
+    expect(serviceSpy.updateStatus).toHaveBeenCalledWith(3,
       { status: ShoppingItemStatus.NEEDED });
   });
 
@@ -161,5 +174,14 @@ describe('ShoppingItemListComponent', () => {
     expect(component.aggregatedItems[0].name).toBe('Milk');
     expect(component.aggregatedItems[0].itemCount).toBe(2);
   });
-});
 
+  it('switchTab() can switch to shopping history', () => {
+    fixture.detectChanges();
+
+    component.switchTab('HISTORY');
+
+    expect(component.currentTab).toBe('HISTORY');
+    expect(component.isHistoryTab).toBeTrue();
+    expect(component.historyItems[0].name).toBe('Bought bread');
+  });
+});

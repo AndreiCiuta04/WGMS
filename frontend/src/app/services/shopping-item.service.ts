@@ -33,7 +33,11 @@ export class ShoppingItemService {
   }
 
   findAggregatedHouseholdShoppingList(): Observable<AggregatedShoppingItemDto[]> {
-  return this.http.get<AggregatedShoppingItemDto[]>(`${this.baseUri}/aggregated`);
+    return this.http.get<AggregatedShoppingItemDto[]>(`${this.baseUri}/aggregated`);
+  }
+
+  findHouseholdShoppingHistory(): Observable<ShoppingItemDto[]> {
+    return this.http.get<ShoppingItemDto[]>(`${this.baseUri}/history`);
   }
 
   findOne(id: number): Observable<ShoppingItemDto> {

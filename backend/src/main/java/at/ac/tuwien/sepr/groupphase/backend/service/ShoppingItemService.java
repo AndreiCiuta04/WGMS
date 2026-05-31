@@ -67,6 +67,17 @@ public interface ShoppingItemService {
     List<AggregatedShoppingItemDto> findAggregatedHouseholdShoppingList(ApplicationUser currentUser);
 
     /**
+     * Lists the current household's shopping history. History consists of items
+     * with {@code BOUGHT} or {@code CANCELLED} status.
+     *
+     * @param currentUser the currently authenticated user
+     * @return shopping history entries, ordered most recently updated first
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException
+     *     if the user is not a member of any active household
+     */
+    List<ShoppingItemDto> findHouseholdShoppingHistory(ApplicationUser currentUser);
+
+    /**
      * Returns a shopping item by its id.
      *
      * @param id          the id of the shopping item
