@@ -1,208 +1,171 @@
-# FR-06 General QA Checklist — Payment Status Overview
+# FR-06 General QA Evidence - Payment Status Overview
 
 ## Feature Information
 
 - Feature ID: FR-06
 - Feature name: Payment Status Overview
-- Use case: UC-03 — Shared Expense Tracking and Settlement
+- Use case: UC-03 - Shared Expense Tracking and Settlement
 - Priority: High
 - Category: Core
 - Version: V3
 - Dependency: FR-05 Shared expense tracking
-- Branch:
-- Merge request:
-- Developer:
-- QA reviewer:
-- Date:
+- Branch: FR-06/Payment-status
+- Date: 2026-06-01
 
-## How to Use This Checklist
+## Scope Verified
 
-This is the feature-level QA checklist. It verifies backend, frontend, e2e, documentation, test evidence, and merge readiness. Use `[ ]` until evidence exists. Do not check items based only on assumptions.
+- [x] FR-06 implements the payment status overview for household settlements.
+- [x] The feature uses the existing authentication and household membership model.
+- [x] Backend derives household scope from the authenticated user.
+- [x] Frontend sends no `householdId` for payment overview or payment creation.
+- [x] Cross-household payment and overview data is not exposed.
+- [x] Empty, loading, populated, and error states are covered.
+- [x] FR-05 expense balances and FR-06 payment balances are now consistent after recorded payments.
+- [x] Future-dated payments are rejected.
+- [x] Known limitation remains documented: recorded payments cannot yet be edited, deleted, or undone.
 
-## 1. Critical Checks — Feature Scope
+## Implementation Evidence
 
-- [ ] FR-06 implements the agreed feature: Payment Status Overview.
-- [ ] Feature behavior matches the use case: UC-03 — Shared Expense Tracking and Settlement.
-- [ ] Feature does not implement unrelated scope.
-- [ ] Feature uses existing project authentication and household model.
-- [ ] Feature is household-scoped.
-- [ ] Feature does not expose other household data.
-- [ ] Feature does not require frontend household selection unless explicitly required and securely validated.
-- [ ] Feature is reachable in the frontend.
-- [ ] Feature has backend support.
-- [ ] Known limitations are documented.
-
-## 2. Critical Checks — Dependencies
-
-- [ ] Required previous features are available or limitations are documented.
-- [ ] Existing related features still work.
-- [ ] New code does not duplicate existing domain logic unnecessarily.
-- [ ] New code does not block future planned features.
-- [ ] Data model assumptions are documented.
-- [ ] Missing dependency behavior is documented if relevant.
-
-Dependency evidence:
+Backend endpoints:
 
 ```text
-FR-05 Shared expense tracking
+GET  /api/v1/payments/overview
+POST /api/v1/payments
 ```
 
-## 3. Critical Checks — End-to-End Acceptance Criteria
-
-- [ ] User can log in.
-- [ ] User can navigate to the feature.
-- [ ] User can see relevant data for their own household.
-- [ ] User cannot see data from another household.
-- [ ] Empty state works.
-- [ ] Error state works.
-- [ ] Populated state works.
-- [ ] Frontend does not send household id.
-- [ ] Backend derives household from authenticated user.
-- [ ] Page/API does not crash.
-- [ ] Data shown is not fake production data.
-
-Evidence:
+Backend implementation:
 
 ```text
-Backend integration test:
-Frontend component test:
-E2E spec:
-Manual evidence:
+backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/endpoint/PaymentEndpoint.java
+backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/service/impl/PaymentServiceImpl.java
+backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/service/impl/BalanceCalculator.java
+backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/endpoint/dto/PaymentCreateDto.java
+backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/endpoint/dto/PaymentDto.java
+backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/endpoint/dto/PaymentOverviewDto.java
 ```
 
-## 4. Critical Checks — Test Evidence Exists
-
-## Backend
-
-- [ ] Backend unit tests exist.
-- [ ] Backend integration tests exist.
-- [ ] Backend tests cover auth.
-- [ ] Backend tests cover household isolation.
-- [ ] Backend tests cover empty data.
-- [ ] Backend tests cover populated data.
-- [ ] Backend tests cover feature-specific edge cases.
-- [ ] Backend full suite passes.
-
-Command:
-
-```bash
-cd backend && mvn test
-```
-
-Result:
+Frontend implementation:
 
 ```text
-Tests run:
-Failures:
-Errors:
-Skipped:
+frontend/src/app/components/payment-status/payment-status.component.ts
+frontend/src/app/components/payment-status/payment-status.component.html
+frontend/src/app/services/payment.service.ts
+frontend/src/app/dtos/payment.ts
+frontend/src/app/dtos/expense.ts
 ```
 
-## Frontend
-
-- [ ] Frontend service tests exist.
-- [ ] Frontend component tests exist.
-- [ ] Frontend tests cover loading.
-- [ ] Frontend tests cover error.
-- [ ] Frontend tests cover empty state.
-- [ ] Frontend tests cover populated rendering.
-- [ ] Frontend tests confirm no household id is sent.
-- [ ] Frontend tests pass.
-
-Command:
-
-```bash
-cd frontend && npm test -- --watch=false --browsers=ChromeHeadless
-```
-
-Result:
-
-```text
-Successes:
-Failures:
-```
-
-## E2E
-
-- [ ] E2E spec exists for FR-06.
-- [ ] E2E covers login.
-- [ ] E2E covers navigation.
-- [ ] E2E covers populated data.
-- [ ] E2E covers empty/no-crash behavior if possible.
-- [ ] E2E uses synthetic data.
-- [ ] E2E passes.
-
-Command:
-
-```bash
-cd e2e && npx cypress run --spec cypress/e2e/<fr-06-spec-name>.cy.js
-```
-
-Result:
-
-```text
 Tests:
-Passing:
-Failing:
+
+```text
+backend/src/test/java/at/ac/tuwien/sepr/groupphase/backend/unittests/PaymentServiceTest.java
+backend/src/test/java/at/ac/tuwien/sepr/groupphase/backend/integrationtest/PaymentEndpointTest.java
+backend/src/test/java/at/ac/tuwien/sepr/groupphase/backend/integrationtest/ExpenseEndpointTest.java
+frontend/src/app/components/payment-status/payment-status.component.spec.ts
+frontend/src/app/services/payment.service.spec.ts
+e2e/cypress/e2e/paymentStatus.cy.js
 ```
 
-## 5. Important Checks — Security and Privacy
+## Acceptance Criteria
 
-- [ ] Backend endpoint is authenticated.
-- [ ] Backend endpoint is household-scoped.
-- [ ] Frontend sends no household id.
-- [ ] Backend ignores client-side attempts to change household scope.
-- [ ] Cross-household leakage is tested.
-- [ ] Response exposes only necessary data.
-- [ ] No passwords, tokens, invitation secrets, or unrelated users are exposed.
-- [ ] Logs do not dump sensitive feature data.
-- [ ] Test data is synthetic.
+- [x] User can log in.
+- [x] User can navigate to Payment Status.
+- [x] User can see open balances for their own household.
+- [x] User can record a payment against an open balance.
+- [x] Payment history shows recorded settlements.
+- [x] Empty household financial data displays stable empty states.
+- [x] Backend loading failures display an error state instead of a false empty state.
+- [x] Household scope is enforced in backend, not by frontend parameters.
+- [x] Cross-household data leakage is covered by backend integration tests.
+- [x] E2E covers populated and empty states with synthetic data.
 
-## 6. Important Checks — Documentation
+## Security And Privacy
 
-- [ ] Backend QA file exists: `backend/FR-06_backend_QA.md`.
-- [ ] Frontend QA file exists: `frontend/FR-06_frontend_QA.md`.
-- [ ] General QA file exists: `docs/FR-06_general_QA.md`.
-- [ ] MR description explains feature scope.
-- [ ] MR description lists endpoints/routes.
-- [ ] MR description lists tests run.
-- [ ] Known limitations are included.
-- [ ] Manual/e2e verification steps are documented.
-- [ ] Evidence is updated after actual test runs.
+- [x] Payment endpoints require authenticated user role.
+- [x] Backend resolves active roommate membership from the authenticated principal.
+- [x] Overview data is scoped to the active household.
+- [x] Payment recipient must be an active roommate in the same household.
+- [x] Response DTOs expose only settlement data needed by the UI.
+- [x] No passwords, JWTs, invitation secrets, raw JPA entities, or unrelated household data are returned.
+- [x] Tests use synthetic users, households, expenses, and payments.
 
-## 7. Important Checks — Regression
+Note: main tenants can see all intra-household balances. This is treated as an intended household oversight behavior for the current implementation.
 
-- [ ] Existing auth still works.
-- [ ] Existing household membership still works.
-- [ ] Existing related feature pages/endpoints still work.
-- [ ] Full backend tests pass.
-- [ ] Frontend tests pass.
-- [ ] Frontend build passes.
-- [ ] E2E tests pass or limitations are documented.
-- [ ] No existing tests were deleted or weakened.
+## Known Limitation
 
-## 8. Merge Blockers
+- Payments can be created but not edited, deleted, or undone yet. A follow-up should add creator-scoped delete/undo behavior if required by product scope.
 
-- [ ] Verified blocker not present: backend tests missing.
-- [ ] Verified blocker not present: frontend tests missing.
-- [ ] Verified blocker not present: e2e test missing without justification.
-- [ ] Verified blocker not present: endpoint unauthenticated.
-- [ ] Verified blocker not present: cross-household data leaks.
-- [ ] Verified blocker not present: frontend sends household id.
-- [ ] Verified blocker not present: fake production data appears.
-- [ ] Verified blocker not present: empty state crashes.
-- [ ] Verified blocker not present: build/test commands fail.
-- [ ] Verified blocker not present: known limitations undocumented.
+## Command Evidence
 
-## 9. Final Approval
+Backend full suite:
 
-- [ ] Backend QA completed.
-- [ ] Frontend QA completed.
-- [ ] General QA completed.
-- [ ] Backend tests exist and pass.
-- [ ] Frontend tests exist and pass.
-- [ ] E2E tests exist and pass, or absence is explicitly justified.
-- [ ] Household isolation verified.
-- [ ] Feature correctness verified.
-- [ ] Known limitations documented.
-- [ ] MR ready for review.
+```bash
+cd backend && mvn -B clean install
+```
+
+Result:
+
+```text
+BUILD SUCCESS
+Tests run: 171, Failures: 0, Errors: 0, Skipped: 0
+```
+
+Frontend lint:
+
+```bash
+cd frontend && npm.cmd run lint
+```
+
+Result:
+
+```text
+All files pass linting.
+```
+
+Frontend build:
+
+```bash
+cd frontend && npm.cmd run build
+```
+
+Result:
+
+```text
+Application bundle generation complete.
+```
+
+Frontend unit/component tests:
+
+```bash
+cd frontend && npm.cmd test -- --watch=false --browsers=ChromeHeadless
+```
+
+Result:
+
+```text
+TOTAL: 71 SUCCESS
+```
+
+FR-06 Cypress spec:
+
+```bash
+cd e2e && npx.cmd cypress run --spec cypress/e2e/paymentStatus.cy.js
+```
+
+Result:
+
+```text
+2 passing, 0 failing
+```
+
+## Final QA Status
+
+- [x] Backend QA completed.
+- [x] Frontend QA completed.
+- [x] General QA completed.
+- [x] Backend unit and integration tests exist and pass.
+- [x] Frontend service/component tests exist and pass.
+- [x] FR-06 E2E spec exists and passes.
+- [x] Household isolation verified.
+- [x] FR-05/FR-06 balance consistency verified.
+- [x] Known limitation documented.
+- [x] Ready for merge review after committing the prepared changes.

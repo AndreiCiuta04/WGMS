@@ -1,11 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { switchMap } from 'rxjs';
 import { BalanceDto } from '../../dtos/expense';
 import { PaymentDto, PaymentOverviewDto } from '../../dtos/payment';
-import { Roommate } from '../../dtos/roommate';
 import { AuthService } from '../../services/auth.service';
-import { HouseholdService } from '../../services/household.service';
 import { PaymentService } from '../../services/payment.service';
 
 @Component({
@@ -18,18 +15,17 @@ export class PaymentStatusComponent implements OnInit {
 
   paymentForm: FormGroup;
   overview: PaymentOverviewDto = this.emptyOverview();
-  currentRoommate: Roommate | null = null;
   selectedBalance: BalanceDto | null = null;
   submitted = false;
   isLoading = false;
   isSaving = false;
+  overviewLoadFailed = false;
   errorMessage = '';
   successMessage = '';
 
   constructor(
     private formBuilder: FormBuilder,
     private paymentService: PaymentService,
-    private householdService: HouseholdService,
     private authService: AuthService
   ) {
     this.paymentForm = this.formBuilder.group({
@@ -39,31 +35,22 @@ export class PaymentStatusComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.loadHouseholdContext();
     this.loadOverview();
-  }
-
-  loadHouseholdContext(): void {
-    this.householdService.getMyHousehold().pipe(
-      switchMap(household => this.householdService.getMembers(household.id))
-    ).subscribe({
-      next: members => this.currentRoommate = this.findCurrentRoommate(members),
-      error: err => this.errorMessage = this.extractErrorMessage(err, 'You need to be part of a WG before recording payments.')
-    });
   }
 
   loadOverview(): void {
     this.isLoading = true;
+    this.overviewLoadFailed = false;
     this.paymentService.getOverview().subscribe({
       next: overview => {
         this.overview = overview ?? this.emptyOverview();
+        this.errorMessage = '';
         this.isLoading = false;
       },
       error: err => {
         this.overview = this.emptyOverview();
-        this.errorMessage = this.shouldShowOverviewError(err)
-          ? this.extractErrorMessage(err, 'Could not load payment status.')
-          : '';
+        this.overviewLoadFailed = true;
+        this.errorMessage = this.extractErrorMessage(err, 'Could not load payment status.');
         this.isLoading = false;
       }
     });
@@ -147,7 +134,8 @@ export class PaymentStatusComponent implements OnInit {
   }
 
   canRecord(balance: BalanceDto): boolean {
-    return this.currentRoommate?.id === balance.fromRoommateId;
+    const currentUserEmail = this.authService.getUserEmail();
+    return currentUserEmail !== null && currentUserEmail === balance.fromRoommateEmail;
   }
 
   totalIOwe(): number {
@@ -165,15 +153,6 @@ export class PaymentStatusComponent implements OnInit {
       totalIOwe: 0,
       totalOwedToMe: 0
     };
-  }
-
-  private shouldShowOverviewError(err: any): boolean {
-    return err?.status === 401 || err?.status === 403;
-  }
-
-  private findCurrentRoommate(roommates: Roommate[]): Roommate | null {
-    const email = this.authService.getUserEmail();
-    return roommates.find(roommate => roommate.email === email) ?? null;
   }
 
   private clearMessages(): void {

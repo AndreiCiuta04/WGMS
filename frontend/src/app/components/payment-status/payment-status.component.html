@@ -87,7 +87,7 @@
       <div class="empty-state">
         <p class="empty-text">Loading payment status...</p>
       </div>
-    } @else if (openBalances().length === 0) {
+    } @else if (openBalances().length === 0 && !overviewLoadFailed) {
       <div class="empty-state">
         <p class="empty-text">There are no open balances.</p>
       </div>
@@ -122,7 +122,7 @@
       }
     </div>
 
-    @if (payments().length === 0 && !isLoading) {
+    @if (payments().length === 0 && !isLoading && !overviewLoadFailed) {
       <div class="empty-state">
         <p class="empty-text">No payments recorded yet.</p>
       </div>

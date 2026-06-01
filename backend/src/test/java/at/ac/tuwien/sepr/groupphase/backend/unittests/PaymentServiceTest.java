@@ -258,6 +258,19 @@ public class PaymentServiceTest {
         verify(paymentRepository, never()).save(any(Payment.class));
     }
 
+    @Test
+    public void givenFutureDate_whenCreatePayment_thenConflictAndNoSave() {
+        mockCurrentRoommate(ROOMMATE_EMAIL, roommateUser, roommate);
+
+        assertThrows(ConflictException.class, () ->
+            paymentService.createPayment(
+                new PaymentCreateDto(mainTenant.getId(), money("1.00"), LocalDate.now().plusDays(1)),
+                ROOMMATE_EMAIL
+            )
+        );
+        verify(paymentRepository, never()).save(any(Payment.class));
+    }
+
     private void mockCurrentRoommate(String email, ApplicationUser user, Roommate currentRoommate) {
         when(userService.findApplicationUserByEmail(email)).thenReturn(user);
         when(roommateRepository.findByUserIdAndActiveTrue(user.getId())).thenReturn(Optional.of(currentRoommate));

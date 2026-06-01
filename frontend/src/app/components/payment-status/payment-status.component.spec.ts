@@ -4,9 +4,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { of, Subject, throwError } from 'rxjs';
 import { LucideAngularModule, CircleCheck, Clock, HandCoins, Scale } from 'lucide-angular';
 import { PaymentOverviewDto } from '../../dtos/payment';
-import { Roommate } from '../../dtos/roommate';
 import { AuthService } from '../../services/auth.service';
-import { HouseholdService } from '../../services/household.service';
 import { PaymentService } from '../../services/payment.service';
 import { PaymentStatusComponent } from './payment-status.component';
 
@@ -14,18 +12,7 @@ describe('PaymentStatusComponent', () => {
   let component: PaymentStatusComponent;
   let fixture: ComponentFixture<PaymentStatusComponent>;
   let paymentServiceSpy: jasmine.SpyObj<PaymentService>;
-  let householdServiceSpy: jasmine.SpyObj<HouseholdService>;
   let authServiceSpy: jasmine.SpyObj<AuthService>;
-
-  const currentRoommate: Roommate = {
-    id: 10,
-    userId: 100,
-    firstName: 'Max',
-    lastName: 'Mustermann',
-    email: 'max@test.com',
-    role: 'ROOMMATE',
-    joinedAt: '2026-05-31T10:00:00'
-  };
 
   const emptyOverview: PaymentOverviewDto = {
     openBalances: [],
@@ -87,13 +74,10 @@ describe('PaymentStatusComponent', () => {
 
   beforeEach(async () => {
     paymentServiceSpy = jasmine.createSpyObj('PaymentService', ['getOverview', 'create']);
-    householdServiceSpy = jasmine.createSpyObj('HouseholdService', ['getMyHousehold', 'getMembers']);
     authServiceSpy = jasmine.createSpyObj('AuthService', ['getUserEmail']);
 
     paymentServiceSpy.getOverview.and.returnValue(of(emptyOverview));
     paymentServiceSpy.create.and.returnValue(of(populatedOverview.payments[0]));
-    householdServiceSpy.getMyHousehold.and.returnValue(of({ id: 1, name: 'WG', inviteCode: 'ABC123' } as any));
-    householdServiceSpy.getMembers.and.returnValue(of([currentRoommate]));
     authServiceSpy.getUserEmail.and.returnValue('max@test.com');
 
     await TestBed.configureTestingModule({
@@ -105,7 +89,6 @@ describe('PaymentStatusComponent', () => {
       ],
       providers: [
         { provide: PaymentService, useValue: paymentServiceSpy },
-        { provide: HouseholdService, useValue: householdServiceSpy },
         { provide: AuthService, useValue: authServiceSpy }
       ]
     }).compileComponents();
@@ -118,13 +101,10 @@ describe('PaymentStatusComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should load household context and payment overview on init', () => {
+  it('should load payment overview on init', () => {
     fixture.detectChanges();
 
-    expect(householdServiceSpy.getMyHousehold).toHaveBeenCalled();
-    expect(householdServiceSpy.getMembers).toHaveBeenCalledWith(1);
     expect(paymentServiceSpy.getOverview).toHaveBeenCalled();
-    expect(component.currentRoommate?.id).toBe(10);
     expect(component.isLoading).toBeFalse();
   });
 
@@ -163,6 +143,22 @@ describe('PaymentStatusComponent', () => {
     expect(component.isLoading).toBeFalse();
   });
 
+  it('should show a load error instead of an empty state for network failures', () => {
+    paymentServiceSpy.getOverview.and.returnValue(throwError(() => ({
+      status: 0,
+      error: {}
+    })));
+
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(component.errorMessage).toBe('Could not load payment status.');
+    expect(component.overviewLoadFailed).toBeTrue();
+    expect(text).toContain('Could not load payment status.');
+    expect(text).not.toContain('There are no open balances.');
+    expect(text).not.toContain('No payments recorded yet.');
+  });
+
   it('should render multiple balances and payment history records', () => {
     paymentServiceSpy.getOverview.and.returnValue(of(populatedOverview));
 
@@ -174,6 +170,11 @@ describe('PaymentStatusComponent', () => {
     expect(text).toContain('Max Mustermann paid Anna Musterfrau');
     expect(text).toContain('€12.50');
     expect(text).toContain('€7.25');
+  });
+
+  it('should allow recording only balances from the current user email', () => {
+    expect(component.canRecord(populatedOverview.openBalances[0])).toBeTrue();
+    expect(component.canRecord(populatedOverview.openBalances[1])).toBeFalse();
   });
 
   it('should not render undefined, NaN, or object placeholders for nullable backend fields', () => {
