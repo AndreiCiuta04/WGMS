@@ -16,6 +16,7 @@ import at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ExpenseRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ExpenseSplitRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.ExpenseService;
@@ -43,6 +44,7 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     private final ExpenseRepository expenseRepository;
     private final ExpenseSplitRepository expenseSplitRepository;
+    private final HouseholdRepository householdRepository;
     private final PaymentRepository paymentRepository;
     private final RoommateRepository roommateRepository;
     private final UserService userService;
@@ -51,6 +53,7 @@ public class ExpenseServiceImpl implements ExpenseService {
     public ExpenseServiceImpl(
         ExpenseRepository expenseRepository,
         ExpenseSplitRepository expenseSplitRepository,
+        HouseholdRepository householdRepository,
         PaymentRepository paymentRepository,
         RoommateRepository roommateRepository,
         UserService userService,
@@ -58,6 +61,7 @@ public class ExpenseServiceImpl implements ExpenseService {
     ) {
         this.expenseRepository = expenseRepository;
         this.expenseSplitRepository = expenseSplitRepository;
+        this.householdRepository = householdRepository;
         this.paymentRepository = paymentRepository;
         this.roommateRepository = roommateRepository;
         this.userService = userService;
@@ -126,6 +130,8 @@ public class ExpenseServiceImpl implements ExpenseService {
         Expense expense = getExpenseInCurrentHousehold(id, currentRoommate);
 
         requireCanManageExpense(expense, currentRoommate);
+        lockHouseholdForSettlement(expense.getHousehold().getId());
+        requireNoRecordedPaymentsInHousehold(expense.getHousehold().getId());
         validateSplitParticipantsAreUnique(expenseUpdateDto.splits());
         validateCurrentRoommatePaid(expenseUpdateDto.paidByRoommateId(), currentRoommate);
         validatePaidByIsIncludedInSplits(expenseUpdateDto.paidByRoommateId(), expenseUpdateDto.splits());
@@ -153,6 +159,8 @@ public class ExpenseServiceImpl implements ExpenseService {
         Expense expense = getExpenseInCurrentHousehold(id, currentRoommate);
 
         requireCanManageExpense(expense, currentRoommate);
+        lockHouseholdForSettlement(expense.getHousehold().getId());
+        requireNoRecordedPaymentsInHousehold(expense.getHousehold().getId());
 
         expenseSplitRepository.deleteAllByExpenseId(expense.getId());
         expenseRepository.delete(expense);
@@ -216,6 +224,17 @@ public class ExpenseServiceImpl implements ExpenseService {
         }
 
         throw new ForbiddenException("You are not allowed to manage this expense.");
+    }
+
+    private void lockHouseholdForSettlement(Long householdId) {
+        householdRepository.findByIdForUpdate(householdId)
+            .orElseThrow(() -> new NotFoundException("Household does not exist."));
+    }
+
+    private void requireNoRecordedPaymentsInHousehold(Long householdId) {
+        if (paymentRepository.existsByHouseholdId(householdId)) {
+            throw new ConflictException("Expenses cannot be changed after a payment has been recorded in the household.");
+        }
     }
 
     private void validateSplitParticipantsAreUnique(List<ExpenseSplitCreateDto> splitDtos) {

@@ -14,6 +14,7 @@ import at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ExpenseSplitRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.PaymentService;
@@ -53,6 +54,9 @@ public class PaymentServiceTest {
     private PaymentRepository paymentRepository;
 
     @Mock
+    private HouseholdRepository householdRepository;
+
+    @Mock
     private RoommateRepository roommateRepository;
 
     @Mock
@@ -74,6 +78,7 @@ public class PaymentServiceTest {
         paymentService = new PaymentServiceImpl(
             expenseSplitRepository,
             paymentRepository,
+            householdRepository,
             roommateRepository,
             userService,
             new BalanceCalculator()
@@ -196,6 +201,7 @@ public class PaymentServiceTest {
     @Test
     public void givenValidPayment_whenCreatePayment_thenPaymentIsSaved() {
         mockCurrentRoommate(ROOMMATE_EMAIL, roommateUser, roommate);
+        when(householdRepository.findByIdForUpdate(household.getId())).thenReturn(Optional.of(household));
         when(roommateRepository.findByIdAndHouseholdIdAndActiveTrue(mainTenant.getId(), household.getId()))
             .thenReturn(Optional.of(mainTenant));
         when(expenseSplitRepository.findAllByExpenseHouseholdId(household.getId()))
@@ -233,6 +239,7 @@ public class PaymentServiceTest {
     @Test
     public void givenPaymentToRoommateInOtherHousehold_whenCreatePayment_thenNotFoundAndNoSave() {
         mockCurrentRoommate(ROOMMATE_EMAIL, roommateUser, roommate);
+        when(householdRepository.findByIdForUpdate(household.getId())).thenReturn(Optional.of(household));
         when(roommateRepository.findByIdAndHouseholdIdAndActiveTrue(outsider.getId(), household.getId()))
             .thenReturn(Optional.empty());
 

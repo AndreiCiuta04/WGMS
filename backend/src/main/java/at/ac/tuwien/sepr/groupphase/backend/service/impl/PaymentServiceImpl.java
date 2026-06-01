@@ -13,6 +13,7 @@ import at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ExpenseSplitRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.PaymentService;
@@ -36,6 +37,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final ExpenseSplitRepository expenseSplitRepository;
     private final PaymentRepository paymentRepository;
+    private final HouseholdRepository householdRepository;
     private final RoommateRepository roommateRepository;
     private final UserService userService;
     private final BalanceCalculator balanceCalculator;
@@ -43,12 +45,14 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentServiceImpl(
         ExpenseSplitRepository expenseSplitRepository,
         PaymentRepository paymentRepository,
+        HouseholdRepository householdRepository,
         RoommateRepository roommateRepository,
         UserService userService,
         BalanceCalculator balanceCalculator
     ) {
         this.expenseSplitRepository = expenseSplitRepository;
         this.paymentRepository = paymentRepository;
+        this.householdRepository = householdRepository;
         this.roommateRepository = roommateRepository;
         this.userService = userService;
         this.balanceCalculator = balanceCalculator;
@@ -83,9 +87,12 @@ public class PaymentServiceImpl implements PaymentService {
         BigDecimal amount = toMoney(paymentCreateDto.amount());
         validatePositiveAmount(amount);
 
+        Long householdId = currentRoommate.getHousehold().getId();
+        lockHouseholdForSettlement(householdId);
+
         Roommate toRoommate = getActiveRoommateInHousehold(
             paymentCreateDto.toRoommateId(),
-            currentRoommate.getHousehold().getId()
+            householdId
         );
         validateDifferentRoommates(currentRoommate, toRoommate);
         validatePaymentReducesOpenBalance(currentRoommate, toRoommate, amount);
@@ -99,6 +106,11 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setCreatedBy(currentRoommate);
 
         return toDto(paymentRepository.save(payment));
+    }
+
+    private void lockHouseholdForSettlement(Long householdId) {
+        householdRepository.findByIdForUpdate(householdId)
+            .orElseThrow(() -> new NotFoundException("Household does not exist."));
     }
 
     private void validatePaymentInput(PaymentCreateDto paymentCreateDto) {

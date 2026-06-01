@@ -428,6 +428,39 @@ public class ExpenseEndpointTest implements TestData {
     }
 
     @Test
+    public void givenRecordedPayment_whenUpdateExpense_then409AndExpenseIsUnchanged() throws Exception {
+        Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Old expense", money("12.00"));
+        saveSplit(expense, mainTenantRoommate, money("6.00"));
+        saveSplit(expense, roommateRecord, money("6.00"));
+        savePayment(roommateRecord, mainTenantRoommate, money("6.00"));
+        ExpenseUpdateDto updateDto = new ExpenseUpdateDto(
+            "Updated expense",
+            money("20.00"),
+            EXPENSE_DATE,
+            mainTenantRoommate.getId(),
+            List.of(
+                new ExpenseSplitCreateDto(mainTenantRoommate.getId(), money("10.00")),
+                new ExpenseSplitCreateDto(roommateRecord.getId(), money("10.00"))
+            )
+        );
+
+        MvcResult mvcResult = this.mockMvc.perform(put(EXPENSE_BASE_URI + "/{id}", expense.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(updateDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        Expense unchangedExpense = expenseRepository.findById(expense.getId()).orElseThrow();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.CONFLICT.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals("Old expense", unchangedExpense.getDescription()),
+            () -> assertEquals(0, money("12.00").compareTo(unchangedExpense.getTotalAmount())),
+            () -> assertEquals(2, expenseSplitRepository.findAll().size())
+        );
+    }
+
+    @Test
     public void givenTenEuroAndThreeParticipants_whenCalculateEqualSplits_thenRemainderIsDistributedAndTotalMatches() throws Exception {
         EqualSplitRequestDto requestDto = new EqualSplitRequestDto(
             money("10.00"),
