@@ -1,0 +1,148 @@
+<div class="wgms-container payment-status-page">
+  <div class="payment-status-header">
+    <h2>Payment Status</h2>
+    <span class="accent-text">Open balances and recorded settlements</span>
+  </div>
+
+  @if (successMessage) {
+    <div class="success-toast">
+      <lucide-icon name="circle-check" [size]="16" [strokeWidth]="2"></lucide-icon>
+      {{ successMessage }}
+    </div>
+  }
+
+  @if (errorMessage) {
+    <div class="alert alert-danger" role="alert">{{ errorMessage }}</div>
+  }
+
+  <section class="summary-grid" aria-label="Payment summary">
+    <div class="summary-tile">
+      <span class="summary-label">I owe</span>
+      <span class="summary-value negative">{{ totalIOwe() | currency:'EUR':'symbol':'1.2-2' }}</span>
+    </div>
+    <div class="summary-tile">
+      <span class="summary-label">Owed to me</span>
+      <span class="summary-value positive">{{ totalOwedToMe() | currency:'EUR':'symbol':'1.2-2' }}</span>
+    </div>
+  </section>
+
+  @if (selectedBalance) {
+    <section class="section payment-form-section">
+      <div class="section-header">
+        <div class="section-title-group">
+          <lucide-icon name="hand-coins" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+          <h3 class="section-title">Record Payment</h3>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="cancelPayment()">Cancel</button>
+      </div>
+
+      <div class="selected-balance">
+        <span>{{ selectedBalance.fromRoommateName }} pays {{ selectedBalance.toRoommateName }}</span>
+        <strong>{{ selectedBalance.amount | currency:'EUR':'symbol':'1.2-2' }}</strong>
+      </div>
+
+      <form [formGroup]="paymentForm" (ngSubmit)="submit()">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="amount">Amount *</label>
+            <div class="amount-field">
+              <input id="amount" type="text" inputmode="decimal" class="form-control" formControlName="amount" placeholder="0,00" (blur)="normalizeAmount()">
+              <span class="amount-currency">EUR</span>
+            </div>
+            @if (submitted && paymentForm.get('amount')?.invalid) {
+              <small class="text-danger">Enter a positive amount.</small>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="date">Date *</label>
+            <input id="date" type="date" class="form-control" formControlName="date">
+            @if (submitted && paymentForm.get('date')?.errors?.['required']) {
+              <small class="text-danger">Date is required.</small>
+            }
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="isSaving" [attr.aria-busy]="isSaving">
+            {{ isSaving ? 'Saving...' : 'Save Payment' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <section class="section balances-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <lucide-icon name="scale" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+        <h3 class="section-title">Open Balances</h3>
+      </div>
+      @if (openBalances().length > 0) {
+        <span class="section-count">{{ openBalances().length }}</span>
+      }
+    </div>
+
+    @if (isLoading) {
+      <div class="empty-state">
+        <p class="empty-text">Loading payment status...</p>
+      </div>
+    } @else if (openBalances().length === 0 && !overviewLoadFailed) {
+      <div class="empty-state">
+        <p class="empty-text">There are no open balances.</p>
+      </div>
+    }
+
+    @for (balance of openBalances(); track balance.fromRoommateId + '-' + balance.toRoommateId) {
+      <div class="balance-row">
+        <div class="balance-info">
+          <span class="balance-title">{{ balance.fromRoommateName }} owes {{ balance.toRoommateName }}</span>
+          <span class="balance-meta">{{ balance.fromRoommateEmail }} to {{ balance.toRoommateEmail }}</span>
+        </div>
+        <div class="balance-actions">
+          <span class="balance-amount">{{ balance.amount | currency:'EUR':'symbol':'1.2-2' }}</span>
+          @if (canRecord(balance)) {
+            <button type="button" class="action-btn" (click)="selectBalance(balance)" title="Record payment">
+              <lucide-icon name="hand-coins" [size]="15" [strokeWidth]="2"></lucide-icon>
+            </button>
+          }
+        </div>
+      </div>
+    }
+  </section>
+
+  <section class="section history-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <lucide-icon name="clock" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+        <h3 class="section-title">Payment History</h3>
+      </div>
+      @if (payments().length > 0) {
+        <span class="section-count muted-count">{{ payments().length }}</span>
+      }
+    </div>
+
+    @if (payments().length === 0 && !isLoading && !overviewLoadFailed) {
+      <div class="empty-state">
+        <p class="empty-text">No payments recorded yet.</p>
+      </div>
+    }
+
+    @for (payment of payments(); track payment.id) {
+      <div class="payment-item">
+        <div class="payment-item-left">
+          <div class="payment-indicator">
+            <lucide-icon name="hand-coins" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+          </div>
+          <div class="payment-item-info">
+            <span class="payment-item-title">{{ payment.fromRoommateName }} paid {{ payment.toRoommateName }}</span>
+            <span class="payment-item-meta">
+              {{ payment.date | date:'mediumDate' }} &middot; recorded {{ payment.createdAt | date:'short' }}
+            </span>
+          </div>
+        </div>
+        <span class="payment-total">{{ payment.amount | currency:'EUR':'symbol':'1.2-2' }}</span>
+      </div>
+    }
+  </section>
+</div>

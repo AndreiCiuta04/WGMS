@@ -9,12 +9,15 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Expense;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ExpenseSplit;
+import at.ac.tuwien.sepr.groupphase.backend.entity.Payment;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
 import at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ExpenseRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ExpenseSplitRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.ExpenseService;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
@@ -27,7 +30,6 @@ import java.lang.invoke.MethodHandles;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
@@ -42,19 +44,28 @@ public class ExpenseServiceImpl implements ExpenseService {
 
     private final ExpenseRepository expenseRepository;
     private final ExpenseSplitRepository expenseSplitRepository;
+    private final HouseholdRepository householdRepository;
+    private final PaymentRepository paymentRepository;
     private final RoommateRepository roommateRepository;
     private final UserService userService;
+    private final BalanceCalculator balanceCalculator;
 
     public ExpenseServiceImpl(
         ExpenseRepository expenseRepository,
         ExpenseSplitRepository expenseSplitRepository,
+        HouseholdRepository householdRepository,
+        PaymentRepository paymentRepository,
         RoommateRepository roommateRepository,
-        UserService userService
+        UserService userService,
+        BalanceCalculator balanceCalculator
     ) {
         this.expenseRepository = expenseRepository;
         this.expenseSplitRepository = expenseSplitRepository;
+        this.householdRepository = householdRepository;
+        this.paymentRepository = paymentRepository;
         this.roommateRepository = roommateRepository;
         this.userService = userService;
+        this.balanceCalculator = balanceCalculator;
     }
 
     @Override
@@ -119,6 +130,8 @@ public class ExpenseServiceImpl implements ExpenseService {
         Expense expense = getExpenseInCurrentHousehold(id, currentRoommate);
 
         requireCanManageExpense(expense, currentRoommate);
+        lockHouseholdForSettlement(expense.getHousehold().getId());
+        requireNoRecordedPaymentsInHousehold(expense.getHousehold().getId());
         validateSplitParticipantsAreUnique(expenseUpdateDto.splits());
         validateCurrentRoommatePaid(expenseUpdateDto.paidByRoommateId(), currentRoommate);
         validatePaidByIsIncludedInSplits(expenseUpdateDto.paidByRoommateId(), expenseUpdateDto.splits());
@@ -146,6 +159,8 @@ public class ExpenseServiceImpl implements ExpenseService {
         Expense expense = getExpenseInCurrentHousehold(id, currentRoommate);
 
         requireCanManageExpense(expense, currentRoommate);
+        lockHouseholdForSettlement(expense.getHousehold().getId());
+        requireNoRecordedPaymentsInHousehold(expense.getHousehold().getId());
 
         expenseSplitRepository.deleteAllByExpenseId(expense.getId());
         expenseRepository.delete(expense);
@@ -157,9 +172,11 @@ public class ExpenseServiceImpl implements ExpenseService {
         LOGGER.debug("Calculate expense balances for user {}", currentUserEmail);
 
         Roommate currentRoommate = getCurrentRoommateByEmail(currentUserEmail);
-        List<ExpenseSplit> splits = expenseSplitRepository.findAllByExpenseHouseholdId(currentRoommate.getHousehold().getId());
+        Long householdId = currentRoommate.getHousehold().getId();
+        List<ExpenseSplit> splits = expenseSplitRepository.findAllByExpenseHouseholdId(householdId);
+        List<Payment> payments = paymentRepository.findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(householdId);
 
-        return buildBalances(splits);
+        return balanceCalculator.calculateOpenBalances(splits, payments);
     }
 
     @Override
@@ -207,6 +224,17 @@ public class ExpenseServiceImpl implements ExpenseService {
         }
 
         throw new ForbiddenException("You are not allowed to manage this expense.");
+    }
+
+    private void lockHouseholdForSettlement(Long householdId) {
+        householdRepository.findByIdForUpdate(householdId)
+            .orElseThrow(() -> new NotFoundException("Household does not exist."));
+    }
+
+    private void requireNoRecordedPaymentsInHousehold(Long householdId) {
+        if (paymentRepository.existsByHouseholdId(householdId)) {
+            throw new ConflictException("Expenses cannot be changed after a payment has been recorded in the household.");
+        }
     }
 
     private void validateSplitParticipantsAreUnique(List<ExpenseSplitCreateDto> splitDtos) {
@@ -342,77 +370,6 @@ public class ExpenseServiceImpl implements ExpenseService {
         return splits;
     }
 
-    private List<BalanceDto> buildBalances(List<ExpenseSplit> splits) {
-        Map<Long, BigDecimal> netAmountsByRoommateId = new HashMap<>();
-        Map<Long, Roommate> roommatesById = new HashMap<>();
-
-        for (ExpenseSplit split : splits) {
-            Roommate paidBy = split.getExpense().getPaidBy();
-            Roommate owedBy = split.getRoommate();
-            BigDecimal amount = toMoney(split.getAmountOwed());
-
-            roommatesById.put(paidBy.getId(), paidBy);
-            roommatesById.put(owedBy.getId(), owedBy);
-            netAmountsByRoommateId.merge(paidBy.getId(), amount, BigDecimal::add);
-            netAmountsByRoommateId.merge(owedBy.getId(), amount.negate(), BigDecimal::add);
-        }
-
-        return settleNetAmounts(netAmountsByRoommateId, roommatesById);
-    }
-
-    private List<BalanceDto> settleNetAmounts(Map<Long, BigDecimal> netAmountsByRoommateId, Map<Long, Roommate> roommatesById) {
-        List<RoommateBalance> debtors = new ArrayList<>(toRoommateBalances(netAmountsByRoommateId, roommatesById, -1));
-        List<RoommateBalance> creditors = new ArrayList<>(toRoommateBalances(netAmountsByRoommateId, roommatesById, 1));
-        List<BalanceDto> balances = new ArrayList<>();
-        int debtorIndex = 0;
-        int creditorIndex = 0;
-
-        while (debtorIndex < debtors.size() && creditorIndex < creditors.size()) {
-            RoommateBalance debtor = debtors.get(debtorIndex);
-            RoommateBalance creditor = creditors.get(creditorIndex);
-            BigDecimal amount = debtor.amount().min(creditor.amount());
-
-            balances.add(toBalanceDto(debtor.roommate(), creditor.roommate(), amount));
-            debtor = new RoommateBalance(debtor.roommate(), debtor.amount().subtract(amount));
-            creditor = new RoommateBalance(creditor.roommate(), creditor.amount().subtract(amount));
-            debtors.set(debtorIndex, debtor);
-            creditors.set(creditorIndex, creditor);
-
-            if (debtor.amount().compareTo(BigDecimal.ZERO) == 0) {
-                debtorIndex++;
-            }
-            if (creditor.amount().compareTo(BigDecimal.ZERO) == 0) {
-                creditorIndex++;
-            }
-        }
-
-        return balances;
-    }
-
-    private List<RoommateBalance> toRoommateBalances(
-        Map<Long, BigDecimal> netAmountsByRoommateId,
-        Map<Long, Roommate> roommatesById,
-        int sign
-    ) {
-        return netAmountsByRoommateId.entrySet().stream()
-            .filter(entry -> entry.getValue().signum() == sign)
-            .map(entry -> new RoommateBalance(roommatesById.get(entry.getKey()), toMoney(entry.getValue().abs())))
-            .sorted(Comparator.comparing(balance -> balance.roommate().getId()))
-            .toList();
-    }
-
-    private BalanceDto toBalanceDto(Roommate fromRoommate, Roommate toRoommate, BigDecimal amount) {
-        return new BalanceDto(
-            fromRoommate.getId(),
-            toDisplayName(fromRoommate),
-            fromRoommate.getUser().getEmail(),
-            toRoommate.getId(),
-            toDisplayName(toRoommate),
-            toRoommate.getUser().getEmail(),
-            toMoney(amount)
-        );
-    }
-
     private ExpenseDto  toDto(Expense expense, List<ExpenseSplit> splits) {
         Roommate paidBy = expense.getPaidBy();
         Roommate createdBy = expense.getCreatedBy();
@@ -461,5 +418,4 @@ public class ExpenseServiceImpl implements ExpenseService {
         return toMoney(amount).movePointRight(MONEY_SCALE).longValueExact();
     }
 
-    private record RoommateBalance(Roommate roommate, BigDecimal amount) {}
 }
