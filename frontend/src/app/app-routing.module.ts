@@ -21,6 +21,7 @@ import {CleaningScheduleCreateComponent} from './components/cleaning-schedule-cr
 import {CleaningScheduleEditComponent} from './components/cleaning-schedule-edit/cleaning-schedule-edit.component';
 import {PaymentStatusComponent} from './components/payment-status/payment-status.component';
 import {HistoryComponent} from './components/history/history.component';
+import {PaymentStatusComponent} from './components/payment-status/payment-status.component';
 
 const routes: Routes = [
   {path: '', component: HomeComponent},
