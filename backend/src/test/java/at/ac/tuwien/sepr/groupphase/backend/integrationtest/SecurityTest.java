@@ -146,12 +146,51 @@ public class SecurityTest implements TestData {
     }
 
     @Test
-    public void givenNoOneLoggedIn_whenFindAll_then401() throws Exception {
+    public void givenNoOneLoggedIn_whenFindAll_then403() throws Exception {
         MvcResult mvcResult = this.mockMvc.perform(get(MESSAGE_BASE_URI))
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 
         assertEquals(HttpStatus.FORBIDDEN.value(), response.getStatus());
+    }
+
+    @Test
+    public void givenMalformedAuthorizationHeaderWithoutBearerPrefix_whenFindAll_then401AndInvalidTokenMessage() throws Exception {
+        MvcResult mvcResult = this.mockMvc.perform(get(MESSAGE_BASE_URI)
+                .header(securityProperties.getAuthHeader(), "invalid.token.value"))
+            .andReturn();
+        MockHttpServletResponse response = mvcResult.getResponse();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatus()),
+            () -> assertEquals("Invalid authorization header or token", response.getContentAsString())
+        );
+    }
+
+    @Test
+    public void givenInvalidBearerToken_whenFindAll_then401AndInvalidTokenMessage() throws Exception {
+        MvcResult mvcResult = this.mockMvc.perform(get(MESSAGE_BASE_URI)
+                .header(securityProperties.getAuthHeader(), "Bearer invalid.token.value"))
+            .andReturn();
+        MockHttpServletResponse response = mvcResult.getResponse();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatus()),
+            () -> assertEquals("Invalid authorization header or token", response.getContentAsString())
+        );
+    }
+
+    @Test
+    public void givenBlankBearerToken_whenFindAll_then401AndInvalidTokenMessage() throws Exception {
+        MvcResult mvcResult = this.mockMvc.perform(get(MESSAGE_BASE_URI)
+                .header(securityProperties.getAuthHeader(), "Bearer "))
+            .andReturn();
+        MockHttpServletResponse response = mvcResult.getResponse();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatus()),
+            () -> assertEquals("Invalid authorization header or token", response.getContentAsString())
+        );
     }
 
     @Test

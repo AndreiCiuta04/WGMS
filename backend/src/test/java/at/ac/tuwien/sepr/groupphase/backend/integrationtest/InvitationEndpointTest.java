@@ -28,6 +28,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -194,6 +195,48 @@ public class InvitationEndpointTest implements TestData {
     }
 
     @Test
+    public void givenRoommate_whenGetInvitations_thenForbidden() throws Exception {
+        saveRoommate(userB, household, HouseholdRole.ROOMMATE);
+        createInvitation("invitee@test.com");
+
+        this.mockMvc.perform(get("/api/v1/households/" + household.getId() + "/invitations")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userB@test.com", USER_ROLES)))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isForbidden());
+    }
+
+    @Test
+    public void givenRoommate_whenDeleteInvitation_thenForbiddenAndInvitationRemainsActive() throws Exception {
+        saveRoommate(userB, household, HouseholdRole.ROOMMATE);
+        InvitationDto invitationDto = createInvitation("invitee@test.com");
+
+        this.mockMvc.perform(delete("/api/v1/invitations/" + invitationDto.id())
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userB@test.com", USER_ROLES)))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isForbidden());
+
+        assertFalse(invitationRepository.findById(invitationDto.id()).orElseThrow().isRevoked());
+    }
+
+    @Test
+    public void givenNonMember_whenGetInvitations_thenForbidden() throws Exception {
+        createInvitation("invitee@test.com");
+
+        this.mockMvc.perform(get("/api/v1/households/" + household.getId() + "/invitations")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userB@test.com", USER_ROLES)))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isForbidden());
+    }
+
+    @Test
+    public void givenNonMember_whenDeleteInvitation_thenForbiddenAndInvitationRemainsActive() throws Exception {
+        InvitationDto invitationDto = createInvitation("invitee@test.com");
+
+        this.mockMvc.perform(delete("/api/v1/invitations/" + invitationDto.id())
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userB@test.com", USER_ROLES)))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isForbidden());
+
+        assertFalse(invitationRepository.findById(invitationDto.id()).orElseThrow().isRevoked());
+    }
+
+    @Test
     public void givenAcceptedInvitation_whenAcceptAgain_then410AndNoDuplicateMembership() throws Exception {
         // 1. Create invitation
         InvitationCreateDto createDto = new InvitationCreateDto("userB@test.com", 24);
@@ -231,5 +274,28 @@ public class InvitationEndpointTest implements TestData {
 
         assertTrue(roommateRepository.existsByUserIdAndHouseholdIdAndActiveTrue(userB.getId(), household.getId()));
         assertEquals(2, activeMembersAfterSecondAccept);
+    }
+
+    private InvitationDto createInvitation(String invitedEmail) throws Exception {
+        InvitationCreateDto createDto = new InvitationCreateDto(invitedEmail, 24);
+        String createBody = jsonMapper.writeValueAsString(createDto);
+
+        MvcResult createResult = this.mockMvc.perform(post("/api/v1/households/" + household.getId() + "/invitations")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userA@test.com", USER_ROLES))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(createBody))
+            .andReturn();
+
+        assertEquals(HttpStatus.CREATED.value(), createResult.getResponse().getStatus());
+        return jsonMapper.readValue(createResult.getResponse().getContentAsString(), InvitationDto.class);
+    }
+
+    private Roommate saveRoommate(ApplicationUser user, Household household, HouseholdRole role) {
+        Roommate roommate = new Roommate();
+        roommate.setUser(user);
+        roommate.setHousehold(household);
+        roommate.setRole(role);
+        roommate.setActive(true);
+        return roommateRepository.save(roommate);
     }
 }

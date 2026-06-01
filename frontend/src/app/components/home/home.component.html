@@ -73,6 +73,9 @@
     <div class="dashboard-greeting">
       <h2>Welcome home, {{ getUserFirstName() }} 👋</h2>
       <p class="caption">Here's what's happening in your WG today.</p>
+      @if (dashboardLoading) {
+        <p class="caption dashboard-loading">Loading dashboard...</p>
+      }
     </div>
 
     <!-- Stat Cards -->
