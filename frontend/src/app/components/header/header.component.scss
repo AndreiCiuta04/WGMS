@@ -10,8 +10,8 @@ $eggwhite-bg: #FBFAF3;
   align-items: center;
   justify-content: space-between;
   padding: 16px 32px;
-  border-bottom: 1px solid rgba(31, 42, 31, 0.1);
-  background-color: $eggwhite-bg;
+  border-bottom: 1px solid rgba(31, 42, 31, 0.08);
+  background-color: #FFFFFF;
 }
 
 .header-brand {
@@ -54,9 +54,9 @@ $eggwhite-bg: #FBFAF3;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 24px;
+  padding: 16px 24px;
   border-bottom: 1px solid rgba(31, 42, 31, 0.06);
-  background-color: $eggwhite-bg;
+  background-color: #FFFFFF;
 }
 
 .header-app-brand {
