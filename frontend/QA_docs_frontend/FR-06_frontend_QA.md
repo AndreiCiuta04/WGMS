@@ -1,226 +1,178 @@
-# FR-06 Frontend QA Checklist — Payment Status Overview
+# FR-06 Frontend QA Evidence - Payment Status Overview
 
 ## Feature Information
 
 - Feature ID: FR-06
 - Feature name: Payment Status Overview
-- Use case: UC-03 — Shared Expense Tracking and Settlement
+- Use case: UC-03 - Shared Expense Tracking and Settlement
 - Priority: High
 - Category: Core
 - Version: V3
 - Frontend technology: Angular
 - Dependency: FR-05 Shared expense tracking
-- Branch:
-- Merge request:
-- Developer:
-- QA reviewer:
-- Date:
+- Branch: FR-06/Payment-status
+- Date: 2026-06-01
 
-## How to Use This Checklist
+## Implementation Evidence
 
-Use this checklist before merging the frontend implementation. A checked item must be backed by code inspection, frontend unit/component tests, service tests, e2e tests, command output, screenshot/manual evidence, or QA notes.
-
-## 1. Critical Checks — Route and Navigation
-
-- [ ] Feature page/section is reachable in the UI.
-- [ ] Route or parent page follows existing Angular routing conventions.
-- [ ] Navigation/sidebar entry exists if this feature has a standalone page.
-- [ ] Navigation label is clear and user-facing.
-- [ ] Route is protected consistently with other authenticated app routes.
-- [ ] Existing navigation links remain intact.
-- [ ] Browser refresh works on the route if standalone.
-- [ ] Back/forward navigation works.
-- [ ] Feature does not conflict with existing routes.
-
-Evidence:
+Route and navigation:
 
 ```text
-Routing:
-Navigation:
-E2E navigation:
+frontend/src/app/app-routing.module.ts
+frontend/src/app/components/sidebar/sidebar.component.html
+frontend/src/app/components/bottom-tab-bar/bottom-tab-bar.component.html
+/payment-status
 ```
 
-## 2. Critical Checks — Service and DTO Integration
-
-- [ ] Frontend DTO/interface exists.
-- [ ] DTO field names match backend JSON.
-- [ ] Optional/null fields are typed safely.
-- [ ] Service method exists for loading feature data.
-- [ ] Service calls the correct backend endpoint.
-- [ ] Service uses existing global backend URI convention.
-- [ ] Service sends no `householdId`.
-- [ ] Service sends no user id, roommate id, or email for household scoping.
-- [ ] Service relies on existing auth/JWT mechanism.
-- [ ] Service contains no fake/mock production data.
-- [ ] Service test verifies endpoint URL and HTTP method.
-- [ ] Service test verifies no household id is sent.
-
-Evidence:
+Frontend files:
 
 ```text
-DTO:
-Service:
-Service spec:
+frontend/src/app/components/payment-status/payment-status.component.ts
+frontend/src/app/components/payment-status/payment-status.component.html
+frontend/src/app/components/payment-status/payment-status.component.scss
+frontend/src/app/services/payment.service.ts
+frontend/src/app/dtos/payment.ts
 ```
 
-## 3. Critical Checks — Component Behavior
-
-- [ ] Component loads data on init or at the accepted interaction point.
-- [ ] Component avoids nested subscription leaks.
-- [ ] Loading state is shown.
-- [ ] Error state is shown for failed API calls.
-- [ ] Empty state is shown for no data.
-- [ ] Populated state renders backend data.
-- [ ] Component handles optional/null fields safely.
-- [ ] Component handles multiple records.
-- [ ] Component does not render `undefined`, `NaN`, or `[object Object]`.
-- [ ] Component does not show fake production data.
-- [ ] Component can recover by refresh/navigation after error.
-
-Evidence:
+Frontend tests:
 
 ```text
-Component:
-Template:
-Spec:
+frontend/src/app/components/payment-status/payment-status.component.spec.ts
+frontend/src/app/services/payment.service.spec.ts
+e2e/cypress/e2e/paymentStatus.cy.js
 ```
 
-## 4. Critical Checks — Feature Rendering
+## Route And Navigation
 
-- [ ] UI displays all required fields for Payment Status Overview.
-- [ ] UI labels are understandable.
-- [ ] Status/visibility/amount/quantity fields are shown where relevant.
-- [ ] Empty state text is clear.
-- [ ] Error state text is user-friendly and does not expose stack traces.
-- [ ] Long names/descriptions/emails do not break layout.
-- [ ] Multiple records remain readable.
-- [ ] Sorting/grouping displayed by backend is understandable.
-- [ ] UI does not misrepresent unsupported behavior.
-- [ ] No fake data is displayed before backend response.
+- [x] Feature page is reachable in the UI.
+- [x] Route follows existing Angular routing conventions.
+- [x] Sidebar and bottom-tab navigation entries exist.
+- [x] Navigation label is clear: Payment Status.
+- [x] Route is protected by the existing auth guard.
+- [x] Existing navigation links remain intact.
+- [x] Feature does not conflict with existing routes.
+- [x] E2E navigates to `/payment-status`.
 
-Evidence:
+## Service And DTO Integration
 
-```text
-Template:
-Component test:
-E2E test:
-```
+- [x] Frontend DTO/interface exists.
+- [x] DTO field names match backend JSON, including `totalIOwe`.
+- [x] Service method exists for loading payment overview.
+- [x] Service method exists for creating payments.
+- [x] Service calls `/payments/overview` and `/payments`.
+- [x] Service uses existing global backend URI convention.
+- [x] Service sends no `householdId`.
+- [x] Service sends no user id, roommate id, or email for household scoping.
+- [x] Service relies on existing JWT/auth interceptor.
+- [x] Service contains no fake/mock production data.
+- [x] Service tests verify endpoint URL and HTTP method.
 
-## 5. Important Checks — UI Theme and Style
+## Component Behavior
 
-- [ ] UI matches existing WGMS theme.
-- [ ] Existing card/table/list styling is reused.
-- [ ] Existing spacing and typography are preserved.
-- [ ] Buttons/links match existing style.
-- [ ] Badges/status labels match existing app style.
-- [ ] No external UI library is introduced.
-- [ ] No unrelated global CSS changes are introduced.
-- [ ] Page works on desktop.
-- [ ] Page works on mobile widths.
-- [ ] Long text wraps/truncates safely.
+- [x] Component loads data on init.
+- [x] Component no longer needs household/member round-trips just to decide payment recording visibility.
+- [x] Loading state is shown.
+- [x] Error state is shown for failed API calls.
+- [x] Failed overview load no longer displays a false empty state.
+- [x] Empty state is shown for no open balances and no payments.
+- [x] Populated state renders backend balances and payment history.
+- [x] Multiple records are handled.
+- [x] `canRecord` compares authenticated user email with `fromRoommateEmail`.
+- [x] Component does not show fake production data.
 
-Evidence:
+## Feature Rendering
 
-```text
-SCSS/template:
-Screenshot/manual:
-Build/lint:
-```
+- [x] UI displays totals, open balances, record-payment form, and payment history.
+- [x] UI labels are understandable.
+- [x] Amount fields use existing currency formatting.
+- [x] Empty state text is clear.
+- [x] Error state text is user-friendly and does not expose stack traces.
+- [x] Multiple balances/payments remain readable.
+- [x] UI does not claim edit/delete/undo support for payments.
 
-## 6. Critical Checks — Frontend Tests Exist
+## Frontend Tests
 
-- [ ] Component creation test exists.
-- [ ] Component calls service on load.
-- [ ] Loading state test exists.
-- [ ] Error state test exists.
-- [ ] Empty state test exists.
-- [ ] Populated rendering test exists.
-- [ ] Test covers multiple records.
-- [ ] Test covers optional/null fields.
-- [ ] Service test exists.
-- [ ] Service test verifies endpoint URL.
-- [ ] Service test verifies no household id is sent.
-- [ ] Existing related frontend tests still pass.
-- [ ] No frontend tests are skipped or weakened.
+Component/service tests cover:
 
-Command:
+- [x] Component creation.
+- [x] Service call on init.
+- [x] Loading state.
+- [x] Error state.
+- [x] Empty state.
+- [x] Populated rendering.
+- [x] Multiple records.
+- [x] Recording a valid payment.
+- [x] Payment cannot exceed open balance.
+- [x] Overview load failure suppresses empty states.
+- [x] `canRecord` works by email without household member lookup.
+- [x] Service endpoint URL and HTTP method.
+- [x] No household id is sent by payment service methods.
+
+E2E covers:
+
+- [x] Login.
+- [x] Navigation to Payment Status.
+- [x] Synthetic household, roommate, and expense setup.
+- [x] Populated open balance rendering.
+- [x] Recording a partial payment.
+- [x] Payment history rendering.
+- [x] FR-05 Expenses page showing the same reduced balance.
+- [x] Empty payment state for a household without balances.
+
+## Command Evidence
+
+Frontend unit/component tests:
 
 ```bash
-cd frontend && npm test -- --watch=false --browsers=ChromeHeadless
+cd frontend && npm.cmd test -- --watch=false --browsers=ChromeHeadless
 ```
 
 Result:
 
 ```text
-Successes:
-Failures:
+TOTAL: 71 SUCCESS
 ```
 
-## 7. Critical Checks — E2E Tests Exist
-
-- [ ] Cypress/e2e spec exists for FR-06.
-- [ ] E2E user can log in.
-- [ ] E2E user can navigate to the feature.
-- [ ] E2E creates or seeds relevant synthetic data.
-- [ ] E2E verifies populated rendering.
-- [ ] E2E verifies empty state if possible.
-- [ ] E2E verifies no page crash.
-- [ ] E2E does not depend on production data.
-- [ ] E2E spec is documented.
-- [ ] Existing e2e tests still pass or limitation is documented.
-
-Command:
+Frontend lint:
 
 ```bash
-cd e2e && npx cypress run --spec cypress/e2e/<fr-06-spec-name>.cy.js
+cd frontend && npm.cmd run lint
 ```
 
-Evidence:
+Result:
 
 ```text
-Spec:
-Result:
+All files pass linting.
 ```
 
-## 8. Regression Checks
-
-- [ ] Existing login flow still works.
-- [ ] Existing sidebar/navigation still works.
-- [ ] Existing related feature pages still work.
-- [ ] Existing frontend tests pass.
-- [ ] Frontend build passes.
-- [ ] Lint passes if configured.
-- [ ] No local/mock/fake production data remains.
-- [ ] No unrelated frontend refactoring is mixed into this feature.
-
-Commands:
+Frontend build:
 
 ```bash
-cd frontend && npm run build
-cd frontend && npm run lint
+cd frontend && npm.cmd run build
 ```
 
-## 9. Frontend Merge Blockers
+Result:
 
-- [ ] Verified blocker not present: feature is unreachable.
-- [ ] Verified blocker not present: frontend sends household id.
-- [ ] Verified blocker not present: fake production data is shown.
-- [ ] Verified blocker not present: empty state crashes page.
-- [ ] Verified blocker not present: backend error crashes page.
-- [ ] Verified blocker not present: normal null fields render ugly values.
-- [ ] Verified blocker not present: UI style is inconsistent with app.
-- [ ] Verified blocker not present: frontend tests are missing.
-- [ ] Verified blocker not present: e2e test is missing without justification.
-- [ ] Verified blocker not present: build fails.
+```text
+Application bundle generation complete.
+```
 
-## 10. Frontend Final Approval
+FR-06 Cypress spec:
 
-- [ ] Route/navigation verified.
-- [ ] Service/DTO contract verified.
-- [ ] Loading/error/empty states verified.
-- [ ] Feature rendering verified.
-- [ ] Frontend tests exist and pass.
-- [ ] E2E tests exist and pass, or absence is explicitly justified.
-- [ ] Build/lint pass.
-- [ ] Known limitations documented.
-- [ ] Frontend ready for merge review.
+```bash
+cd e2e && npx.cmd cypress run --spec cypress/e2e/paymentStatus.cy.js
+```
+
+Result:
+
+```text
+2 passing, 0 failing
+```
+
+## Known Limitation
+
+- Payments cannot yet be edited, deleted, or undone. The UI only exposes creation of payments against open balances.
+
+## Frontend QA Conclusion
+
+Frontend FR-06 is QA-approved for merge review with the documented payment edit/delete/undo limitation.

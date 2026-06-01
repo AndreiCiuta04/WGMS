@@ -3,6 +3,7 @@ package at.ac.tuwien.sepr.groupphase.backend.endpoint.dto;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PastOrPresent;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -16,5 +17,6 @@ public record PaymentCreateDto(
     BigDecimal amount,
 
     @NotNull(message = "Date must not be null")
+    @PastOrPresent(message = "Date must not be in the future")
     LocalDate date
 ) {}

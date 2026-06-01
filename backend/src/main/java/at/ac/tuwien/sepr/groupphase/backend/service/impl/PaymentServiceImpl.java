@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.lang.invoke.MethodHandles;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -112,6 +113,9 @@ public class PaymentServiceImpl implements PaymentService {
         }
         if (paymentCreateDto.date() == null) {
             throw new ConflictException("Payment date must not be null.");
+        }
+        if (paymentCreateDto.date().isAfter(LocalDate.now())) {
+            throw new ConflictException("Payment date must not be in the future.");
         }
     }
 
