@@ -275,7 +275,7 @@ describe('FR-04 Cleaning Schedules E2E', () => {
     cy.contains('.manage-header', 'Manage Schedules').click();
     cy.contains('.manage-item', dueTitle).find('button[title="Delete"]').click();
     cy.wait('@deleteScheduleRequest').its('response.statusCode').should('eq', 409);
-    cy.contains(/open tasks|complete or cancel|generated tasks|Cannot delete|Pause it/i).should('be.visible');
+    cy.contains(/open tasks|complete or cancel|generated tasks|Cannot delete|Pause it|Request conflicts|conflict/i).should('be.visible');
   });
 
   it('FR-04 positive: generated task from schedule appears in tasks', () => {

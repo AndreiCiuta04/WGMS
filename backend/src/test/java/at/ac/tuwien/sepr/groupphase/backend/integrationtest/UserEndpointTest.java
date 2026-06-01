@@ -116,7 +116,7 @@ public class UserEndpointTest implements TestData {
         MockHttpServletResponse response = mvcResult.getResponse();
 
         assertEquals(HttpStatus.CONFLICT.value(), response.getStatus());
-        assertTrue(response.getContentAsString().contains("User with email existing@example.com already exists"));
+        assertEquals("Request conflicts with the current resource state.", response.getContentAsString());
     }
 
     @Test

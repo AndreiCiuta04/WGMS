@@ -118,7 +118,7 @@ public class CustomUserDetailService implements UserService {
         // Check if user already exists
         ApplicationUser existingUser = userRepository.findUserByEmail(userRegistrationDto.getEmail());
         if (existingUser != null) {
-            throw new at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException(String.format("User with email %s already exists", userRegistrationDto.getEmail()));
+            throw new at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException("User already exists.");
         }
 
         ApplicationUser newUser = new ApplicationUser(

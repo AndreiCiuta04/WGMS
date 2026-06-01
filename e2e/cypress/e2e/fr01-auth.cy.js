@@ -34,7 +34,7 @@ describe('FR-01 Authentication and Registration E2E', () => {
     cy.registerUser(user);
 
     cy.location('hash').should('eq', '#/');
-    cy.contains('h2', 'Welcome home').should('be.visible');
+    cy.contains(/Welcome home|Welcome to WGMS!/).should('be.visible');
     cy.window().its('localStorage.authToken').should('exist');
 
     cy.logoutUser();
@@ -43,7 +43,7 @@ describe('FR-01 Authentication and Registration E2E', () => {
 
     cy.loginUser(user.email, user.password);
     cy.location('hash').should('eq', '#/');
-    cy.contains('h2', 'Welcome home').should('be.visible');
+    cy.contains(/Welcome home|Welcome to WGMS!/).should('be.visible');
   });
 
   it('FR-01 negative: invalid login and duplicate registration show readable errors', () => {

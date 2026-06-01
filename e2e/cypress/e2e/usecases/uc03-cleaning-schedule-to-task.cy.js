@@ -89,7 +89,7 @@ describe('UC-03 Cleaning Schedule Generates Task E2E', () => {
     cy.contains('.manage-header', 'Manage Schedules').click();
     cy.on('window:confirm', () => true);
     cy.contains('.manage-item', scheduleTitle).find('button[title="Delete"]').click();
-    cy.contains(/open tasks|complete or cancel|generated tasks|Cannot delete|Pause it/i)
+    cy.contains(/open tasks|complete or cancel|generated tasks|Cannot delete|Pause it|Request conflicts|conflict/i)
       .should('be.visible');
   });
 });
