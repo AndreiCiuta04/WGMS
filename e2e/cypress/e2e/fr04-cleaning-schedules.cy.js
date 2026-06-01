@@ -97,7 +97,7 @@ function createCleaningSchedule(token, schedule) {
   });
 }
 
-describe('FR-04 Cleaning Schedule integration', () => {
+describe('FR-04 Cleaning Schedules E2E', () => {
   let user;
   let token;
 
@@ -119,7 +119,7 @@ describe('FR-04 Cleaning Schedule integration', () => {
     });
   });
 
-  it('creates, lists, edits, pauses, resumes, and deletes a cleaning schedule', () => {
+  it('FR-04 API setup evidence: creates, lists, edits, pauses, resumes, and deletes a schedule', () => {
     const originalTitle = `Clean Kitchen ${Date.now()}`;
     const updatedTitle = `${originalTitle} Updated`;
 
@@ -192,7 +192,93 @@ describe('FR-04 Cleaning Schedule integration', () => {
     });
   });
 
-  it('generates a concrete task from a cleaning schedule and links it back to the schedule', () => {
+  it('FR-04 positive: creates, edits, pauses, resumes, generates task, and deletes schedules through UI', () => {
+    const runId = Date.now();
+    const dueTitle = `UI Due Cleaning ${runId}`;
+    const upcomingTitle = `UI Upcoming Cleaning ${runId}`;
+    const updatedTitle = `${upcomingTitle} Updated`;
+
+    cy.loginUser(user.email, user.password);
+
+    cy.visit('/#/cleaning-schedules/create');
+    cy.contains('h2', 'Create Cleaning Schedule').should('be.visible');
+
+    cy.intercept('POST', '**/api/v1/cleaning-schedules').as('createScheduleRequest');
+    cy.contains('button', 'Create Schedule').click();
+    cy.contains('Title is required.').should('be.visible');
+    cy.contains('Frequency is required.').should('be.visible');
+    cy.contains('Start date is required.').should('be.visible');
+    cy.contains('Please assign the schedule to someone.').should('be.visible');
+    cy.get('@createScheduleRequest.all').should('have.length', 0);
+
+    cy.get('#title').clear().type(dueTitle);
+    cy.get('#description').clear().type('Due today cleaning schedule from Cypress');
+    cy.get('#frequency').select('DAILY');
+    cy.get('#assignedToEmail').select(user.email);
+    cy.get('#startDate').clear().type(todayIso());
+    cy.contains('button', 'Create Schedule').click();
+    cy.wait('@createScheduleRequest').its('response.statusCode').should('eq', 201);
+
+    cy.location('hash').should('eq', '#/cleaning-schedules');
+    cy.contains('.due-item', dueTitle).should('be.visible');
+
+    cy.visit('/#/cleaning-schedules/create');
+    cy.get('#title').clear().type(upcomingTitle);
+    cy.get('#description').clear().type('Upcoming cleaning schedule from Cypress');
+    cy.get('#frequency').select('WEEKLY');
+    cy.get('#assignedToEmail').select(user.email);
+    cy.get('#startDate').clear().type(tomorrowIso());
+    cy.contains('button', 'Create Schedule').click();
+    cy.wait('@createScheduleRequest').its('response.statusCode').should('eq', 201);
+
+    cy.contains('.upcoming-item', upcomingTitle).should('be.visible');
+
+    cy.contains('.manage-header', 'Manage Schedules').click();
+    cy.contains('.manage-item', upcomingTitle).find('a[title="Edit"]').click();
+    cy.contains('h2', 'Edit Cleaning Schedule').should('be.visible');
+    cy.get('#title').clear().type(updatedTitle);
+    cy.get('#frequency').select('BIWEEKLY');
+    cy.intercept('PUT', '**/api/v1/cleaning-schedules/*').as('updateScheduleRequest');
+    cy.contains('button', 'Save Changes').click();
+    cy.wait('@updateScheduleRequest').its('response.statusCode').should('eq', 200);
+    cy.contains('.upcoming-item', updatedTitle).should('be.visible');
+
+    cy.contains('.manage-header', 'Manage Schedules').click();
+    cy.intercept('PATCH', '**/api/v1/cleaning-schedules/*/active').as('toggleActiveRequest');
+    cy.contains('.manage-item', updatedTitle).find('button[title="Pause"]').click();
+    cy.wait('@toggleActiveRequest').its('response.statusCode').should('eq', 200);
+    cy.contains('.manage-item', updatedTitle).within(() => {
+      cy.contains('Paused').should('be.visible');
+    });
+
+    cy.contains('.manage-item', updatedTitle).find('button[title="Resume"]').click();
+    cy.wait('@toggleActiveRequest').its('response.statusCode').should('eq', 200);
+    cy.contains('.manage-item', updatedTitle).within(() => {
+      cy.contains('Paused').should('not.exist');
+    });
+
+    cy.on('window:confirm', () => true);
+    cy.intercept('DELETE', '**/api/v1/cleaning-schedules/*').as('deleteScheduleRequest');
+    cy.contains('.manage-item', updatedTitle).find('button[title="Delete"]').click();
+    cy.wait('@deleteScheduleRequest').its('response.statusCode').should('eq', 204);
+    cy.contains(updatedTitle).should('not.exist');
+
+    cy.intercept('POST', '**/api/v1/cleaning-schedules/*/generate-task').as('generateTaskRequest');
+    cy.contains('.due-item', dueTitle).contains('button', 'Generate Task').click();
+    cy.wait('@generateTaskRequest').its('response.statusCode').should('be.oneOf', [200, 201]);
+    cy.contains(`Task created for "${dueTitle}"!`).should('be.visible');
+
+    cy.visit('/#/tasks');
+    cy.contains(dueTitle).should('be.visible');
+
+    cy.visit('/#/cleaning-schedules');
+    cy.contains('.manage-header', 'Manage Schedules').click();
+    cy.contains('.manage-item', dueTitle).find('button[title="Delete"]').click();
+    cy.wait('@deleteScheduleRequest').its('response.statusCode').should('eq', 409);
+    cy.contains(/open tasks|complete or cancel|generated tasks|Cannot delete|Pause it/i).should('be.visible');
+  });
+
+  it('FR-04 positive: generated task from schedule appears in tasks', () => {
     const schedulePayload = {
       title: `Bathroom Cleaning ${Date.now()}`,
       description: 'Generated-task integration test',
@@ -232,7 +318,7 @@ describe('FR-04 Cleaning Schedule integration', () => {
     });
   });
 
-  it('does not allow deleting a schedule after it generated tasks', () => {
+  it('FR-04 negative: deleting a schedule after generated tasks is blocked', () => {
     const schedulePayload = {
       title: `Protected Schedule ${Date.now()}`,
       description: 'Delete protection integration test',
@@ -271,7 +357,7 @@ describe('FR-04 Cleaning Schedule integration', () => {
     });
   });
 
-  it('keeps cleaning schedules scoped to the user household', () => {
+  it('FR-04 negative: other-household schedules do not leak', () => {
     const otherUser = {
       email: uniqueEmail('fr04.other'),
       password: 'Password1!',
@@ -316,7 +402,7 @@ describe('FR-04 Cleaning Schedule integration', () => {
     });
   });
 
-  it('rejects unauthenticated access to cleaning schedule endpoints', () => {
+  it('FR-04 negative: unauthenticated cleaning schedule access is rejected', () => {
     cy.request({
       method: 'GET',
       url: `${backendUrl}/cleaning-schedules`,

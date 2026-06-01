@@ -59,6 +59,55 @@ describe('ShoppingItemService', () => {
     req.flush([]);
   });
 
+  it('findAggregatedHouseholdShoppingList() should issue GET to /shopping-items/aggregated without identity parameters', () => {
+    const aggregatedItems = [{
+      name: 'Milk',
+      quantity: '2L',
+      itemCount: 2,
+      sourceItems: [{
+        id: 1,
+        name: 'Milk',
+        quantity: '2L',
+        notes: null,
+        createdById: 100,
+        createdByEmail: 'a@test.com',
+        createdByFirstName: 'A',
+        createdByLastName: 'B',
+        createdAt: '2026-05-17T10:00:00'
+      }]
+    }];
+
+    service.findAggregatedHouseholdShoppingList().subscribe(items => {
+      expect(items).toEqual(aggregatedItems);
+      expect(items[0].itemCount).toBe(2);
+    });
+
+    const req = httpMock.expectOne(globals.backendUri + '/shopping-items/aggregated');
+    expect(req.request.method).toBe('GET');
+    expect(req.request.body).toBeNull();
+    expect(req.request.params.has('householdId')).toBeFalse();
+    expect(req.request.params.has('userId')).toBeFalse();
+    expect(req.request.params.has('roommateId')).toBeFalse();
+    expect(req.request.params.has('email')).toBeFalse();
+    req.flush(aggregatedItems);
+  });
+
+  it('findHouseholdShoppingHistory() should issue GET to /shopping-items/history without identity parameters', () => {
+    service.findHouseholdShoppingHistory().subscribe(items => {
+      expect(items).toEqual([sampleItem]);
+      expect(items[0].name).toBe('Milk');
+    });
+
+    const req = httpMock.expectOne(globals.backendUri + '/shopping-items/history');
+    expect(req.request.method).toBe('GET');
+    expect(req.request.body).toBeNull();
+    expect(req.request.params.has('householdId')).toBeFalse();
+    expect(req.request.params.has('userId')).toBeFalse();
+    expect(req.request.params.has('roommateId')).toBeFalse();
+    expect(req.request.params.has('email')).toBeFalse();
+    req.flush([sampleItem]);
+  });
+
   it('findOne(id) should issue GET to /shopping-items/{id}', () => {
     service.findOne(1).subscribe(item => expect(item.id).toBe(1));
     const req = httpMock.expectOne(globals.backendUri + '/shopping-items/1');

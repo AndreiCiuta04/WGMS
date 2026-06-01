@@ -64,8 +64,8 @@ function openExpenses() {
   cy.contains('h3', 'Create Expense').should('be.visible');
 }
 
-describe('FR-05 Expenses E2E Workflow', () => {
-  it('creates an expense, shows split data, validates invalid amount, and persists after reload/login', () => {
+describe('FR-05 Shared Expenses E2E', () => {
+  it('FR-05 positive: creates, equal-splits, persists, edits, and deletes an expense', () => {
     createExpenseHousehold().then(({ mainEmail }) => {
       login(mainEmail);
       openExpenses();
@@ -105,10 +105,72 @@ describe('FR-05 Expenses E2E Workflow', () => {
       openExpenses();
       cy.contains('QA Cypress Expense').should('be.visible');
 
+      cy.contains('.expense-item', 'QA Cypress Expense')
+        .find('button[title="Edit expense"]')
+        .click();
+      cy.contains('h3', 'Edit Expense').should('be.visible');
+      cy.get('#description').clear().type('QA Cypress Expense Updated');
+      cy.get('#totalAmount').clear().type('14.00').blur();
+      cy.contains('.split-row', 'FR05 Main')
+        .find('.split-amount input')
+        .clear()
+        .type('7.00')
+        .blur();
+      cy.contains('.split-row', 'FR05 Room')
+        .find('.split-amount input')
+        .clear()
+        .type('7.00')
+        .blur();
+      cy.intercept('PUT', '**/api/v1/expenses/*').as('updateExpense');
+      cy.contains('button', 'Update Expense').click();
+      cy.wait('@updateExpense').its('response.statusCode').should('eq', 200);
+      cy.contains('Expense updated.').should('be.visible');
+      cy.contains('QA Cypress Expense Updated').should('be.visible');
+
+      cy.contains('.expense-item', 'QA Cypress Expense Updated')
+        .find('button[title="Delete expense"]')
+        .click();
+      cy.contains('Delete expense?').should('be.visible');
+      cy.intercept('DELETE', '**/api/v1/expenses/*').as('deleteExpense');
+      cy.contains('.delete-dialog button', 'OK').click();
+      cy.wait('@deleteExpense').its('response.statusCode').should('eq', 204);
+      cy.contains('Expense deleted.').should('be.visible');
+      cy.contains('QA Cypress Expense Updated').should('not.exist');
+
       cy.get('#description').clear().type('Invalid QA Expense');
       cy.get('#totalAmount').clear().type('-5.00');
       cy.contains('button', 'Create Expense').click();
       cy.contains('Enter a positive total amount.').should('be.visible');
+    });
+  });
+
+  it('FR-05 negative: split sum mismatch shows readable backend error', () => {
+    createExpenseHousehold().then(({ mainEmail }) => {
+      login(mainEmail);
+      openExpenses();
+
+      cy.get('#description').clear().type('Mismatch QA Expense');
+      cy.get('#totalAmount').clear().type('10.00').blur();
+      cy.contains('.split-row', 'FR05 Room')
+        .find('input[type="checkbox"]')
+        .check();
+      cy.contains('.split-row', 'FR05 Main')
+        .find('.split-amount input')
+        .clear()
+        .type('8.00')
+        .blur();
+      cy.contains('.split-row', 'FR05 Room')
+        .find('.split-amount input')
+        .clear()
+        .type('1.00')
+        .blur();
+
+      cy.intercept('POST', '**/api/v1/expenses').as('createMismatchExpense');
+      cy.contains('button', 'Create Expense').click();
+      cy.wait('@createMismatchExpense')
+        .its('response.statusCode')
+        .should('be.oneOf', [400, 409, 422]);
+      cy.contains(/split|sum|total|amount/i).should('be.visible');
     });
   });
 
@@ -117,7 +179,7 @@ describe('FR-05 Expenses E2E Workflow', () => {
     [390, 844],
     [412, 915],
   ].forEach(([width, height]) => {
-    it(`keeps the expense page usable at ${width}px width`, () => {
+    it(`FR-05 responsive: expense page remains usable at ${width}px width`, () => {
       cy.viewport(width, height);
 
       createExpenseHousehold().then(({ mainEmail }) => {

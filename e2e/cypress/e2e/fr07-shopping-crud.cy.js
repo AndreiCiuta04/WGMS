@@ -1,4 +1,4 @@
-describe('FR-07 Shopping List E2E Workflow', () => {
+describe('FR-07 Shopping CRUD E2E', () => {
     const password = 'Password123!';
     const runId = Date.now();
 
@@ -30,7 +30,7 @@ describe('FR-07 Shopping List E2E Workflow', () => {
         cy.clearLocalStorage();
     });
 
-    it('logged-out user is redirected away from the route', () => {
+    it('FR-07 negative: logged-out user is redirected away from shopping routes', () => {
         cy.visit('/#/shopping-items');
         cy.url().should('include', '/login');
 
@@ -38,7 +38,7 @@ describe('FR-07 Shopping List E2E Workflow', () => {
         cy.url().should('include', '/login');
     });
 
-    it('creates, displays, edits, status transitions, and deletes a shopping item', () => {
+    it('FR-07 positive: creates, lists, edits, marks bought, marks needed, cancels, and deletes item', () => {
         // Register user and initialize household/WG
         cy.registerUser(daniel);
         cy.createHousehold(household);
@@ -125,7 +125,7 @@ describe('FR-07 Shopping List E2E Workflow', () => {
         cy.contains(updatedItem.name).should('not.exist');
     });
 
-    it('shows the All Items and Targeted at Me tabs', () => {
+    it('FR-07 positive: shopping list shows All Items and Targeted at Me tabs', () => {
         const u = {
             firstName: 'Tab',
             lastName: 'Tester',
@@ -140,7 +140,7 @@ describe('FR-07 Shopping List E2E Workflow', () => {
         cy.contains('.nav-link', 'Targeted at Me').should('be.visible');
     });
 
-    it('creates a SHARED item and shows the visibility badge', () => {
+    it('FR-07 positive: shared item shows visibility badge', () => {
         const u = {
             firstName: 'Badge',
             lastName: 'Tester',
@@ -162,7 +162,7 @@ describe('FR-07 Shopping List E2E Workflow', () => {
         cy.contains('SHARED').should('be.visible');
     });
 
-    it('shows the visibility dropdown on the create form, defaulting to Personal', () => {
+    it('FR-07 positive: create form exposes visibility selector defaulting to Personal', () => {
         const u = {
             firstName: 'Dropdown',
             lastName: 'Tester',

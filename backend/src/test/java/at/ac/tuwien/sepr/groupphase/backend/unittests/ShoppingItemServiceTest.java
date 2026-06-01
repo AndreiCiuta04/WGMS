@@ -195,11 +195,6 @@ public class ShoppingItemServiceTest {
     }
 
     @Test
-    public void RouterTargetedVisibilitySelfTargetConflict() {
-        // self-target should remain ConflictException
-    }
-
-    @Test
     public void givenSelfTarget_whenCreate_thenConflict() {
         when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
         ShoppingItemCreateDto dto = new ShoppingItemCreateDto(
