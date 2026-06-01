@@ -14,6 +14,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     @EntityGraph(attributePaths = {"household", "fromRoommate", "fromRoommate.user", "toRoommate", "toRoommate.user", "createdBy", "createdBy.user"})
     List<Payment> findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(Long householdId);
 
+    boolean existsByHouseholdId(Long householdId);
+
     @EntityGraph(attributePaths = {"household", "fromRoommate", "fromRoommate.user", "toRoommate", "toRoommate.user", "createdBy", "createdBy.user"})
     @Query("""
         SELECT p

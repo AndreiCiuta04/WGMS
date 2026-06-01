@@ -39,6 +39,12 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -267,6 +273,42 @@ public class PaymentEndpointTest implements TestData {
             () -> assertEquals(HttpStatus.BAD_REQUEST.value(), mvcResult.getResponse().getStatus()),
             () -> assertEquals(0, paymentRepository.findAll().size())
         );
+    }
+
+    @Test
+    public void givenConcurrentPaymentsForSameOpenBalance_whenCreatePayment_thenOnlyOneIsPersisted() throws Exception {
+        Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Internet bill", money("20.00"));
+        saveSplit(expense, mainTenantRoommate, money("10.00"));
+        saveSplit(expense, roommateRecord, money("10.00"));
+        PaymentCreateDto createDto = new PaymentCreateDto(mainTenantRoommate.getId(), money("10.00"), PAYMENT_DATE);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        Callable<Integer> request = () -> {
+            startLatch.await();
+            return this.mockMvc.perform(post(PAYMENT_BASE_URI)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(jsonMapper.writeValueAsString(createDto))
+                    .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+                .andReturn()
+                .getResponse()
+                .getStatus();
+        };
+
+        try {
+            Future<Integer> firstRequest = executor.submit(request);
+            Future<Integer> secondRequest = executor.submit(request);
+            startLatch.countDown();
+            List<Integer> statuses = List.of(firstRequest.get(), secondRequest.get());
+
+            assertAll(
+                () -> assertEquals(1, statuses.stream().filter(status -> status == HttpStatus.CREATED.value()).count()),
+                () -> assertEquals(1, statuses.stream().filter(status -> status == HttpStatus.CONFLICT.value()).count()),
+                () -> assertEquals(1, paymentRepository.findAll().size())
+            );
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     private String tokenFor(String email) {
