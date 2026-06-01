@@ -428,6 +428,24 @@ public class ExpenseEndpointTest implements TestData {
     }
 
     @Test
+    public void givenRecordedPayment_whenDeleteExpense_then409AndExpenseIsKept() throws Exception {
+        Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Delete me", money("12.00"));
+        saveSplit(expense, mainTenantRoommate, money("6.00"));
+        saveSplit(expense, roommateRecord, money("6.00"));
+        savePayment(roommateRecord, mainTenantRoommate, money("6.00"));
+
+        MvcResult mvcResult = this.mockMvc.perform(delete(EXPENSE_BASE_URI + "/{id}", expense.getId())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.CONFLICT.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals(1, expenseRepository.findAll().size()),
+            () -> assertEquals(2, expenseSplitRepository.findAll().size())
+        );
+    }
+
+    @Test
     public void givenExpenseFromOtherHousehold_whenFindExpense_then404() throws Exception {
         Expense otherExpense = saveExpense(otherHousehold, outsiderRoommate, outsiderRoommate, "Private", money("5.00"));
 
