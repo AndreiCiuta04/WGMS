@@ -1,38 +1,98 @@
-const backendUrl = 'http://localhost:8080/api/v1';
+const apiUrl = 'http://localhost:8080/api/v1';
+const password = 'Password123!';
 
 function uniqueEmail(prefix) {
   return `${prefix}.${Date.now()}.${Math.floor(Math.random() * 100000)}@example.com`;
 }
 
-function todayIso() {
-  const today = new Date();
-  const localDate = new Date(today.getTime() - today.getTimezoneOffset() * 60000);
+function isoDate(daysFromToday = 0) {
+  const date = new Date();
+  date.setDate(date.getDate() + daysFromToday);
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return localDate.toISOString().slice(0, 10);
 }
 
-function authToken() {
-  return cy.window().then((win) => {
-    const token = win.localStorage.getItem('authToken');
-    expect(token, 'auth token').to.be.a('string').and.not.be.empty;
-    return token;
-  });
-}
-
-function authHeaders(token) {
+function bearer(token) {
   return {
     Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`
   };
 }
 
+function registerViaApi(user) {
+  return cy.request({
+    method: 'POST',
+    url: `${apiUrl}/users`,
+    body: user
+  }).then((response) => {
+    expect(response.status).to.be.oneOf([200, 201]);
+    return String(response.body);
+  });
+}
+
+function createDashboardHousehold() {
+  const runId = Date.now();
+  const owner = {
+    firstName: 'Fr12',
+    lastName: 'Owner',
+    email: uniqueEmail('fr12.owner'),
+    password
+  };
+  const roommate = {
+    firstName: 'Fr12',
+    lastName: 'Roommate',
+    email: uniqueEmail('fr12.roommate'),
+    password
+  };
+
+  return registerViaApi(owner).then((ownerToken) => {
+    return cy.request({
+      method: 'POST',
+      url: `${apiUrl}/households`,
+      headers: bearer(ownerToken),
+      body: { name: `FR12 Dashboard WG ${runId}`, address: 'FR12 Street 1' }
+    }).then((householdResponse) => {
+      const householdId = householdResponse.body.id;
+
+      return cy.request({
+        method: 'POST',
+        url: `${apiUrl}/households/${householdId}/invitations`,
+        headers: bearer(ownerToken),
+        body: { invitedEmail: roommate.email, expiresInHours: 168 }
+      }).then((invitationResponse) => {
+        const inviteToken = invitationResponse.body.inviteUrl.split('/').pop();
+
+        return registerViaApi(roommate).then((roommateToken) => {
+          return cy.request({
+            method: 'POST',
+            url: `${apiUrl}/invitations/${inviteToken}/accept`,
+            headers: bearer(roommateToken)
+          }).then(() => ({ owner, roommate, ownerToken, roommateToken, householdId }));
+        });
+      });
+    });
+  });
+}
+
 function createTask(token, task) {
   return cy.request({
     method: 'POST',
-    url: `${backendUrl}/tasks`,
-    headers: authHeaders(token),
+    url: `${apiUrl}/tasks`,
+    headers: bearer(token),
     body: task
   }).then((response) => {
     expect(response.status).to.eq(201);
-    expect(response.body.title).to.eq(task.title);
+    return response.body;
+  });
+}
+
+function createShoppingItem(token, item) {
+  return cy.request({
+    method: 'POST',
+    url: `${apiUrl}/shopping-items`,
+    headers: bearer(token),
+    body: item
+  }).then((response) => {
+    expect(response.status).to.eq(201);
     return response.body;
   });
 }
@@ -40,152 +100,258 @@ function createTask(token, task) {
 function createCleaningSchedule(token, schedule) {
   return cy.request({
     method: 'POST',
-    url: `${backendUrl}/cleaning-schedules`,
-    headers: authHeaders(token),
+    url: `${apiUrl}/cleaning-schedules`,
+    headers: bearer(token),
     body: schedule
   }).then((response) => {
     expect(response.status).to.eq(201);
-    expect(response.body.title).to.eq(schedule.title);
-    expect(response.body.active).to.eq(true);
     return response.body;
   });
 }
 
-function expectDashboardDataExists(token, taskTitle, scheduleTitle) {
+function createExpenseThatOwnerIsOwed({ ownerToken, ownerEmail, roommateEmail, amount = 20 }) {
   return cy.request({
     method: 'GET',
-    url: `${backendUrl}/tasks`,
-    headers: authHeaders(token)
-  }).then((response) => {
-    expect(response.status).to.eq(200);
-    expect(response.body.map(task => task.title)).to.include(taskTitle);
-  }).then(() => {
+    url: `${apiUrl}/households/me`,
+    headers: bearer(ownerToken)
+  }).then((householdResponse) => {
+    const householdId = householdResponse.body.id;
+
     return cy.request({
       method: 'GET',
-      url: `${backendUrl}/cleaning-schedules/active`,
-      headers: authHeaders(token)
-    }).then((response) => {
-      expect(response.status).to.eq(200);
-      expect(response.body.map(schedule => schedule.title)).to.include(scheduleTitle);
+      url: `${apiUrl}/households/${householdId}/members`,
+      headers: bearer(ownerToken)
+    }).then((membersResponse) => {
+      const ownerRoommate = membersResponse.body.find(member => member.email === ownerEmail);
+      const otherRoommate = membersResponse.body.find(member => member.email === roommateEmail);
+
+      expect(ownerRoommate, 'owner roommate').to.exist;
+      expect(otherRoommate, 'other roommate').to.exist;
+
+      return cy.request({
+        method: 'POST',
+        url: `${apiUrl}/expenses`,
+        headers: bearer(ownerToken),
+        body: {
+          description: `FR12 Shared Expense ${Date.now()}`,
+          totalAmount: amount,
+          date: isoDate(),
+          paidByRoommateId: ownerRoommate.id,
+          splits: [
+            { roommateId: ownerRoommate.id, amountOwed: amount / 2 },
+            { roommateId: otherRoommate.id, amountOwed: amount / 2 }
+          ]
+        }
+      }).then((response) => {
+        expect(response.status).to.eq(201);
+        return response.body;
+      });
     });
   });
 }
 
-describe('FR-12 Dashboard E2E', () => {
-  const password = 'Password123!';
+function loginThroughUi(email) {
+  cy.loginUser(email, password);
+}
 
+function visitDashboardWithMockedDate(mockDate) {
+  cy.visit(`/?dashboardReload=${Date.now()}#/`, {
+    onBeforeLoad(win) {
+      const OriginalDate = win.Date;
+      class MockedDate extends OriginalDate {
+        constructor(...args) {
+          if (args.length === 0) {
+            const stack = new Error().stack || '';
+            if (stack.includes('isLoggedIn') || stack.includes('Expiration') || stack.includes('AuthService')) {
+              super();
+            } else {
+              super(mockDate);
+            }
+          } else {
+            super(...args);
+          }
+        }
+
+        static now() {
+          const stack = new Error().stack || '';
+          if (stack.includes('isLoggedIn') || stack.includes('Expiration') || stack.includes('AuthService')) {
+            return OriginalDate.now();
+          }
+          return new OriginalDate(mockDate).getTime();
+        }
+      }
+      win.Date = MockedDate;
+    }
+  });
+}
+
+describe('FR-12 Backend-Backed Dashboard E2E', () => {
   beforeEach(() => {
     cy.clearLocalStorage();
   });
 
-  it('FR-12 positive: dashboard shows current tasks, schedules, housemates, and working links', () => {
+  it('FR-12 positive: backend dashboard shows responsibilities, debts, shopping, schedules, and supports dashboard actions', () => {
     const runId = Date.now();
-    const user = {
-      firstName: 'Dora',
-      lastName: 'DashboardQa',
-      email: uniqueEmail('fr12.dashboard'),
-      password
-    };
-    const household = {
-      name: `FR12 Dashboard WG ${runId}`,
-      address: 'Dashboard Test Street 1'
-    };
-    const task = {
-      title: `FR12 Today Task ${runId}`,
-      description: 'Dashboard task created by Cypress',
-      dueDate: todayIso(),
-      assignedToEmail: user.email
-    };
-    const schedule = {
-      title: `FR12 Cleaning Schedule ${runId}`,
-      description: 'Dashboard schedule created by Cypress',
-      frequency: 'WEEKLY',
-      startDate: todayIso(),
-      assignedToEmail: user.email
-    };
+    const taskTitle = `FR12 Overdue Chore ${runId}`;
+    const shoppingName = `FR12 Needed Apples ${runId}`;
+    const scheduleTitle = `FR12 Kitchen Routine ${runId}`;
 
-    cy.registerUser(user);
-    cy.logoutUser();
-    cy.loginUser(user.email, user.password);
-    cy.createHousehold(household);
+    createDashboardHousehold().then(({ owner, roommate, ownerToken }) => {
+      return createTask(ownerToken, {
+        title: taskTitle,
+        description: 'FR-12 overdue dashboard task',
+        dueDate: isoDate(),
+        assignedToEmail: owner.email
+      })
+        .then(() => createShoppingItem(ownerToken, {
+          name: shoppingName,
+          quantity: '3 kg',
+          notes: 'FR-12 dashboard shopping item',
+          visibility: 'SHARED'
+        }))
+        .then(() => createCleaningSchedule(ownerToken, {
+          title: scheduleTitle,
+          description: 'FR-12 dashboard schedule',
+          frequency: 'WEEKLY',
+          startDate: isoDate(),
+          assignedToEmail: owner.email
+        }))
+        .then(() => createExpenseThatOwnerIsOwed({
+          ownerToken,
+          ownerEmail: owner.email,
+          roommateEmail: roommate.email,
+          amount: 20
+        }))
+        .then(() => {
+          loginThroughUi(owner.email);
+          cy.intercept('GET', '**/api/v1/dashboard').as('dashboardRequest');
+          visitDashboardWithMockedDate(`${isoDate(1)}T12:00:00`);
+          cy.wait('@dashboardRequest').its('response.statusCode').should('eq', 200);
 
-    authToken()
-      .then((token) => createTask(token, task)
-        .then(() => createCleaningSchedule(token, schedule))
-        .then(() => expectDashboardDataExists(token, task.title, schedule.title)));
+          cy.contains('h2', 'Welcome home').should('be.visible');
+          cy.get('.dashboard-stats-grid').within(() => {
+            cy.contains('My Open Tasks').should('be.visible');
+            cy.contains('Active Chores').should('be.visible');
+            cy.contains('Schedules').should('be.visible');
+            cy.contains('Housemates').should('be.visible');
+          });
 
-    cy.visit('/#/tasks');
-    cy.contains('h2', 'Tasks').should('be.visible');
+          cy.get('.responsibilities-card').within(() => {
+            cy.contains('h3', 'My Pending Tasks').should('be.visible');
+            cy.contains(taskTitle).should('be.visible');
+          });
+          cy.get('.warning-banner').contains(taskTitle).should('be.visible');
 
-    cy.intercept('GET', '**/api/v1/tasks').as('dashboardAllTasks');
-    cy.intercept('GET', '**/api/v1/tasks/my').as('dashboardMyTasks');
-    cy.intercept('GET', '**/api/v1/cleaning-schedules/active').as('dashboardActiveSchedules');
+          cy.get('.debts-card').within(() => {
+            cy.contains('h3', 'Settlement & Debts Breakdown').should('be.visible');
+            cy.contains('Owed to You').should('be.visible');
+            cy.contains('Fr12 Roommate').should('be.visible');
+            cy.contains('+€10.00').should('be.visible');
+          });
+          cy.get('.balance-card.positive').within(() => {
+            cy.contains('You are owed').should('be.visible');
+            cy.contains('€10.00').should('be.visible');
+          });
 
-    cy.visit('/#/');
+          cy.get('.shopping-card').within(() => {
+            cy.contains('h3', 'Needed Shopping Items').should('be.visible');
+            cy.contains(shoppingName).should('be.visible');
+            cy.contains('(3 kg)').should('be.visible');
+          });
 
-    cy.wait('@dashboardAllTasks').then(({ response }) => {
-      expect(response.statusCode).to.eq(200);
-      expect(response.body.map(item => item.title)).to.include(task.title);
+          cy.get('.routines-card').within(() => {
+            cy.contains('h3', 'Upcoming Cleaning Schedules').should('be.visible');
+            cy.contains(scheduleTitle).should('be.visible');
+          });
+
+          cy.intercept('PATCH', '**/api/v1/tasks/**/status').as('completeTask');
+          cy.get('.responsibilities-card input[type="checkbox"]').first().check({ force: true });
+          cy.wait('@completeTask').its('response.statusCode').should('eq', 200);
+          cy.get('.responsibilities-card').should('not.contain', taskTitle);
+          cy.get('.warning-banner').should('not.exist');
+
+          cy.intercept('PATCH', '**/api/v1/shopping-items/**/status').as('buyShoppingItem');
+          cy.get('.shopping-card').contains('button', 'Bought').click();
+          cy.wait('@buyShoppingItem').its('response.statusCode').should('eq', 200);
+          cy.get('.shopping-card').should('not.contain', shoppingName);
+        });
     });
-    cy.wait('@dashboardMyTasks').then(({ response }) => {
-      expect(response.statusCode).to.eq(200);
-      expect(response.body.map(item => item.title)).to.include(task.title);
-    });
-    cy.wait('@dashboardActiveSchedules').then(({ response }) => {
-      expect(response.statusCode).to.eq(200);
-      expect(response.body.map(item => item.title)).to.include(schedule.title);
-    });
-
-    cy.contains('h2', 'Welcome home').should('be.visible');
-    cy.contains('.stat-card', 'Open Tasks').should('be.visible');
-    cy.contains('.stat-card', 'My Tasks').should('be.visible');
-    cy.contains('.stat-card', 'Schedules').should('be.visible');
-    cy.contains('.stat-card', 'Housemates').should('be.visible');
-    cy.contains('.feed-widget', 'Today').should('be.visible');
-    cy.contains('.feed-widget', 'Upcoming Schedules').should('be.visible');
-
-    cy.contains('.feed-widget', 'Today').within(() => {
-      cy.contains(task.title).should('be.visible');
-    });
-
-    cy.contains('.feed-widget', 'Upcoming Schedules').within(() => {
-      cy.contains(schedule.title).should('be.visible');
-    });
-
-    cy.contains('.stat-card', 'My Tasks').click();
-    cy.location('hash').should('include', '#/tasks');
-    cy.location('hash').should('include', 'tab=mine');
-    cy.contains('.nav-link.active', 'My Tasks').should('be.visible');
-
-    cy.visit('/#/');
-    cy.contains('.stat-card', 'Schedules').click();
-    cy.location('hash').should('eq', '#/cleaning-schedules');
-    cy.contains('h2', 'Cleaning').should('be.visible');
   });
 
-  it('FR-12 empty state: dashboard shows empty messages without tasks or schedules', () => {
-    const runId = Date.now();
+  it('FR-12 empty-state: backend dashboard shows neutral household messages and settled balance', () => {
     const user = {
-      firstName: 'Erin',
-      lastName: 'DashboardQa',
-      email: uniqueEmail('fr12.empty.dashboard'),
+      firstName: 'Fr12',
+      lastName: 'Empty',
+      email: uniqueEmail('fr12.empty'),
       password
     };
 
     cy.registerUser(user);
+    cy.intercept('GET', '**/api/v1/dashboard').as('dashboardRequest');
     cy.createHousehold({
-      name: `FR12 Empty Dashboard WG ${runId}`,
-      address: 'Empty Dashboard Street 1'
+      name: `FR12 Empty WG ${Date.now()}`,
+      address: 'FR12 Empty Street'
     });
-
-    cy.visit('/#/');
+    cy.wait('@dashboardRequest').its('response.statusCode').should('eq', 200);
 
     cy.contains('h2', 'Welcome home').should('be.visible');
-    cy.contains('.feed-widget', 'Today').within(() => {
-      cy.contains('Nothing due today!').should('be.visible');
+    cy.get('.balance-card.neutral').within(() => {
+      cy.contains('All settled up').should('be.visible');
+      cy.contains('€0.00').should('be.visible');
     });
-    cy.contains('.feed-widget', 'Upcoming Schedules').within(() => {
-      cy.contains('No active schedules yet.').should('be.visible');
+    cy.get('.responsibilities-card').contains('All caught up! No pending chores assigned to you.').should('be.visible');
+    cy.get('.debts-card').contains('Everything is perfectly balanced! No active debts.').should('be.visible');
+    cy.get('.shopping-card').contains('No active shopping requests. Flat is fully stocked!').should('be.visible');
+    cy.get('.routines-card').contains('No active cleaning schedules configured.').should('be.visible');
+  });
+
+  it('FR-12 negative: user without WG sees no-household onboarding state after dashboard 403', () => {
+    const user = {
+      firstName: 'Fr12',
+      lastName: 'NoHousehold',
+      email: uniqueEmail('fr12.no.household'),
+      password
+    };
+
+    cy.intercept('GET', '**/api/v1/dashboard').as('dashboardRequest');
+    cy.registerUser(user);
+    cy.wait('@dashboardRequest').its('response.statusCode').should('eq', 403);
+
+    cy.contains('h2', 'Welcome to WGMS!').should('be.visible');
+    cy.contains('a', 'Create a WG').should('be.visible');
+    cy.contains('a', 'View WG / Join').should('be.visible');
+  });
+
+  [
+    [360, 740],
+    [1024, 768]
+  ].forEach(([width, height]) => {
+    it(`FR-12 responsive: backend dashboard renders key sections without horizontal overflow at ${width}x${height}`, () => {
+      cy.viewport(width, height);
+      const user = {
+        firstName: 'Fr12',
+        lastName: 'Responsive',
+        email: uniqueEmail(`fr12.responsive.${width}`),
+        password
+      };
+
+      cy.registerUser(user);
+      cy.intercept('GET', '**/api/v1/dashboard').as('dashboardRequest');
+      cy.createHousehold({
+        name: `FR12 Responsive WG ${width} ${Date.now()}`,
+        address: 'FR12 Responsive Street'
+      });
+      cy.wait('@dashboardRequest').its('response.statusCode').should('eq', 200);
+      cy.contains('h2', 'Welcome home').should('be.visible');
+      cy.get('.dashboard-stats-grid').should('be.visible');
+      cy.get('.responsibilities-card').contains('My Pending Tasks').should('be.visible');
+      cy.get('.debts-card').contains('Settlement & Debts Breakdown').should('be.visible');
+      cy.get('.shopping-card').contains('Needed Shopping Items').should('be.visible');
+      cy.get('.routines-card').contains('Upcoming Cleaning Schedules').should('be.visible');
+
+      cy.document().then((document) => {
+        expect(document.documentElement.scrollWidth).to.be.at.most(width + 2);
+      });
     });
   });
 });

@@ -117,7 +117,7 @@ public class DashboardEndpointTest implements TestData {
             () -> assertEquals(1, dashboardDto.getOpenTaskCount()),
             () -> assertEquals(1, dashboardDto.getMyTaskCount()),
             () -> assertEquals(1, dashboardDto.getMyPendingTasks().size()),
-            () -> assertEquals("Own task", dashboardDto.getMyPendingTasks().get(0).getTitle())
+            () -> assertEquals("Own task", dashboardDto.getMyPendingTasks().get(0).title())
         );
     }
 
@@ -138,7 +138,7 @@ public class DashboardEndpointTest implements TestData {
             () -> assertEquals(1, dashboardDto.getOpenTaskCount()),
             () -> assertEquals(1, dashboardDto.getMyTaskCount()),
             () -> assertEquals(1, dashboardDto.getMyPendingTasks().size()),
-            () -> assertEquals("Household One task", dashboardDto.getMyPendingTasks().get(0).getTitle())
+            () -> assertEquals("Household One task", dashboardDto.getMyPendingTasks().get(0).title())
         );
     }
 
