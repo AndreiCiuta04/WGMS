@@ -2,11 +2,13 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
+  AggregatedShoppingItemDto,
   ShoppingItemCreateDto,
   ShoppingItemDto,
   ShoppingItemStatusUpdateDto,
   ShoppingItemUpdateDto
 } from '../dtos/shopping-item';
+
 import { Globals } from '../global/globals';
 
 @Injectable({
@@ -29,6 +31,15 @@ export class ShoppingItemService {
   findTargetedAtMe(): Observable<ShoppingItemDto[]> {
     return this.http.get<ShoppingItemDto[]>(`${this.baseUri}/targeted-at-me`);
   }
+
+  findAggregatedHouseholdShoppingList(): Observable<AggregatedShoppingItemDto[]> {
+    return this.http.get<AggregatedShoppingItemDto[]>(`${this.baseUri}/aggregated`);
+  }
+
+  findHouseholdShoppingHistory(): Observable<ShoppingItemDto[]> {
+    return this.http.get<ShoppingItemDto[]>(`${this.baseUri}/history`);
+  }
+
   findOne(id: number): Observable<ShoppingItemDto> {
     return this.http.get<ShoppingItemDto>(`${this.baseUri}/${id}`);
   }

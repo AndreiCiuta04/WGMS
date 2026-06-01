@@ -238,6 +238,14 @@ $text-secondary: #5F6B5F;
   opacity: 0.7;
 }
 
+.history-section {
+  border-color: rgba(95, 107, 95, 0.18);
+}
+
+.history-item {
+  opacity: 1;
+}
+
 .completed-item-left {
   display: flex;
   align-items: center;
@@ -334,4 +342,50 @@ $text-secondary: #5F6B5F;
 
 .cursor-pointer {
   cursor: pointer;
+}
+
+// ===========================
+// Aggregated Household List
+// ===========================
+.aggregated-section {
+  border-color: rgba(121, 174, 111, 0.24);
+}
+
+.aggregated-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0 8px;
+  border-bottom: 1px solid rgba(31, 42, 31, 0.04);
+  gap: 12px;
+}
+
+.aggregated-indicator {
+  background: rgba(121, 174, 111, 0.14);
+  color: $forest-green;
+}
+
+.aggregate-count {
+  background-color: rgba(52, 103, 57, 0.1) !important;
+  color: $forest-green !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.aggregate-source-list {
+  margin-left: 48px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(31, 42, 31, 0.06);
+}
+
+.aggregate-source-item {
+  font-size: 12px;
+  color: $text-secondary;
+  padding: 2px 0;
 }

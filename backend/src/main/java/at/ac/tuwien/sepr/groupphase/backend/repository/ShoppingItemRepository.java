@@ -2,6 +2,7 @@ package at.ac.tuwien.sepr.groupphase.backend.repository;
 
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItem;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItemVisibility;
+import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItemStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -34,4 +35,13 @@ public interface ShoppingItemRepository extends JpaRepository<ShoppingItem, Long
 
     List<ShoppingItem> findAllByHouseholdIdAndVisibilityOrderByCreatedAtDesc(
         Long householdId, ShoppingItemVisibility visibility);
+
+    List<ShoppingItem> findAllByHouseholdIdAndVisibilityAndStatusOrderByCreatedAtDesc(
+        Long householdId,
+        ShoppingItemVisibility visibility,
+        ShoppingItemStatus status);
+
+    List<ShoppingItem> findAllByHouseholdIdAndStatusInOrderByUpdatedAtDesc(
+        Long householdId,
+        List<ShoppingItemStatus> statuses);
 }

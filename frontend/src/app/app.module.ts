@@ -25,6 +25,7 @@ import {ShoppingItemEditComponent} from './components/shopping-item-edit/shoppin
 import {CleaningScheduleListComponent} from './components/cleaning-schedule-list/cleaning-schedule-list.component';
 import {CleaningScheduleCreateComponent} from './components/cleaning-schedule-create/cleaning-schedule-create.component';
 import {CleaningScheduleEditComponent} from './components/cleaning-schedule-edit/cleaning-schedule-edit.component';
+import {HistoryComponent} from './components/history/history.component';
 import {SidebarComponent} from './components/sidebar/sidebar.component';
 import {BottomTabBarComponent} from './components/bottom-tab-bar/bottom-tab-bar.component';
 import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
@@ -55,6 +56,7 @@ import {PaymentStatusComponent} from './components/payment-status/payment-status
     CleaningScheduleListComponent,
     CleaningScheduleCreateComponent,
     CleaningScheduleEditComponent,
+    HistoryComponent,
     SidebarComponent,
     BottomTabBarComponent,
     PaymentStatusComponent,

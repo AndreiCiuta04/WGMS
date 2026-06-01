@@ -96,18 +96,18 @@ public class SimpleCleaningScheduleService implements CleaningScheduleService {
 
         ApplicationUser currentUser = getUserByEmail(currentUserEmail);
         Roommate currentRoommate = getCurrentRoommate(currentUser);
-        ApplicationUser assignee = getUserByEmail(cleaningScheduleCreateDto.getAssignedToEmail());
+        ApplicationUser assignee = getUserByEmail(cleaningScheduleCreateDto.assignedToEmail());
 
         requireAssigneeInSameHousehold(assignee, currentRoommate);
 
         CleaningSchedule cleaningSchedule = new CleaningSchedule();
         cleaningSchedule.setHousehold(currentRoommate.getHousehold());
-        cleaningSchedule.setTitle(cleaningScheduleCreateDto.getTitle());
-        cleaningSchedule.setDescription(cleaningScheduleCreateDto.getDescription());
-        cleaningSchedule.setFrequency(cleaningScheduleCreateDto.getFrequency());
-        cleaningSchedule.setStartDate(cleaningScheduleCreateDto.getStartDate());
-        cleaningSchedule.setEndDate(cleaningScheduleCreateDto.getEndDate());
-        cleaningSchedule.setNextDueDate(cleaningScheduleCreateDto.getStartDate());
+        cleaningSchedule.setTitle(cleaningScheduleCreateDto.title());
+        cleaningSchedule.setDescription(cleaningScheduleCreateDto.description());
+        cleaningSchedule.setFrequency(cleaningScheduleCreateDto.frequency());
+        cleaningSchedule.setStartDate(cleaningScheduleCreateDto.startDate());
+        cleaningSchedule.setEndDate(cleaningScheduleCreateDto.endDate());
+        cleaningSchedule.setNextDueDate(cleaningScheduleCreateDto.startDate());
         cleaningSchedule.setActive(true);
         cleaningSchedule.setCreatedBy(currentUser);
         cleaningSchedule.setAssignedTo(assignee);
@@ -127,17 +127,17 @@ public class SimpleCleaningScheduleService implements CleaningScheduleService {
         requireScheduleInCurrentHousehold(cleaningSchedule, currentRoommate);
         requireCanManage(cleaningSchedule, currentUser, currentRoommate);
 
-        ApplicationUser assignee = getUserByEmail(cleaningScheduleUpdateDto.getAssignedToEmail());
+        ApplicationUser assignee = getUserByEmail(cleaningScheduleUpdateDto.assignedToEmail());
         requireAssigneeInSameHousehold(assignee, currentRoommate);
 
-        cleaningSchedule.setTitle(cleaningScheduleUpdateDto.getTitle());
-        cleaningSchedule.setDescription(cleaningScheduleUpdateDto.getDescription());
-        cleaningSchedule.setFrequency(cleaningScheduleUpdateDto.getFrequency());
-        cleaningSchedule.setStartDate(cleaningScheduleUpdateDto.getStartDate());
-        cleaningSchedule.setEndDate(cleaningScheduleUpdateDto.getEndDate());
+        cleaningSchedule.setTitle(cleaningScheduleUpdateDto.title());
+        cleaningSchedule.setDescription(cleaningScheduleUpdateDto.description());
+        cleaningSchedule.setFrequency(cleaningScheduleUpdateDto.frequency());
+        cleaningSchedule.setStartDate(cleaningScheduleUpdateDto.startDate());
+        cleaningSchedule.setEndDate(cleaningScheduleUpdateDto.endDate());
         cleaningSchedule.setAssignedTo(assignee);
         cleaningSchedule.setNextDueDate(
-            normalizeNextDueDate(cleaningSchedule.getNextDueDate(), cleaningScheduleUpdateDto.getStartDate(), cleaningScheduleUpdateDto.getEndDate())
+            normalizeNextDueDate(cleaningSchedule.getNextDueDate(), cleaningScheduleUpdateDto.startDate(), cleaningScheduleUpdateDto.endDate())
         );
 
         return cleaningScheduleRepository.save(cleaningSchedule);
@@ -155,7 +155,7 @@ public class SimpleCleaningScheduleService implements CleaningScheduleService {
         requireScheduleInCurrentHousehold(cleaningSchedule, currentRoommate);
         requireCanManage(cleaningSchedule, currentUser, currentRoommate);
 
-        cleaningSchedule.setActive(cleaningScheduleActiveUpdateDto.getActive());
+        cleaningSchedule.setActive(cleaningScheduleActiveUpdateDto.active());
 
         return cleaningScheduleRepository.save(cleaningSchedule);
     }

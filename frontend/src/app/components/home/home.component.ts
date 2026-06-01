@@ -1,10 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { AuthService } from '../../services/auth.service';
 import { TaskService } from '../../services/task.service';
-import { CleaningScheduleService } from '../../services/cleaning-schedule.service';
-import { HouseholdService } from '../../services/household.service';
+import { ShoppingItemService } from '../../services/shopping-item.service';
+import { DashboardService } from '../../services/dashboard.service';
 import { TaskDetailDto, TaskStatus } from '../../dtos/task';
 import { CleaningScheduleDetailDto } from '../../dtos/cleaning-schedule';
+import { ShoppingItemDto, ShoppingItemStatus } from '../../dtos/shopping-item';
 
 @Component({
     selector: 'app-home',
@@ -14,22 +15,33 @@ import { CleaningScheduleDetailDto } from '../../dtos/cleaning-schedule';
 })
 export class HomeComponent implements OnInit {
 
-  // Dashboard state
+  // Dashboard counters
   openTaskCount = 0;
   myTaskCount = 0;
   activeScheduleCount = 0;
   housemateCount = 0;
 
-  todayTasks: TaskDetailDto[] = [];
-  upcomingSchedules: CleaningScheduleDetailDto[] = [];
+  // Active items lists
+  myPendingTasks: TaskDetailDto[] = [];
+  householdSchedules: CleaningScheduleDetailDto[] = [];
+  wgShoppingList: ShoppingItemDto[] = [];
+
+  // Financial status
+  netBalance = 0;
+  totalOwedToMe = 0;
+  totalIOwe = 0;
+  whoOwesMe: { name: string, amount: number }[] = [];
+  whoIOwe: { name: string, amount: number }[] = [];
 
   dashboardLoading = true;
+  currentUserEmail: string | null = null;
+  hasNoHousehold = false;
 
   constructor(
     public authService: AuthService,
     private taskService: TaskService,
-    private cleaningScheduleService: CleaningScheduleService,
-    private householdService: HouseholdService
+    private shoppingItemService: ShoppingItemService,
+    private dashboardService: DashboardService
   ) { }
 
   ngOnInit() {
@@ -49,63 +61,65 @@ export class HomeComponent implements OnInit {
 
   private loadDashboard() {
     this.dashboardLoading = true;
-    let completed = 0;
-    const checkDone = () => { completed++; if (completed >= 4) { this.dashboardLoading = false; } };
+    this.currentUserEmail = this.authService.getUserEmail();
+    this.hasNoHousehold = false;
 
-    // Open tasks
-    this.taskService.findAll().subscribe({
-      next: (tasks) => {
-        this.openTaskCount = tasks.filter(t => t.status !== TaskStatus.DONE && t.status !== TaskStatus.CANCELLED).length;
-        checkDone();
+    this.dashboardService.getDashboardData().subscribe({
+      next: (data) => {
+        this.openTaskCount = data.openTaskCount;
+        this.myTaskCount = data.myTaskCount;
+        this.activeScheduleCount = data.activeScheduleCount;
+        this.housemateCount = data.housemateCount;
+        this.myPendingTasks = data.myPendingTasks || [];
+        this.householdSchedules = data.householdSchedules || [];
+        this.wgShoppingList = data.wgShoppingList || [];
+        this.netBalance = data.netBalance || 0;
+        this.whoOwesMe = (data.whoOwesMe || []).map(b => ({ name: b.fromRoommateName, amount: b.amount }));
+        this.whoIOwe = (data.whoIowe || []).map(b => ({ name: b.toRoommateName, amount: b.amount }));
+        this.dashboardLoading = false;
+        this.hasNoHousehold = false;
       },
-      error: () => checkDone()
-    });
-
-    // My tasks
-    this.taskService.findAssignedToMe().subscribe({
-      next: (tasks) => {
-        const openTasks = tasks.filter(t => t.status !== TaskStatus.DONE && t.status !== TaskStatus.CANCELLED);
-        this.myTaskCount = openTasks.length;
-        this.todayTasks = openTasks.filter(t => this.isToday(t.dueDate)).slice(0, 5);
-        checkDone();
-      },
-      error: () => checkDone()
-    });
-
-    // Active schedules
-    this.cleaningScheduleService.findActive().subscribe({
-      next: (schedules) => {
-        this.activeScheduleCount = schedules.length;
-        this.upcomingSchedules = schedules
-          .sort((a, b) => a.nextDueDate.localeCompare(b.nextDueDate))
-          .slice(0, 5);
-        checkDone();
-      },
-      error: () => checkDone()
-    });
-
-    // Housemates
-    this.householdService.getMyHousehold().subscribe({
-      next: (household) => {
-        if (household && household.id) {
-          this.householdService.getMembers(household.id).subscribe({
-            next: (members) => { this.housemateCount = members.length; checkDone(); },
-            error: () => checkDone()
-          });
-        } else {
-          checkDone();
+      error: (err) => {
+        console.error('Error loading dashboard:', err);
+        this.dashboardLoading = false;
+        if (err.status === 403) {
+          this.hasNoHousehold = true;
         }
-      },
-      error: () => checkDone()
+      }
     });
   }
 
-  private isToday(dateStr: string): boolean {
+  isOverdue(dueDateStr: string): boolean {
+    if (!dueDateStr) return false;
     const today = new Date();
-    const todayStr = today.getFullYear() + '-' +
-      String(today.getMonth() + 1).padStart(2, '0') + '-' +
-      String(today.getDate()).padStart(2, '0');
-    return dateStr === todayStr;
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(dueDateStr);
+    dueDate.setHours(0, 0, 0, 0);
+    return dueDate < today;
+  }
+
+  completeTask(id: number) {
+    this.taskService.updateStatus(id, { status: TaskStatus.DONE }).subscribe({
+      next: () => {
+        this.myPendingTasks = this.myPendingTasks.filter(t => t.id !== id);
+        this.myTaskCount = this.myPendingTasks.length;
+        this.openTaskCount = Math.max(0, this.openTaskCount - 1);
+      },
+      error: (err) => {
+        console.error('Error completing task:', err);
+      }
+    });
+  }
+
+  buyShoppingItem(id: number) {
+    this.shoppingItemService.updateStatus(id, { status: ShoppingItemStatus.BOUGHT }).subscribe({
+      next: () => {
+        this.wgShoppingList = this.wgShoppingList.filter(item => item.id !== id);
+      },
+      error: (err) => {
+        console.error('Error buying shopping item:', err);
+      }
+    });
   }
 
   formatFrequency(frequency: string): string {

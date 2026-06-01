@@ -110,11 +110,12 @@ public class TaskEndpointTest implements TestData {
 
     @Test
     public void givenHouseholdMember_whenCreateTaskForSameHouseholdMember_then201AndTaskIsHouseholdScoped() throws Exception {
-        TaskCreateDto taskCreateDto = new TaskCreateDto();
-        taskCreateDto.setTitle(TEST_TASK_TITLE);
-        taskCreateDto.setDescription(TEST_TASK_DESCRIPTION);
-        taskCreateDto.setDueDate(TEST_TASK_DUE_DATE);
-        taskCreateDto.setAssignedToEmail(ROOMMATE_EMAIL);
+        TaskCreateDto taskCreateDto = new TaskCreateDto(
+            TEST_TASK_TITLE,
+            TEST_TASK_DESCRIPTION,
+            TEST_TASK_DUE_DATE,
+            ROOMMATE_EMAIL
+        );
 
         MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -128,16 +129,16 @@ public class TaskEndpointTest implements TestData {
         assertAll(
             () -> assertEquals(HttpStatus.CREATED.value(), response.getStatus()),
             () -> assertEquals(MediaType.APPLICATION_JSON_VALUE, response.getContentType()),
-            () -> assertNotNull(taskDetailDto.getId()),
-            () -> assertEquals(household.getId(), taskDetailDto.getHouseholdId()),
-            () -> assertEquals(TEST_TASK_TITLE, taskDetailDto.getTitle()),
-            () -> assertEquals(TEST_TASK_DESCRIPTION, taskDetailDto.getDescription()),
-            () -> assertEquals(TEST_TASK_DUE_DATE, taskDetailDto.getDueDate()),
-            () -> assertEquals(TaskStatus.OPEN, taskDetailDto.getStatus()),
-            () -> assertEquals(MAIN_TENANT_EMAIL, taskDetailDto.getCreatedByEmail()),
-            () -> assertEquals(ROOMMATE_EMAIL, taskDetailDto.getAssignedToEmail()),
-            () -> assertNotNull(taskDetailDto.getCreatedAt()),
-            () -> assertNotNull(taskDetailDto.getUpdatedAt()),
+            () -> assertNotNull(taskDetailDto.id()),
+            () -> assertEquals(household.getId(), taskDetailDto.householdId()),
+            () -> assertEquals(TEST_TASK_TITLE, taskDetailDto.title()),
+            () -> assertEquals(TEST_TASK_DESCRIPTION, taskDetailDto.description()),
+            () -> assertEquals(TEST_TASK_DUE_DATE, taskDetailDto.dueDate()),
+            () -> assertEquals(TaskStatus.OPEN, taskDetailDto.status()),
+            () -> assertEquals(MAIN_TENANT_EMAIL, taskDetailDto.createdByEmail()),
+            () -> assertEquals(ROOMMATE_EMAIL, taskDetailDto.assignedToEmail()),
+            () -> assertNotNull(taskDetailDto.createdAt()),
+            () -> assertNotNull(taskDetailDto.updatedAt()),
             () -> assertEquals(1, taskRepository.findAll().size())
         );
     }
@@ -157,7 +158,7 @@ public class TaskEndpointTest implements TestData {
     @Test
     public void givenBlankTitle_whenCreateTask_then400() throws Exception {
         TaskCreateDto taskCreateDto = validCreateDto(ROOMMATE_EMAIL);
-        taskCreateDto.setTitle("   ");
+        taskCreateDto = new TaskCreateDto("   ", taskCreateDto.description(), taskCreateDto.dueDate(), taskCreateDto.assignedToEmail());
 
         MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -212,8 +213,8 @@ public class TaskEndpointTest implements TestData {
         assertAll(
             () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
             () -> assertEquals(1, tasks.size()),
-            () -> assertEquals("Task in own WG", tasks.get(0).getTitle()),
-            () -> assertEquals(household.getId(), tasks.get(0).getHouseholdId())
+            () -> assertEquals("Task in own WG", tasks.get(0).title()),
+            () -> assertEquals(household.getId(), tasks.get(0).householdId())
         );
     }
 
@@ -233,8 +234,8 @@ public class TaskEndpointTest implements TestData {
         assertAll(
             () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
             () -> assertEquals(1, tasks.size()),
-            () -> assertEquals("Assigned to current user", tasks.get(0).getTitle()),
-            () -> assertEquals(ROOMMATE_EMAIL, tasks.get(0).getAssignedToEmail())
+            () -> assertEquals("Assigned to current user", tasks.get(0).title()),
+            () -> assertEquals(ROOMMATE_EMAIL, tasks.get(0).assignedToEmail())
         );
     }
 
@@ -253,8 +254,7 @@ public class TaskEndpointTest implements TestData {
     public void givenAssignedUser_whenUpdateTaskStatus_then200AndStatusChanges() throws Exception {
         Task task = saveTask(household, mainTenant, roommate, TEST_TASK_TITLE);
 
-        TaskStatusUpdateDto statusUpdateDto = new TaskStatusUpdateDto();
-        statusUpdateDto.setStatus(TaskStatus.DONE);
+        TaskStatusUpdateDto statusUpdateDto = new TaskStatusUpdateDto(TaskStatus.DONE);
 
         MvcResult mvcResult = this.mockMvc.perform(patch(TASK_BASE_URI + "/{id}/status", task.getId())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -267,7 +267,7 @@ public class TaskEndpointTest implements TestData {
 
         assertAll(
             () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
-            () -> assertEquals(TaskStatus.DONE, taskDetailDto.getStatus()),
+            () -> assertEquals(TaskStatus.DONE, taskDetailDto.status()),
             () -> assertEquals(TaskStatus.DONE, taskRepository.findById(task.getId()).orElseThrow().getStatus())
         );
     }
@@ -276,8 +276,7 @@ public class TaskEndpointTest implements TestData {
     public void givenUnrelatedRoommate_whenUpdateTaskStatus_then403() throws Exception {
         Task task = saveTask(household, mainTenant, roommate, TEST_TASK_TITLE);
 
-        TaskStatusUpdateDto statusUpdateDto = new TaskStatusUpdateDto();
-        statusUpdateDto.setStatus(TaskStatus.DONE);
+        TaskStatusUpdateDto statusUpdateDto = new TaskStatusUpdateDto(TaskStatus.DONE);
 
         MvcResult mvcResult = this.mockMvc.perform(patch(TASK_BASE_URI + "/{id}/status", task.getId())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -292,11 +291,12 @@ public class TaskEndpointTest implements TestData {
     public void givenCreator_whenUpdateTaskAndReassignInsideSameHousehold_then200() throws Exception {
         Task task = saveTask(household, mainTenant, roommate, TEST_TASK_TITLE);
 
-        TaskUpdateDto updateDto = new TaskUpdateDto();
-        updateDto.setTitle(UPDATED_TASK_TITLE);
-        updateDto.setDescription(UPDATED_TASK_DESCRIPTION);
-        updateDto.setDueDate(UPDATED_TASK_DUE_DATE);
-        updateDto.setAssignedToEmail(SECOND_ROOMMATE_EMAIL);
+        TaskUpdateDto updateDto = new TaskUpdateDto(
+            UPDATED_TASK_TITLE,
+            UPDATED_TASK_DESCRIPTION,
+            UPDATED_TASK_DUE_DATE,
+            SECOND_ROOMMATE_EMAIL
+        );
 
         MvcResult mvcResult = this.mockMvc.perform(put(TASK_BASE_URI + "/{id}", task.getId())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -309,10 +309,10 @@ public class TaskEndpointTest implements TestData {
 
         assertAll(
             () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
-            () -> assertEquals(UPDATED_TASK_TITLE, taskDetailDto.getTitle()),
-            () -> assertEquals(UPDATED_TASK_DESCRIPTION, taskDetailDto.getDescription()),
-            () -> assertEquals(UPDATED_TASK_DUE_DATE, taskDetailDto.getDueDate()),
-            () -> assertEquals(SECOND_ROOMMATE_EMAIL, taskDetailDto.getAssignedToEmail())
+            () -> assertEquals(UPDATED_TASK_TITLE, taskDetailDto.title()),
+            () -> assertEquals(UPDATED_TASK_DESCRIPTION, taskDetailDto.description()),
+            () -> assertEquals(UPDATED_TASK_DUE_DATE, taskDetailDto.dueDate()),
+            () -> assertEquals(SECOND_ROOMMATE_EMAIL, taskDetailDto.assignedToEmail())
         );
     }
 
@@ -320,11 +320,12 @@ public class TaskEndpointTest implements TestData {
     public void givenCreator_whenReassignTaskToUserFromAnotherHousehold_then403() throws Exception {
         Task task = saveTask(household, mainTenant, roommate, TEST_TASK_TITLE);
 
-        TaskUpdateDto updateDto = new TaskUpdateDto();
-        updateDto.setTitle(UPDATED_TASK_TITLE);
-        updateDto.setDescription(UPDATED_TASK_DESCRIPTION);
-        updateDto.setDueDate(UPDATED_TASK_DUE_DATE);
-        updateDto.setAssignedToEmail(OUTSIDER_EMAIL);
+        TaskUpdateDto updateDto = new TaskUpdateDto(
+            UPDATED_TASK_TITLE,
+            UPDATED_TASK_DESCRIPTION,
+            UPDATED_TASK_DUE_DATE,
+            OUTSIDER_EMAIL
+        );
 
         MvcResult mvcResult = this.mockMvc.perform(put(TASK_BASE_URI + "/{id}", task.getId())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -364,12 +365,12 @@ public class TaskEndpointTest implements TestData {
     }
 
     private TaskCreateDto validCreateDto(String assignedToEmail) {
-        TaskCreateDto taskCreateDto = new TaskCreateDto();
-        taskCreateDto.setTitle(TEST_TASK_TITLE);
-        taskCreateDto.setDescription(TEST_TASK_DESCRIPTION);
-        taskCreateDto.setDueDate(TEST_TASK_DUE_DATE);
-        taskCreateDto.setAssignedToEmail(assignedToEmail);
-        return taskCreateDto;
+        return new TaskCreateDto(
+            TEST_TASK_TITLE,
+            TEST_TASK_DESCRIPTION,
+            TEST_TASK_DUE_DATE,
+            assignedToEmail
+        );
     }
 
     private String tokenFor(String email) {
