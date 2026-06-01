@@ -32,6 +32,7 @@ backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/service/PaymentServic
 backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/service/impl/PaymentServiceImpl.java
 backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/service/impl/BalanceCalculator.java
 backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/entity/Payment.java
+backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/repository/HouseholdRepository.java
 backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/repository/PaymentRepository.java
 backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/endpoint/dto/PaymentCreateDto.java
 backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/endpoint/dto/PaymentDto.java
@@ -84,6 +85,8 @@ backend/src/test/java/at/ac/tuwien/sepr/groupphase/backend/integrationtest/Expen
 - [x] Multiple roommates and records are handled.
 - [x] Payment history sorting is deterministic by date, createdAt, and id descending.
 - [x] Payment amount must be positive and cannot exceed the open balance.
+- [x] Payment creation serializes settlement writes per household with a pessimistic household lock.
+- [x] Expense edit/delete is blocked once household payments exist, preventing settlement invalidation.
 - [x] Future-dated payments are rejected by `PaymentCreateDto` and `PaymentServiceImpl`.
 - [x] No fake production data is generated in production code.
 
@@ -129,10 +132,12 @@ backend/src/test/java/at/ac/tuwien/sepr/groupphase/backend/integrationtest/Expen
 - [x] Cross-household isolation.
 - [x] Valid payment creation and persistence.
 - [x] Future-dated payment rejected with HTTP 400.
+- [x] Concurrent payment creation for the same open balance persists only one payment.
 
 `ExpenseEndpointTest` also covers:
 
 - [x] Recorded payments reduce `/expenses/balances`, keeping FR-05 aligned with FR-06.
+- [x] Recorded payments block expense update/delete with HTTP 409.
 
 ## Command Evidence
 
@@ -146,20 +151,20 @@ Result:
 
 ```text
 BUILD SUCCESS
-Tests run: 29, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 32, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 Full backend suite:
 
 ```bash
-cd backend && mvn -B clean install
+cd backend && mvn -B test
 ```
 
 Result:
 
 ```text
 BUILD SUCCESS
-Tests run: 189, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 192, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 ## Backend Merge Blockers
@@ -180,4 +185,4 @@ Tests run: 189, Failures: 0, Errors: 0, Skipped: 0
 
 ## Backend QA Conclusion
 
-Backend FR-06 is QA-approved for merge review with the documented payment edit/delete/undo limitation.
+Backend FR-06 is QA-approved for merge review with the documented payment edit/delete/undo limitation and the explicit expense-change guard after settlements.

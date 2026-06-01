@@ -22,6 +22,8 @@ The feature provides a household-scoped payment status overview and allows a roo
 - [x] Redundant frontend household/member round-trips removed from Payment Status.
 - [x] Backend endpoint integration test added.
 - [x] FR-06 Cypress spec added.
+- [x] Concurrent payment creation is serialized per household to prevent over-settlement.
+- [x] Expense edit/delete is blocked after recorded household payments to avoid invalidating settlements.
 - [x] QA evidence updated from stale templates to actual implementation/test results.
 
 ## Remaining Known Limitation
@@ -69,12 +71,12 @@ e2e/cypress/e2e/paymentStatus.cy.js
 Backend:
 
 ```bash
-cd backend && mvn -B clean install
+cd backend && mvn -B test
 ```
 
 ```text
 BUILD SUCCESS
-Tests run: 171, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 192, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 Frontend lint/build/tests:

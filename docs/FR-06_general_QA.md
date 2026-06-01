@@ -22,6 +22,8 @@
 - [x] Empty, loading, populated, and error states are covered.
 - [x] FR-05 expense balances and FR-06 payment balances are now consistent after recorded payments.
 - [x] Future-dated payments are rejected.
+- [x] Concurrent settlement requests cannot over-settle a balance.
+- [x] Expense edit/delete is blocked after recorded household payments until refund/undo semantics are implemented.
 - [x] Known limitation remains documented: recorded payments cannot yet be edited, deleted, or undone.
 
 ## Implementation Evidence
@@ -99,14 +101,14 @@ Note: main tenants can see all intra-household balances. This is treated as an i
 Backend full suite:
 
 ```bash
-cd backend && mvn -B clean install
+cd backend && mvn -B test
 ```
 
 Result:
 
 ```text
 BUILD SUCCESS
-Tests run: 171, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 192, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 Frontend lint:

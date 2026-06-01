@@ -116,6 +116,8 @@ Manual/code inspection:
 PaymentServiceImpl calculates open balances from expense splits and recorded payments via BalanceCalculator.
 Payment history uses repository ordering by date DESC, createdAt DESC, id DESC.
 PaymentCreateDto and PaymentServiceImpl reject null, invalid amount, and future date input.
+PaymentServiceImpl locks the household row during payment creation so concurrent settlement writes are serialized before open-balance validation.
+ExpenseServiceImpl rejects expense update/delete after any payment has been recorded in the household.
 ```
 
 ## 4. Important Checks - Repository and Query Design
@@ -161,14 +163,14 @@ PaymentRepositoryTest verifies that accessing mapped payment history fields afte
 Command evidence:
 
 ```bash
-cd backend && mvn -B clean install
+cd backend && mvn -B test
 ```
 
 Result:
 
 ```text
 BUILD SUCCESS
-Tests run: 189, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 192, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 Specific unit test evidence:
@@ -218,10 +220,11 @@ Covered cases:
 - givenOtherHouseholdData_whenGetOverview_thenDoesNotLeak
 - givenValidPayment_whenCreatePayment_then201AndPaymentIsPersisted
 - givenFutureDate_whenCreatePayment_then400AndNoPaymentIsCreated
+- givenConcurrentPaymentsForSameOpenBalance_whenCreatePayment_thenOnlyOneIsPersisted
 
 Command output:
-cd backend && mvn -B clean install
-BUILD SUCCESS, Tests run: 189, Failures: 0, Errors: 0, Skipped: 0
+cd backend && mvn -B test
+BUILD SUCCESS, Tests run: 192, Failures: 0, Errors: 0, Skipped: 0
 ```
 
 ## 7. Critical Checks - E2E Evidence Exists
