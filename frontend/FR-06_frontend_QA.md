@@ -30,7 +30,7 @@ Tests:
 ```text
 frontend/src/app/components/payment-status/payment-status.component.spec.ts
 frontend/src/app/services/payment.service.spec.ts
-e2e/cypress/e2e/paymentStatus.cy.js
+e2e/cypress/e2e/fr06-payment-status.cy.js
 ```
 
 Commands:
@@ -39,7 +39,7 @@ Commands:
 cd frontend && npm.cmd run lint
 cd frontend && npm.cmd run build
 cd frontend && npm.cmd test -- --watch=false --browsers=ChromeHeadless
-cd e2e && npx.cmd cypress run --spec cypress/e2e/paymentStatus.cy.js
+cd e2e && npx.cmd cypress run --spec cypress/e2e/fr06-payment-status.cy.js
 ```
 
 Results:
@@ -48,7 +48,8 @@ Results:
 Lint: All files pass linting.
 Build: Application bundle generation complete.
 Frontend tests: TOTAL: 71 SUCCESS
-Cypress FR-06: 2 passing, 0 failing
+Cypress FR-06: 3 passing, 0 failing
+Cypress FR-06 + UC-05: 5 passing, 0 failing
 ```
 
 ## Known Limitation

@@ -12,7 +12,7 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 | NFR-04 | GDPR Support | ◐ Partial / accepted | Domain records can be viewed/updated/deleted. No full account deletion, export, profile update, or anonymization workflow found. |
 | NFR-05 | Performance | ◐ Partial | Local build/test/API smoke timings are good. Exact browser DevTools seeded-dataset measurement was skipped. |
 | NFR-06 | Reliability | ☑ Mostly fulfilled | Transactional services, no-partial-state backend tests, reload/persistence E2E, frontend error handling. Seed/demo restore docs limited. |
-| NFR-07 | Financial Accuracy | ☑ Fulfilled for implemented expense logic | BigDecimal, deterministic rounding, equal split rounding test, invalid split/amount tests, balance tests. Payment/partial settlement evidence limited. |
+| NFR-07 | Financial Accuracy | ☑ Fulfilled for implemented expense and payment logic | BigDecimal, deterministic rounding, equal split rounding test, invalid split/amount tests, balance tests, partial payment tests. |
 | NFR-08 | Usability | ◐ Mostly fulfilled | Labels, validation, empty/success/error states, responsive tests, UC E2E. Formal named peer tester evidence missing. |
 | NFR-09 | Maintainability | ☑ Fulfilled for DEV scope | Clear backend/frontend layering, QA docs, build configs, no unresolved production TODO/FIXME/HACK in searched paths. |
 | NFR-10 | Testability | ☑ Fulfilled locally | Backend, frontend, feature E2E, use-case E2E, runner script, coverage overview, all local tests green. CI link not provided. |
@@ -40,7 +40,7 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 - [x] Passwords are stored as BCrypt or equivalent secure password hashes.
 - [x] Password hashes are not returned through user-facing DTOs.
 - [x] Passwords are not printed in logs in reviewed production/user-facing flows.
-- [ ] Password reset or password-change behavior is safe if implemented.  
+- [ ] Password reset or password-change behavior is safe if implemented.
   **Missing / not applicable:** password reset/change was not part of the reviewed implemented scope.
 
 ### Token/session handling
@@ -108,7 +108,7 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 - [x] Expense and payment data is documented/reviewed.
 - [x] Shopping data is documented/reviewed.
 - [x] Dashboard/history data is documented/reviewed as derived/stored behavior.
-- [x] Notification/message data is documented if implemented.  
+- [x] Notification/message data is documented if implemented.
   **Not applicable:** no separate notification/message feature was found in reviewed core scope.
 - [x] Technical log data is reviewed through grep/privacy checks.
 
@@ -118,13 +118,13 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 - [x] Password hashes are never exposed to the frontend.
 - [x] JWTs/tokens are not exposed in unnecessary responses.
 - [x] Private WG data is not returned in public or cross-WG contexts.
-- [ ] Deleted/anonymized users are handled without exposing unnecessary identity data.  
+- [ ] Deleted/anonymized users are handled without exposing unnecessary identity data.
   **Missing evidence:** no full deletion/anonymization workflow found.
 
 ### Logging/privacy
 - [x] Logs do not contain passwords in reviewed production/user-facing flows.
 - [x] Logs do not contain JWTs or authentication tokens in reviewed production/user-facing flows.
-- [x] Logs do not contain full private messages if messages are implemented.  
+- [x] Logs do not contain full private messages if messages are implemented.
   **Not applicable:** message feature not found.
 - [x] Logs do not contain full financial details unless strictly necessary for debugging and safe in the project context.
 - [x] Error responses do not reveal unnecessary internal details.
@@ -141,36 +141,36 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 ## Checklist
 
 ### Access / transparency
-- [ ] User can view their own profile/account information.  
+- [ ] User can view their own profile/account information.
   **Missing evidence:** no complete profile/account detail page or endpoint found.
 - [x] User can view their WG membership.
 - [x] User can view assigned tasks and task history relevant to them.
 - [x] User can view expenses/payments relevant to them.
 - [x] User can view shopping items/requests relevant to them.
-- [ ] Documentation or app text explains what categories of data are stored.  
+- [ ] Documentation or app text explains what categories of data are stored.
   **Missing evidence:** no explicit privacy/data inventory page found.
 
 ### Correction
-- [ ] User can correct profile data where implemented.  
+- [ ] User can correct profile data where implemented.
   **Missing evidence:** no user profile update endpoint/page found.
 - [x] Authorized users can correct household/task/shopping/expense records where appropriate.
 - [x] Invalid correction attempts are rejected.
 - [x] Corrections preserve audit/history consistency where relevant for implemented domain data.
 
 ### Deletion/anonymization
-- [ ] User can leave a WG if this is implemented.  
+- [ ] User can leave a WG if this is implemented.
   **Missing evidence:** not confirmed.
-- [ ] Account deletion or anonymization exists, or the limitation is documented.  
+- [ ] Account deletion or anonymization exists, or the limitation is documented.
   **Limitation documented:** no account deletion/anonymization endpoint found.
-- [ ] Historical financial/task records remain understandable after user deletion/anonymization.  
+- [ ] Historical financial/task records remain understandable after user deletion/anonymization.
   **Missing evidence:** no deletion/anonymization workflow exists.
-- [ ] Deleted/anonymized users cannot still authenticate.  
+- [ ] Deleted/anonymized users cannot still authenticate.
   **Missing evidence:** no deletion/anonymization workflow exists.
 
 ### Export
-- [ ] User data export exists, or manual export/demo limitation is documented.  
+- [ ] User data export exists, or manual export/demo limitation is documented.
   **Limitation documented:** no export endpoint found.
-- [ ] Export does not include password hashes or other users’ private data unnecessarily.  
+- [ ] Export does not include password hashes or other users’ private data unnecessarily.
   **Not applicable:** no export feature exists.
 
 ### Evidence
@@ -185,29 +185,29 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 ## Checklist
 
 ### Dashboard performance
-- [ ] Seed/demo dataset exists or was manually created.  
+- [ ] Seed/demo dataset exists or was manually created.
   **Missing exact evidence:** no proof of exactly 8 roommates, 100 tasks, 100 expenses, 100 shopping items.
-- [ ] Dashboard load time was measured using the browser DevTools procedure.  
+- [ ] Dashboard load time was measured using the browser DevTools procedure.
   **Skipped.**
-- [ ] DOMContentLoaded time was recorded.  
+- [ ] DOMContentLoaded time was recorded.
   **Skipped.**
-- [ ] Load time was recorded.  
+- [ ] Load time was recorded.
   **Skipped.**
-- [ ] Result is within 2 seconds under normal demo conditions, or the limitation is documented.  
+- [ ] Result is within 2 seconds under normal demo conditions, or the limitation is documented.
   **Limitation documented:** no DevTools seeded-dataset timing.
-- [x] Slow API calls are identified if the target is missed.  
+- [x] Slow API calls are identified if the target is missed.
   **Alternative evidence:** authenticated local API smoke found no slow endpoint; all tested endpoints were below 0.01s locally.
 
 ### List performance
-- [ ] Task list remains usable with 100 tasks.  
+- [ ] Task list remains usable with 100 tasks.
   **Missing exact 100-item UI evidence.**
-- [ ] Expense list remains usable with 100 expenses.  
+- [ ] Expense list remains usable with 100 expenses.
   **Missing exact 100-item UI evidence.**
-- [ ] Shopping list remains usable with 100 shopping items.  
+- [ ] Shopping list remains usable with 100 shopping items.
   **Missing exact 100-item UI evidence.**
-- [x] Dashboard does not load unnecessary full historical data if only summary data is needed.  
+- [x] Dashboard does not load unnecessary full historical data if only summary data is needed.
   **Evidence:** dedicated dashboard endpoint/service exists.
-- [ ] Pagination, lazy loading, filtering, or reasonable list limits exist where the UI can grow large.  
+- [ ] Pagination, lazy loading, filtering, or reasonable list limits exist where the UI can grow large.
   **Partial/missing evidence:** not proven for every large list.
 
 ### Evidence
@@ -236,20 +236,20 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 - [x] Created tasks persist across normal page reloads.
 - [x] Created cleaning schedules persist across normal page reloads.
 - [x] Created expenses persist across normal page reloads.
-- [ ] Created payments/payment statuses persist across normal page reloads.  
-  **Partial/missing evidence:** payment/settlement functionality is weaker than expense/balance evidence.
+- [x] Created payments/payment statuses persist across normal page reloads.
+  **Evidence:** `e2e/cypress/e2e/fr06-payment-status.cy.js` reloads after a partial payment and verifies remaining balance plus payment history.
 - [x] Created shopping items/requests persist across normal page reloads.
 - [x] History/dashboard records remain consistent after related data changes.
 
 ### Initialization and seed data
-- [ ] Database initialization is documented.  
+- [ ] Database initialization is documented.
   **Partial/missing evidence:** config exists, but polished initialization guide not confirmed.
-- [ ] Seed/demo data setup is documented.  
+- [ ] Seed/demo data setup is documented.
   **Partial/missing evidence:** datagen/demo data exists, formal restore docs not confirmed.
-- [ ] Demo data can be recreated reliably.  
+- [ ] Demo data can be recreated reliably.
   **Missing formal evidence:** tests run, but explicit demo restore proof not recorded.
 - [x] Integration tests verify persistence for critical entities.
-- [x] Known H2/database persistence limitations are documented if applicable.  
+- [x] Known H2/database persistence limitations are documented if applicable.
   **Documented here as limitation.**
 
 ### Error handling / consistency
@@ -261,7 +261,7 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 ### Evidence
 - Backend: `CleaningScheduleEndpointTest`, `ExpenseEndpointTest`, `TaskEndpointTest`, `ShoppingItemEndpointTest`, `DashboardEndpointTest`, `HistoryEndpointTest`.
 - E2E: expense reload/persistence and history use-case specs.
-- Result: **mostly fulfilled**, with seed/demo restore docs and payment persistence weaker.
+- Result: **mostly fulfilled**, with seed/demo restore docs weaker.
 
 ---
 
@@ -280,25 +280,25 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 - [x] Equal split test exists.
 - [x] Unequal split test exists if unequal split is implemented.
 - [x] Multiple participants test exists.
-- [ ] Payment status update test exists.  
-  **Missing/limited evidence:** payment status coverage not as clear as expense/balance logic.
+- [x] Payment status update test exists.
+  **Evidence:** `PaymentEndpointTest.givenValidPayment_whenCreatePayment_then201AndPaymentIsPersisted` and FR-06 Cypress partial-payment workflow.
 - [x] Settlement/balance overview test exists.
 
 ### Negative/edge financial tests
 - [x] Negative amount is rejected unless explicitly allowed.
 - [x] Zero amount is rejected unless explicitly allowed.
 - [x] Invalid currency/amount format is rejected if applicable.
-- [ ] Deleted/anonymized user fallback is tested if relevant.  
+- [ ] Deleted/anonymized user fallback is tested if relevant.
   **Missing evidence:** no deletion/anonymization workflow.
-- [ ] Partially settled payment edge case is tested if relevant.  
-  **Missing/limited evidence:** partial settlement not clearly implemented/tested.
+- [x] Partially settled payment edge case is tested.
+  **Evidence:** backend overview test and FR-06 Cypress verify `10.00` open balance reduced by partial payments.
 - [x] Rounding edge case is tested.
 
 ### Evidence
 - Backend/code: `ExpenseServiceImpl`, expense/balance/history DTOs/services.
 - Backend tests: `ExpenseEndpointTest`, dashboard/history financial tests.
 - Specific evidence: `10.00 / 3` equal split rounding to `3.34`, `3.33`, `3.33`, total `10.00`.
-- Result: **fulfilled for implemented expense/balance logic**, payment/partial settlement and anonymized-user cases limited.
+- Result: **fulfilled for implemented expense/payment balance logic**, anonymized-user cases limited because user deletion/anonymization is not implemented.
 
 ---
 
@@ -307,15 +307,15 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 ## Checklist
 
 ### Main workflow usability
-- [x] Peer tester can register/login without external help.  
+- [x] Peer tester can register/login without external help.
   **Evidence:** E2E flow; no named peer tester recorded.
-- [x] Peer tester can join or create a WG without external help.  
+- [x] Peer tester can join or create a WG without external help.
   **Evidence:** E2E flow; no named peer tester recorded.
 - [x] Peer tester can check assigned tasks without external help.
 - [x] Peer tester can add or complete a task where allowed.
 - [x] Peer tester can add an expense without external help.
-- [ ] Peer tester can view open payments/payment status without external help.  
-  **Missing/limited evidence:** payment-specific UX evidence weak.
+- [x] Peer tester can view open payments/payment status without external help.
+  **Evidence:** FR-06 Cypress navigates directly to Payment Status and verifies open/empty states.
 - [x] Peer tester can use shopping list/request views without external help.
 - [x] Peer tester can understand dashboard/history information without external help.
 
@@ -329,9 +329,9 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 ### Accessibility smoke checks
 - [x] Important form fields have labels.
 - [x] Buttons have meaningful text.
-- [x] Keyboard navigation works for main forms.  
+- [x] Keyboard navigation works for main forms.
   **Evidence limited:** smoke/code review, not full WCAG audit.
-- [x] Focus states are visible enough to navigate.  
+- [x] Focus states are visible enough to navigate.
   **Evidence limited:** smoke/default browser behavior, not full WCAG audit.
 - [x] Main text is readable on desktop and mobile.
 - [x] No obvious contrast issue blocks normal use.
@@ -364,13 +364,13 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 - [x] Error/loading state handling is consistent.
 
 ### Documentation / handover
-- [x] README explains how to run backend.  
+- [x] README explains how to run backend.
   **Partial:** setup/config exists, but docs could be more polished.
-- [x] README explains how to run frontend.  
+- [x] README explains how to run frontend.
   **Partial:** setup/config exists, but docs could be more polished.
-- [x] README explains how to run tests.  
+- [x] README explains how to run tests.
   **Evidence:** test scripts and runner exist.
-- [x] Architecture overview exists or is updated.  
+- [x] Architecture overview exists or is updated.
   **Evidence:** layered structure and QA docs.
 - [x] Important modules/features are documented enough for another team member to continue.
 - [x] Known limitations are documented in this completed QA report.
@@ -395,8 +395,8 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 - [x] Task assignment tests exist.
 - [x] Cleaning schedule tests exist.
 - [x] Expense tracking tests exist.
-- [ ] Payment status/settlement tests exist.  
-  **Missing/limited evidence:** not as clear as expense/balance tests.
+- [x] Payment status/settlement tests exist.
+  **Evidence:** `PaymentEndpointTest`, payment frontend specs, and `e2e/cypress/e2e/fr06-payment-status.cy.js`.
 - [x] Shopping list/request/aggregation tests exist.
 - [x] Dashboard/history tests exist.
 - [x] Negative backend tests exist for critical workflows.
@@ -411,8 +411,8 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 - [x] Registration/login e2e test exists.
 - [x] WG creation/invitation e2e test exists.
 - [x] Task/cleaning workflow e2e test exists.
-- [x] Expense/payment workflow e2e test exists.  
-  **Note:** expense/history covered; payment-specific settlement evidence limited.
+- [x] Expense/payment workflow e2e test exists.
+  **Evidence:** `e2e/cypress/e2e/fr06-payment-status.cy.js` and `e2e/cypress/e2e/usecases/uc05-expense-history.cy.js`.
 - [x] Shopping workflow e2e test exists.
 - [x] Dashboard/history e2e test exists.
 - [x] Negative e2e tests exist for forbidden access and invalid input.
@@ -420,13 +420,13 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 - [x] Tests do not depend on state created by unrelated previous tests.
 
 ### CI evidence
-- [x] Backend tests run in CI or local evidence is documented.  
+- [x] Backend tests run in CI or local evidence is documented.
   **Local evidence documented.**
-- [x] Frontend tests run in CI or local evidence is documented.  
+- [x] Frontend tests run in CI or local evidence is documented.
   **Local evidence documented.**
-- [x] E2E tests run in CI or local evidence is documented.  
+- [x] E2E tests run in CI or local evidence is documented.
   **Local evidence documented.**
-- [ ] Failing tests block or are treated as merge blockers.  
+- [ ] Failing tests block or are treated as merge blockers.
   **Missing evidence:** no CI/pipeline enforcement link provided.
 
 ### Evidence
@@ -445,11 +445,11 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 ### Traceable actions
 - [x] Expense creation stores creator/responsible user where appropriate.
 - [x] Expense creation stores timestamp where appropriate.
-- [ ] Payment/settlement status changes store timestamp where appropriate.  
-  **Missing/limited evidence:** payment/settlement traceability not clearly established.
+- [x] Payment/settlement status changes store timestamp where appropriate.
+  **Evidence:** `Payment.createdAt` is returned in FR-06 payment history DTOs and rendered in the Payment History section.
 - [x] Task assignment stores responsible user/assignee where appropriate.
 - [x] Task completion stores completion state and timestamp where appropriate.
-- [x] WG membership changes store join/leave timestamps where appropriate.  
+- [x] WG membership changes store join/leave timestamps where appropriate.
   **Partial:** membership/household timestamps exist; leave flow not fully confirmed.
 - [x] Shopping item/request creation stores creator and timestamp where appropriate.
 - [x] History view shows important completed/changed actions correctly.
@@ -457,9 +457,9 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 ### Data consistency
 - [x] History entries correspond to real actions.
 - [x] Dashboard numbers match underlying data.
-- [x] Payment status overview matches expense/payment records.  
-  **Partial:** balances/expense history evidenced; dedicated payment status weaker.
-- [ ] Deleted/anonymized users do not break historical traceability.  
+- [x] Payment status overview matches expense/payment records.
+  **Evidence:** shared balance calculation and FR-06 Cypress cross-check against `/expenses`.
+- [ ] Deleted/anonymized users do not break historical traceability.
   **Missing evidence:** no deletion/anonymization workflow.
 
 ### Evidence
@@ -485,18 +485,18 @@ This file fills the actual checklist boxes from the provided NFR QA template. It
 
 ### Reference browsers
 - [x] Chrome/Chromium desktop smoke test passed.
-- [ ] Firefox desktop smoke test passed, if available.  
+- [ ] Firefox desktop smoke test passed, if available.
   **Missing evidence.**
-- [x] Mobile Chrome responsive/device smoke test passed.  
+- [x] Mobile Chrome responsive/device smoke test passed.
   **Evidence:** Cypress responsive viewport tests, not a physical mobile device.
-- [ ] Safari/iOS behavior is checked manually or limitation is documented.  
+- [ ] Safari/iOS behavior is checked manually or limitation is documented.
   **Limitation documented:** not manually tested.
 
 ### QR/NFC fallback compatibility
 - [x] Core workflows do not depend on NFC.
-- [ ] If appliance/NFC routes are implemented, a QR-code or normal link fallback exists or the limitation is documented.  
+- [ ] If appliance/NFC routes are implemented, a QR-code or normal link fallback exists or the limitation is documented.
   **Limitation documented:** QR/NFC flow was not completed/reviewed; QR issue was reported to developer.
-- [ ] QR fallback opens the same intended route/view as the NFC/deep-link route where implemented.  
+- [ ] QR fallback opens the same intended route/view as the NFC/deep-link route where implemented.
   **Missing evidence.**
 - [x] Users without NFC-capable devices can still complete the core WG workflow.
 

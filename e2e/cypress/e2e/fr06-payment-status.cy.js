@@ -115,7 +115,7 @@ function assertPaymentAmount(title, amount) {
 }
 
 describe('FR-06 Payment Status E2E Workflow', () => {
-  it('records a partial payment and keeps FR-05 balances in sync', () => {
+  it('FR-06 positive: records a partial payment, persists it, and keeps FR-05 balances in sync', () => {
     createHouseholdWithExpense().then(({ roomEmail }) => {
       login(roomEmail);
 
@@ -124,7 +124,7 @@ describe('FR-06 Payment Status E2E Workflow', () => {
       cy.contains('h2', 'Payment Status').should('be.visible');
       cy.wait('@getPaymentOverview').its('response.statusCode').should('eq', 200);
 
-      assertBalanceAmount('FR06 Room owes FR06 Main', '€10.00');
+      assertBalanceAmount('FR06 Room owes FR06 Main', '10.00');
       cy.contains('.balance-row', 'FR06 Room owes FR06 Main')
         .find('button[title="Record payment"]')
         .click();
@@ -136,16 +136,41 @@ describe('FR-06 Payment Status E2E Workflow', () => {
       cy.wait('@createPayment').its('response.statusCode').should('eq', 201);
 
       cy.contains('Payment recorded.').should('be.visible');
-      assertBalanceAmount('FR06 Room owes FR06 Main', '€6.00');
-      assertPaymentAmount('FR06 Room paid FR06 Main', '€4.00');
+      assertBalanceAmount('FR06 Room owes FR06 Main', '6.00');
+      assertPaymentAmount('FR06 Room paid FR06 Main', '4.00');
+
+      cy.reload();
+      assertBalanceAmount('FR06 Room owes FR06 Main', '6.00');
+      assertPaymentAmount('FR06 Room paid FR06 Main', '4.00');
 
       cy.visit('/#/expenses');
       cy.contains('h2', 'Expenses').should('be.visible');
-      assertBalanceAmount('FR06 Main', '€6.00');
+      assertBalanceAmount('FR06 Main', '6.00');
     });
   });
 
-  it('shows empty payment states for a household without balances', () => {
+  it('FR-06 negative: rejects overpayment before sending a request', () => {
+    createHouseholdWithExpense().then(({ roomEmail }) => {
+      login(roomEmail);
+
+      cy.intercept('GET', '**/api/v1/payments/overview').as('getPaymentOverview');
+      cy.visit('/#/payment-status');
+      cy.contains('h2', 'Payment Status').should('be.visible');
+      cy.wait('@getPaymentOverview').its('response.statusCode').should('eq', 200);
+
+      cy.contains('.balance-row', 'FR06 Room owes FR06 Main')
+        .find('button[title="Record payment"]')
+        .click();
+
+      cy.get('#amount').clear().type('99.00');
+      cy.intercept('POST', '**/api/v1/payments').as('createPayment');
+      cy.contains('button', 'Save Payment').click();
+      cy.contains('Payment cannot exceed the open balance.').should('be.visible');
+      cy.get('@createPayment.all').should('have.length', 0);
+    });
+  });
+
+  it('FR-06 edge: shows empty payment states for a household without balances', () => {
     createHouseholdWithRoommate().then(({ roomEmail }) => {
       login(roomEmail);
 

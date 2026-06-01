@@ -5,6 +5,12 @@ function uniqueEmail(prefix) {
   return `${prefix}.${Date.now()}.${Math.floor(Math.random() * 100000)}@test.com`;
 }
 
+function today() {
+  const date = new Date();
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 10);
+}
+
 function registerUser(email, firstName, lastName) {
   return cy.request({
     method: 'POST',
@@ -54,15 +60,31 @@ function login(email) {
   cy.location('hash').should('eq', '#/');
 }
 
-describe('UC-05 Expense Tracking and History E2E', () => {
+function assertBalanceAmount(title, amount) {
+  cy.contains('.balance-row', title)
+    .should('be.visible')
+    .within(() => {
+      cy.contains(amount).should('be.visible');
+    });
+}
+
+function assertPaymentAmount(title, amount) {
+  cy.contains('.payment-item', title)
+    .should('be.visible')
+    .within(() => {
+      cy.contains(amount).should('be.visible');
+    });
+}
+
+describe('UC-05 Expense Tracking, Payment Status, and History E2E', () => {
   beforeEach(() => {
     cy.clearLocalStorage();
   });
 
-  it('UC-05 positive: expense equal split persists and appears in history', () => {
+  it('UC-05 positive: expense equal split persists, updates payment status, and appears in history', () => {
     const expenseName = `UC05 Groceries ${Date.now()}`;
 
-    createExpenseHousehold().then(({ mainEmail }) => {
+    createExpenseHousehold().then(({ mainEmail, roomEmail }) => {
       login(mainEmail);
       cy.visit('/#/expenses');
       cy.contains('h2', 'Expenses').should('be.visible');
@@ -90,6 +112,32 @@ describe('UC-05 Expense Tracking and History E2E', () => {
       cy.contains('h2', 'History').should('be.visible');
       cy.contains(expenseName).should('be.visible');
       cy.contains('RECORDED').should('be.visible');
+
+      cy.logoutUser();
+      login(roomEmail);
+      cy.intercept('GET', '**/api/v1/payments/overview').as('getPaymentOverview');
+      cy.visit('/#/payment-status');
+      cy.contains('h2', 'Payment Status').should('be.visible');
+      cy.wait('@getPaymentOverview').its('response.statusCode').should('eq', 200);
+
+      assertBalanceAmount('Uc05 Roommate owes Uc05 Main', '10.00');
+      cy.contains('.balance-row', 'Uc05 Roommate owes Uc05 Main')
+        .find('button[title="Record payment"]')
+        .click();
+
+      cy.get('#amount').clear().type('3.00');
+      cy.get('#date').clear().type(today());
+      cy.intercept('POST', '**/api/v1/payments').as('createPayment');
+      cy.contains('button', 'Save Payment').click();
+      cy.wait('@createPayment').its('response.statusCode').should('eq', 201);
+
+      cy.contains('Payment recorded.').should('be.visible');
+      assertBalanceAmount('Uc05 Roommate owes Uc05 Main', '7.00');
+      assertPaymentAmount('Uc05 Roommate paid Uc05 Main', '3.00');
+
+      cy.reload();
+      assertBalanceAmount('Uc05 Roommate owes Uc05 Main', '7.00');
+      assertPaymentAmount('Uc05 Roommate paid Uc05 Main', '3.00');
     });
   });
 

@@ -64,7 +64,7 @@ backend/src/test/java/at/ac/tuwien/sepr/groupphase/backend/integrationtest/Payme
 backend/src/test/java/at/ac/tuwien/sepr/groupphase/backend/integrationtest/ExpenseEndpointTest.java
 frontend/src/app/components/payment-status/payment-status.component.spec.ts
 frontend/src/app/services/payment.service.spec.ts
-e2e/cypress/e2e/paymentStatus.cy.js
+e2e/cypress/e2e/fr06-payment-status.cy.js
 ```
 
 ## Acceptance Criteria
@@ -150,13 +150,13 @@ TOTAL: 71 SUCCESS
 FR-06 Cypress spec:
 
 ```bash
-cd e2e && npx.cmd cypress run --spec cypress/e2e/paymentStatus.cy.js
+cd e2e && npx.cmd cypress run --spec cypress/e2e/fr06-payment-status.cy.js
 ```
 
 Result:
 
 ```text
-2 passing, 0 failing
+3 passing, 0 failing
 ```
 
 ## Final QA Status

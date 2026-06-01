@@ -63,7 +63,7 @@ PaymentEndpointTest
 ExpenseEndpointTest
 PaymentStatusComponent spec
 PaymentService spec
-e2e/cypress/e2e/paymentStatus.cy.js
+e2e/cypress/e2e/fr06-payment-status.cy.js
 ```
 
 ## Test Evidence
@@ -96,11 +96,21 @@ Tests: TOTAL: 71 SUCCESS
 FR-06 E2E:
 
 ```bash
-cd e2e && npx.cmd cypress run --spec cypress/e2e/paymentStatus.cy.js
+cd e2e && npx.cmd cypress run --spec cypress/e2e/fr06-payment-status.cy.js
 ```
 
 ```text
-2 passing, 0 failing
+3 passing, 0 failing
+```
+
+FR-06 plus UC-05 use-case E2E:
+
+```bash
+cd e2e && npx.cmd cypress run --spec cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/usecases/uc05-expense-history.cy.js
+```
+
+```text
+5 passing, 0 failing
 ```
 
 ## Merge Readiness
