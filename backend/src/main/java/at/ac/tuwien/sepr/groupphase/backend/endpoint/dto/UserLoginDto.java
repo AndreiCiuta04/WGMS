@@ -37,13 +37,12 @@ public class UserLoginDto {
         if (!(o instanceof UserLoginDto userLoginDto)) {
             return false;
         }
-        return Objects.equals(email, userLoginDto.email)
-            && Objects.equals(password, userLoginDto.password);
+        return Objects.equals(email, userLoginDto.email);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(email, password);
+        return Objects.hash(email);
     }
 
     @Override
@@ -52,7 +51,6 @@ public class UserLoginDto {
             + "email='" + email + '\''
             + '}';
     }
-
 
     public static final class UserLoginDtoBuilder {
         private String email;

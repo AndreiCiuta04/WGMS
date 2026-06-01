@@ -1,20 +1,48 @@
-import {inject, TestBed} from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 
-import {AuthGuard} from './auth.guard';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
-import {RouterTestingModule} from '@angular/router/testing';
-import {ReactiveFormsModule} from '@angular/forms';
-import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { AuthGuard } from './auth.guard';
+import { AuthService } from '../services/auth.service';
+import { Router } from '@angular/router';
 
 describe('AuthGuard', () => {
+  let guard: AuthGuard;
+  let authService: jasmine.SpyObj<AuthService>;
+  let router: jasmine.SpyObj<Router>;
+
   beforeEach(() => {
+    authService = jasmine.createSpyObj<AuthService>('AuthService', ['isLoggedIn']);
+    router = jasmine.createSpyObj<Router>('Router', ['navigate']);
+
     TestBed.configureTestingModule({
-    imports: [RouterTestingModule, ReactiveFormsModule],
-    providers: [AuthGuard, provideHttpClient(withInterceptorsFromDi()), provideHttpClientTesting()]
-});
+      providers: [
+        AuthGuard,
+        { provide: AuthService, useValue: authService },
+        { provide: Router, useValue: router }
+      ]
+    });
+
+    guard = TestBed.inject(AuthGuard);
   });
 
-  it('should ...', inject([AuthGuard], (guard: AuthGuard) => {
+  it('should create', () => {
     expect(guard).toBeTruthy();
-  }));
+  });
+
+  it('should allow activation when the user is logged in', () => {
+    authService.isLoggedIn.and.returnValue(true);
+
+    const result = guard.canActivate();
+
+    expect(result).toBeTrue();
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('should redirect to login and deny activation when the user is not logged in', () => {
+    authService.isLoggedIn.and.returnValue(false);
+
+    const result = guard.canActivate();
+
+    expect(result).toBeFalse();
+    expect(router.navigate).toHaveBeenCalledOnceWith(['/login']);
+  });
 });

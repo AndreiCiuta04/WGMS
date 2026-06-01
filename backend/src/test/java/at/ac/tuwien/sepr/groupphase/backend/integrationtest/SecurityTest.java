@@ -8,6 +8,8 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.mapper.MessageMapper;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Message;
 import at.ac.tuwien.sepr.groupphase.backend.repository.MessageRepository;
 import at.ac.tuwien.sepr.groupphase.backend.security.JwtTokenizer;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,8 +36,10 @@ import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
 import tools.jackson.databind.json.JsonMapper;
 
+import javax.crypto.SecretKey;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -117,25 +121,24 @@ public class SecurityTest implements TestData {
     @Test
     public void ensureSecurityAnnotationPresentForEveryEndpoint() {
         List<ImmutablePair<Class<?>, Method>> notSecured = components.stream()
-            .map(AopUtils::getTargetClass) // beans may be proxies, get the target class instead
-            .filter(clazz -> clazz.getCanonicalName() != null && clazz.getCanonicalName().startsWith(BackendApplication.class.getPackageName())) // limit to our package
-            .filter(clazz -> clazz.getAnnotation(RestController.class) != null) // limit to classes annotated with @RestController
-            .flatMap(clazz -> Arrays.stream(clazz.getDeclaredMethods()).map(method -> new ImmutablePair<Class<?>, Method>(clazz, method))) // get all class -> method pairs
-            .filter(pair -> Arrays.stream(pair.getRight().getAnnotations()).anyMatch(annotation -> mappingAnnotations.contains(annotation.annotationType()))) // keep only the pairs where the method has a "mapping annotation"
-            .filter(pair -> Arrays.stream(pair.getRight().getAnnotations()).noneMatch(annotation -> securityAnnotations.contains(annotation.annotationType()))) // keep only the pairs where the method does not have a "security annotation"
+            .map(AopUtils::getTargetClass)
+            .filter(clazz -> clazz.getCanonicalName() != null && clazz.getCanonicalName().startsWith(BackendApplication.class.getPackageName()))
+            .filter(clazz -> clazz.getAnnotation(RestController.class) != null)
+            .flatMap(clazz -> Arrays.stream(clazz.getDeclaredMethods()).map(method -> new ImmutablePair<Class<?>, Method>(clazz, method)))
+            .filter(pair -> Arrays.stream(pair.getRight().getAnnotations()).anyMatch(annotation -> mappingAnnotations.contains(annotation.annotationType())))
+            .filter(pair -> Arrays.stream(pair.getRight().getAnnotations()).noneMatch(annotation -> securityAnnotations.contains(annotation.annotationType())))
             .toList();
 
         assertThat(notSecured.size())
             .as("Most rest methods should be secured. If one is really intended for public use, explicitly state that with @PermitAll. "
                 + "The following are missing: \n" + notSecured.stream().map(pair -> "Class: " + pair.getLeft() + " Method: " + pair.getRight()).reduce("", (a, b) -> a + "\n" + b))
             .isZero();
-
     }
 
     @Test
     public void givenUserLoggedIn_whenFindAll_then200() throws Exception {
         MvcResult mvcResult = this.mockMvc.perform(get(MESSAGE_BASE_URI)
-            .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken(DEFAULT_USER, USER_ROLES)))
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken(DEFAULT_USER, USER_ROLES)))
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 
@@ -146,7 +149,7 @@ public class SecurityTest implements TestData {
     }
 
     @Test
-    public void givenNoOneLoggedIn_whenFindAll_then401() throws Exception {
+    public void givenNoOneLoggedIn_whenFindAll_then403() throws Exception {
         MvcResult mvcResult = this.mockMvc.perform(get(MESSAGE_BASE_URI))
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
@@ -155,14 +158,68 @@ public class SecurityTest implements TestData {
     }
 
     @Test
+    public void givenMalformedAuthorizationHeaderWithoutBearerPrefix_whenFindAll_then401AndInvalidTokenMessage() throws Exception {
+        MvcResult mvcResult = this.mockMvc.perform(get(MESSAGE_BASE_URI)
+                .header(securityProperties.getAuthHeader(), "invalid.token.value"))
+            .andReturn();
+        MockHttpServletResponse response = mvcResult.getResponse();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatus()),
+            () -> assertEquals("Invalid authorization header or token", response.getContentAsString())
+        );
+    }
+
+    @Test
+    public void givenInvalidBearerToken_whenFindAll_then401AndInvalidTokenMessage() throws Exception {
+        MvcResult mvcResult = this.mockMvc.perform(get(MESSAGE_BASE_URI)
+                .header(securityProperties.getAuthHeader(), "Bearer invalid.token.value"))
+            .andReturn();
+        MockHttpServletResponse response = mvcResult.getResponse();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatus()),
+            () -> assertEquals("Invalid authorization header or token", response.getContentAsString())
+        );
+    }
+
+    @Test
+    public void givenBlankBearerToken_whenFindAll_then401AndInvalidTokenMessage() throws Exception {
+        MvcResult mvcResult = this.mockMvc.perform(get(MESSAGE_BASE_URI)
+                .header(securityProperties.getAuthHeader(), "Bearer "))
+            .andReturn();
+        MockHttpServletResponse response = mvcResult.getResponse();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatus()),
+            () -> assertEquals("Invalid authorization header or token", response.getContentAsString())
+        );
+    }
+
+    @Test
+    public void givenExpiredBearerToken_whenFindAll_then401AndInvalidTokenMessage() throws Exception {
+        String expiredToken = createExpiredToken(DEFAULT_USER, USER_ROLES);
+
+        MvcResult mvcResult = this.mockMvc.perform(get(MESSAGE_BASE_URI)
+                .header(securityProperties.getAuthHeader(), expiredToken))
+            .andReturn();
+        MockHttpServletResponse response = mvcResult.getResponse();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatus()),
+            () -> assertEquals("Invalid authorization header or token", response.getContentAsString())
+        );
+    }
+
+    @Test
     public void givenAdminLoggedIn_whenPost_then201() throws Exception {
         MessageInquiryDto messageInquiryDto = messageMapper.messageToMessageInquiryDto(message);
         String body = jsonMapper.writeValueAsString(messageInquiryDto);
 
         MvcResult mvcResult = this.mockMvc.perform(post(MESSAGE_BASE_URI)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(body)
-            .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken(ADMIN_USER, ADMIN_ROLES)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken(ADMIN_USER, ADMIN_ROLES)))
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 
@@ -176,8 +233,8 @@ public class SecurityTest implements TestData {
         String body = jsonMapper.writeValueAsString(messageInquiryDto);
 
         MvcResult mvcResult = this.mockMvc.perform(post(MESSAGE_BASE_URI)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(body))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 
@@ -191,12 +248,29 @@ public class SecurityTest implements TestData {
         String body = jsonMapper.writeValueAsString(messageInquiryDto);
 
         MvcResult mvcResult = this.mockMvc.perform(post(MESSAGE_BASE_URI)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(body)
-            .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken(DEFAULT_USER, USER_ROLES)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body)
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken(DEFAULT_USER, USER_ROLES)))
             .andReturn();
         MockHttpServletResponse response = mvcResult.getResponse();
 
         assertEquals(HttpStatus.FORBIDDEN.value(), response.getStatus());
+    }
+
+    private String createExpiredToken(String user, List<String> roles) {
+        byte[] signingKey = securityProperties.getJwtSecret().getBytes();
+        SecretKey key = Keys.hmacShaKeyFor(signingKey);
+
+        String token = Jwts.builder()
+            .header().add("typ", securityProperties.getJwtType()).and()
+            .issuer(securityProperties.getJwtIssuer())
+            .audience().add(securityProperties.getJwtAudience()).and()
+            .subject(user)
+            .expiration(new Date(System.currentTimeMillis() - 60_000))
+            .claim("rol", roles)
+            .signWith(key, Jwts.SIG.HS512)
+            .compact();
+
+        return securityProperties.getAuthTokenPrefix() + token;
     }
 }

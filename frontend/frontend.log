@@ -2,7 +2,5 @@
 > sepr-group-phase@0.0.0 start
 > ng serve
 
-Node.js version v25.8.2 detected.
-Odd numbered Node.js versions will not enter LTS status and should not be used for production. For more information, please see https://nodejs.org/en/about/previous-releases/.
 An unhandled exception occurred: Port 4200 is already in use. Use '--port' to specify a different port.
-See "/private/var/folders/2b/7lrhy4914ljgn7q8gn_84d740000gn/T/ng-RrJb1U/angular-errors.log" for further details.
+See "/tmp/ng-Ajbx5j/angular-errors.log" for further details.

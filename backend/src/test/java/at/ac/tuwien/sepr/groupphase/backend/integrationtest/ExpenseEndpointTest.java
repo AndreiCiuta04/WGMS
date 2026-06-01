@@ -48,6 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -253,6 +254,27 @@ public class ExpenseEndpointTest implements TestData {
     }
 
     @Test
+    public void givenPaidByFromOtherHousehold_whenCreateExpense_then404Or403AndNoExpenseIsCreated() throws Exception {
+        ExpenseCreateDto createDto = validCreateDto(
+            outsiderRoommate.getId(),
+            new ExpenseSplitCreateDto(mainTenantRoommate.getId(), money("6.00")),
+            new ExpenseSplitCreateDto(roommateRecord.getId(), money("6.00"))
+        );
+
+        MvcResult mvcResult = this.mockMvc.perform(post(EXPENSE_BASE_URI)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(createDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals(0, expenseRepository.findAll().size()),
+            () -> assertEquals(0, expenseSplitRepository.findAll().size())
+        );
+    }
+
+    @Test
     public void givenExpensesInDifferentHouseholds_whenListExpenses_thenOnlyCurrentHouseholdIsReturned() throws Exception {
         Expense ownExpense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Own WG expense", money("10.00"));
         saveExpense(otherHousehold, outsiderRoommate, outsiderRoommate, "Other WG expense", money("9.00"));
@@ -351,6 +373,61 @@ public class ExpenseEndpointTest implements TestData {
     }
 
     @Test
+    public void givenOtherHouseholdUser_whenUpdateExpense_then404AndExpenseRemainsUnchanged() throws Exception {
+        Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Original expense", money("12.00"));
+        saveSplit(expense, mainTenantRoommate, money("6.00"));
+        saveSplit(expense, roommateRecord, money("6.00"));
+        ExpenseUpdateDto updateDto = validUpdateDto("Tampered expense");
+
+        MvcResult mvcResult = this.mockMvc.perform(put(EXPENSE_BASE_URI + "/{id}", expense.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(updateDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(OUTSIDER_EMAIL)))
+            .andReturn();
+
+        Expense unchangedExpense = expenseRepository.findById(expense.getId()).orElseThrow();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.NOT_FOUND.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals("Original expense", unchangedExpense.getDescription()),
+            () -> assertEquals(0, money("12.00").compareTo(unchangedExpense.getTotalAmount())),
+            () -> assertEquals(2, expenseSplitRepository.findAllByExpenseId(expense.getId()).size())
+        );
+    }
+
+    @Test
+    public void givenSameHouseholdNonCreator_whenUpdateExpense_then403AndExpenseRemainsUnchanged() throws Exception {
+        Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Original expense", money("12.00"));
+        saveSplit(expense, mainTenantRoommate, money("6.00"));
+        saveSplit(expense, roommateRecord, money("6.00"));
+        ExpenseUpdateDto updateDto = new ExpenseUpdateDto(
+            "Tampered expense",
+            money("12.00"),
+            EXPENSE_DATE,
+            roommateRecord.getId(),
+            List.of(
+                new ExpenseSplitCreateDto(mainTenantRoommate.getId(), money("6.00")),
+                new ExpenseSplitCreateDto(roommateRecord.getId(), money("6.00"))
+            )
+        );
+
+        MvcResult mvcResult = this.mockMvc.perform(put(EXPENSE_BASE_URI + "/{id}", expense.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(updateDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+
+        Expense unchangedExpense = expenseRepository.findById(expense.getId()).orElseThrow();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals("Original expense", unchangedExpense.getDescription()),
+            () -> assertEquals(0, money("12.00").compareTo(unchangedExpense.getTotalAmount())),
+            () -> assertEquals(2, expenseSplitRepository.findAllByExpenseId(expense.getId()).size())
+        );
+    }
+
+    @Test
     public void givenRecordedPayment_whenUpdateExpense_then409AndExpenseIsUnchanged() throws Exception {
         Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Old expense", money("12.00"));
         saveSplit(expense, mainTenantRoommate, money("6.00"));
@@ -428,6 +505,38 @@ public class ExpenseEndpointTest implements TestData {
     }
 
     @Test
+    public void givenOtherHouseholdUser_whenDeleteExpense_then404AndExpenseStillExists() throws Exception {
+        Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Do not delete", money("12.00"));
+        saveSplit(expense, mainTenantRoommate, money("12.00"));
+
+        MvcResult mvcResult = this.mockMvc.perform(delete(EXPENSE_BASE_URI + "/{id}", expense.getId())
+                .header(securityProperties.getAuthHeader(), tokenFor(OUTSIDER_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.NOT_FOUND.value(), mvcResult.getResponse().getStatus()),
+            () -> assertTrue(expenseRepository.existsById(expense.getId())),
+            () -> assertEquals(1, expenseSplitRepository.findAllByExpenseId(expense.getId()).size())
+        );
+    }
+
+    @Test
+    public void givenSameHouseholdNonCreator_whenDeleteExpense_then403AndExpenseStillExists() throws Exception {
+        Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Do not delete", money("12.00"));
+        saveSplit(expense, mainTenantRoommate, money("12.00"));
+
+        MvcResult mvcResult = this.mockMvc.perform(delete(EXPENSE_BASE_URI + "/{id}", expense.getId())
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus()),
+            () -> assertTrue(expenseRepository.existsById(expense.getId())),
+            () -> assertEquals(1, expenseSplitRepository.findAllByExpenseId(expense.getId()).size())
+        );
+    }
+
+    @Test
     public void givenRecordedPayment_whenDeleteExpense_then409AndExpenseIsKept() throws Exception {
         Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Delete me", money("12.00"));
         saveSplit(expense, mainTenantRoommate, money("6.00"));
@@ -461,6 +570,19 @@ public class ExpenseEndpointTest implements TestData {
 
     private ExpenseCreateDto validCreateDto(Long paidByRoommateId, ExpenseSplitCreateDto... splits) {
         return new ExpenseCreateDto("Groceries", money("12.00"), EXPENSE_DATE, paidByRoommateId, List.of(splits));
+    }
+
+    private ExpenseUpdateDto validUpdateDto(String description) {
+        return new ExpenseUpdateDto(
+            description,
+            money("12.00"),
+            EXPENSE_DATE,
+            mainTenantRoommate.getId(),
+            List.of(
+                new ExpenseSplitCreateDto(mainTenantRoommate.getId(), money("6.00")),
+                new ExpenseSplitCreateDto(roommateRecord.getId(), money("6.00"))
+            )
+        );
     }
 
     private String tokenFor(String email) {

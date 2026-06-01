@@ -73,12 +73,12 @@ function visitShoppingList() {
     cy.wait('@loadHistory').its('response.statusCode').should('eq', 200);
 }
 
-describe('FR-09 Aggregated household shopping list and history', () => {
+describe('FR-09 Shopping Aggregation and History E2E', () => {
     beforeEach(() => {
         cy.clearLocalStorage();
     });
 
-    it('shows shared needed items grouped in the Household List tab', () => {
+    it('FR-09 positive/negative: shared needed items group while bought, personal, and other-household items are excluded', () => {
         const runId = Date.now();
         const owner = uniqueUser('Owner', runId);
         const otherHouseholdUser = uniqueUser('OtherHousehold', runId);
@@ -142,7 +142,7 @@ describe('FR-09 Aggregated household shopping list and history', () => {
             .and('not.contain', otherHouseholdName);
     });
 
-    it('shows bought and cancelled items in History and can mark one as needed again', () => {
+    it('FR-09 positive/negative: history shows bought/cancelled items and excludes needed/other-household items', () => {
         const runId = Date.now();
         const owner = uniqueUser('HistoryOwner', runId);
         const otherHouseholdUser = uniqueUser('HistoryOther', runId);

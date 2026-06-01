@@ -108,8 +108,8 @@ function createRecordedExpense(token, roommateId) {
   });
 }
 
-describe('FR-13 History E2E Workflow', () => {
-  it('shows task and payment history from the sidebar navigation', () => {
+describe('FR-13 History E2E', () => {
+  it('FR-13 positive: completed task and recorded expense appear after sidebar navigation', () => {
     const email = uniqueEmail('fr13-history');
 
     registerUser(email, 'FR13', 'History').then((token) => {
@@ -135,7 +135,7 @@ describe('FR-13 History E2E Workflow', () => {
     });
   });
 
-  it('shows empty states and does not crash when the household has no history', () => {
+  it('FR-13 empty state: household without history shows empty task and payment messages', () => {
     const email = uniqueEmail('fr13-empty');
 
     registerUser(email, 'FR13', 'Empty').then((token) => {

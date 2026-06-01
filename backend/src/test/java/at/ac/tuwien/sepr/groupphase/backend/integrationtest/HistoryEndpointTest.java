@@ -124,6 +124,17 @@ public class HistoryEndpointTest implements TestData {
     }
 
     @Test
+    public void givenAuthenticatedUserWithoutHousehold_whenGetHistory_then403() throws Exception {
+        ApplicationUser userWithoutHousehold = saveUser("without-household@test.com", "No", "Household");
+
+        MvcResult mvcResult = this.mockMvc.perform(get(HISTORY_BASE_URI)
+                .header(securityProperties.getAuthHeader(), tokenFor(userWithoutHousehold.getEmail())))
+            .andReturn();
+
+        assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus());
+    }
+
+    @Test
     public void givenAuthenticatedHouseholdUser_whenGetHistory_then200AndHistoryArraysAreReturned() throws Exception {
         Task doneTask = saveTask(household, mainTenant, roommate, "Done task", TaskStatus.DONE);
         Task cancelledTask = saveTask(household, mainTenant, roommate, "Cancelled task", TaskStatus.CANCELLED);

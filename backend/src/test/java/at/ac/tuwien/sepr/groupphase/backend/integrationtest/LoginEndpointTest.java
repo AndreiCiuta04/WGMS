@@ -111,7 +111,7 @@ public class LoginEndpointTest implements TestData {
         MockHttpServletResponse response = mvcResult.getResponse();
 
         assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatus());
-        assertEquals("Username or password is incorrect", response.getContentAsString());
+        assertEquals("Authentication failed.", response.getContentAsString());
 
         ApplicationUser fetchedUser = userRepository.findUserByEmail("test@example.com");
         assertEquals(1, fetchedUser.getFailedLoginAttempts());
@@ -133,7 +133,7 @@ public class LoginEndpointTest implements TestData {
         MockHttpServletResponse response = mvcResult.getResponse();
 
         assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatus());
-        assertEquals("Username or password is incorrect", response.getContentAsString());
+        assertEquals("Authentication failed.", response.getContentAsString());
     }
 
     @Test
@@ -172,6 +172,6 @@ public class LoginEndpointTest implements TestData {
         MockHttpServletResponse response = mvcResult.getResponse();
 
         assertEquals(HttpStatus.UNAUTHORIZED.value(), response.getStatus());
-        assertEquals("Account is locked due to too many failed attempts. Try again later.", response.getContentAsString());
+        assertEquals("Authentication failed.", response.getContentAsString());
     }
 }

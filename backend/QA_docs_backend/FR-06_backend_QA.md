@@ -255,9 +255,10 @@ Failing: 0
 FR-06 spec:
 
 ```text
-e2e/cypress/e2e/paymentStatus.cy.js
-- records a partial payment and keeps FR-05 balances in sync
-- shows empty payment states for a household without balances
+e2e/cypress/e2e/fr06-payment-status.cy.js
+- FR-06 positive: records a partial payment, persists it, and keeps FR-05 balances in sync
+- FR-06 negative: rejects overpayment before sending a request
+- FR-06 edge: shows empty payment states for a household without balances
 ```
 
 ## 8. Regression Checks
