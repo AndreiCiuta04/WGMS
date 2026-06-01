@@ -36,13 +36,34 @@ e2e-test:
   stage: test
   image: registry.reset.inso-w.at/pub/docker/cypress:latest
   script:
-    - cd frontend
-    - npm ci --legacy-peer-deps
-    - npm run start &
-    - cd ../backend
+    - cd backend
     - mvn -B clean install -DskipTests
     - java -jar target/*.jar --spring.profiles.active=generateData &
-    - sleep 30
+    - cd ../frontend
+    - npm ci --legacy-peer-deps
+    - npm start -- --host 0.0.0.0 --port 4200 &
+    - |
+      wait_for_url() {
+        local url="$1"
+        local attempts=60
+        local delay=2
+
+        for i in $(seq 1 "$attempts"); do
+          if curl --silent --fail "$url" > /dev/null; then
+            echo "Ready: $url"
+            return 0
+          fi
+
+          echo "Waiting for $url ($i/$attempts)..."
+          sleep "$delay"
+        done
+
+        echo "Timed out waiting for $url"
+        return 1
+      }
+
+      wait_for_url http://localhost:8080/health
+      wait_for_url http://localhost:4200/
     - cd ../e2e
     - npm ci --legacy-peer-deps
     - npx cypress run
