@@ -37,6 +37,11 @@ describe('FR-01 Authentication and Registration E2E', () => {
     cy.location('hash').should('eq', '#/');
     cy.contains(/Welcome home|Welcome to WGMS!/).should('be.visible');
     cy.window().its('localStorage.authToken').should('exist');
+    cy.visit('/#/profile');
+    cy.get('[data-cy="profile-page"]').should('be.visible');
+    cy.get('[data-cy="profile-data"]').should('contain', user.email);
+    cy.get('[data-cy="profile-data"]').should('contain', user.firstName);
+    cy.get('[data-cy="profile-data"]').should('contain', user.lastName);
 
     cy.logoutUser();
     cy.location('hash').should('eq', '#/');
@@ -45,6 +50,9 @@ describe('FR-01 Authentication and Registration E2E', () => {
     cy.loginUser(user.email, user.password);
     cy.location('hash').should('eq', '#/');
     cy.contains(/Welcome home|Welcome to WGMS!/).should('be.visible');
+    cy.visit('/#/profile');
+    cy.get('[data-cy="profile-page"]').should('be.visible');
+    cy.get('[data-cy="profile-data"]').should('contain', user.email);
   });
 
   it('FR-01 negative: invalid login and duplicate registration show readable errors', () => {

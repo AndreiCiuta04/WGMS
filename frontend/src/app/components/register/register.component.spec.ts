@@ -6,12 +6,14 @@ import { of, throwError } from 'rxjs';
 
 import { RegisterComponent } from './register.component';
 import { AuthService } from '../../services/auth.service';
+import { RegisterDraftService } from '../../services/register-draft.service';
 
 describe('RegisterComponent', () => {
   let component: RegisterComponent;
   let fixture: ComponentFixture<RegisterComponent>;
   let authServiceSpy: jasmine.SpyObj<AuthService>;
   let routerSpy: jasmine.SpyObj<Router>;
+  let registerDraftService: RegisterDraftService;
 
   beforeEach(async () => {
     authServiceSpy = jasmine.createSpyObj<AuthService>('AuthService', ['registerUser']);
@@ -27,6 +29,8 @@ describe('RegisterComponent', () => {
       schemas: [NO_ERRORS_SCHEMA]
     }).compileComponents();
 
+    registerDraftService = TestBed.inject(RegisterDraftService);
+    registerDraftService.clear();
     fixture = TestBed.createComponent(RegisterComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
@@ -34,6 +38,7 @@ describe('RegisterComponent', () => {
 
   afterEach(() => {
     localStorage.removeItem('pendingInviteToken');
+    registerDraftService.clear();
   });
 
   it('should create', () => {
@@ -57,12 +62,16 @@ describe('RegisterComponent', () => {
     expect(component.registerForm.invalid).toBeTrue();
   });
 
-  it('should render the required legal acknowledgement selectors and link', () => {
+  it('should render separate terms and privacy acknowledgement links', () => {
     const element: HTMLElement = fixture.nativeElement;
+    const termsLink = element.querySelector('[data-cy="registration-terms-link"]');
+    const privacyLink = element.querySelector('[data-cy="registration-privacy-link"]');
 
     expect(element.querySelector('[data-cy="registration-terms-checkbox"]')).toBeTruthy();
     expect(element.querySelector('[data-cy="registration-submit"]')).toBeTruthy();
-    expect(element.querySelector('[data-cy="registration-legal-link"]')?.getAttribute('routerlink')).toBe('/legal');
+    expect(termsLink?.getAttribute('routerlink')).toBe('/terms');
+    expect(privacyLink?.getAttribute('routerlink')).toBe('/privacy');
+    expect(termsLink?.getAttribute('routerlink')).not.toBe(privacyLink?.getAttribute('routerlink'));
   });
 
   it('should reject invalid email format', () => {
@@ -96,6 +105,7 @@ describe('RegisterComponent', () => {
   });
 
   it('should call AuthService and navigate home after successful registration', () => {
+    registerDraftService.save(validRegistration({ email: 'draft@example.com' }));
     authServiceSpy.registerUser.and.returnValue(of('jwt-token'));
     component.registerForm.patchValue(validRegistration());
 
@@ -109,6 +119,7 @@ describe('RegisterComponent', () => {
       termsAccepted: true
     });
     expect(routerSpy.navigate).toHaveBeenCalledWith(['/']);
+    expect(registerDraftService.load()).toBeNull();
   });
 
   it('should redirect to pending invitation after successful registration', () => {
@@ -142,6 +153,60 @@ describe('RegisterComponent', () => {
     expect(component.error).toBeTrue();
     expect(component.errorMessage).toBe('Registration service unavailable.');
   });
+
+  it('should show validation errors returned by the backend', () => {
+    authServiceSpy.registerUser.and.returnValue(
+      throwError(() => ({ status: 400, error: { 'Validation errors': ['Terms must be accepted.', 'Password is too weak.'] } }))
+    );
+    component.registerForm.patchValue(validRegistration());
+
+    component.registerUser();
+
+    expect(component.error).toBeTrue();
+    expect(component.errorMessage).toBe('Terms must be accepted. Password is too weak.');
+  });
+
+  it('should restore register form state after navigating to terms and back', () => {
+    const draft = validRegistration({
+      firstName: 'Terms',
+      lastName: 'Draft',
+      email: 'terms.draft@example.com',
+      password: 'Terms123!'
+    });
+    component.registerForm.patchValue(draft);
+
+    clickDraftLink('[data-cy="registration-terms-link"]');
+
+    const restored = createRestoredComponent();
+    expect(restored.registerForm.value).toEqual(draft);
+  });
+
+  it('should restore register form state after navigating to privacy and back', () => {
+    const draft = validRegistration({
+      firstName: 'Privacy',
+      lastName: 'Draft',
+      email: 'privacy.draft@example.com',
+      password: 'Privacy123!'
+    });
+    component.registerForm.patchValue(draft);
+
+    clickDraftLink('[data-cy="registration-privacy-link"]');
+
+    const restored = createRestoredComponent();
+    expect(restored.registerForm.value).toEqual(draft);
+  });
+
+  function clickDraftLink(selector: string): void {
+    const link = fixture.nativeElement.querySelector(selector) as HTMLAnchorElement;
+    link.dispatchEvent(new Event('click', { bubbles: true }));
+    fixture.detectChanges();
+  }
+
+  function createRestoredComponent(): RegisterComponent {
+    const restoredFixture = TestBed.createComponent(RegisterComponent);
+    restoredFixture.detectChanges();
+    return restoredFixture.componentInstance;
+  }
 });
 
 function validRegistration(overrides: Partial<{

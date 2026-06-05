@@ -12,6 +12,14 @@ function fillRegistration(email) {
   cy.get('input[name="password"]').clear().type(password);
 }
 
+function expectRegistrationValues(email) {
+  cy.get('input[name="firstName"]').should('have.value', 'Gdpr');
+  cy.get('input[name="lastName"]').should('have.value', 'Legal');
+  cy.get('input[name="email"]').should('have.value', email);
+  cy.get('input[name="password"]').should('have.value', password);
+  cy.get('[data-cy="registration-terms-checkbox"]').should('be.checked');
+}
+
 describe('GDPR/legal user-facing flow', () => {
   beforeEach(() => {
     cy.clearLocalStorage();
@@ -37,7 +45,21 @@ describe('GDPR/legal user-facing flow', () => {
     cy.contains(/no real money transfers/i).should('be.visible');
   });
 
-  it('requires legal acknowledgement during registration and links to legal information', () => {
+  it('displays separate terms and privacy pages', () => {
+    cy.visit('/#/terms');
+    cy.get('[data-cy="terms-page"]').should('be.visible');
+    cy.contains('Terms and Conditions').should('be.visible');
+    cy.contains('User responsibilities').should('be.visible');
+    cy.contains('Data we store').should('not.exist');
+
+    cy.visit('/#/privacy');
+    cy.get('[data-cy="privacy-page"]').should('be.visible');
+    cy.contains('Privacy and Data Usage').should('be.visible');
+    cy.contains('Data we store').should('be.visible');
+    cy.contains('User responsibilities').should('not.exist');
+  });
+
+  it('requires legal acknowledgement, links to separate pages, and preserves registration draft', () => {
     const email = uniqueEmail('gdpr.legal.ui');
 
     cy.visit('/#/register');
@@ -45,14 +67,26 @@ describe('GDPR/legal user-facing flow', () => {
 
     cy.get('[data-cy="registration-terms-checkbox"]').should('not.be.checked');
     cy.get('[data-cy="registration-submit"]').should('be.disabled');
-
-    cy.get('[data-cy="registration-legal-link"]').click();
-    cy.location('hash').should('eq', '#/legal');
-    cy.get('[data-cy="legal-page"]').should('be.visible');
-
-    cy.visit('/#/register');
-    fillRegistration(email);
     cy.get('[data-cy="registration-terms-checkbox"]').check();
+
+    cy.get('[data-cy="registration-terms-link"]').click();
+    cy.location('hash').should('eq', '#/terms');
+    cy.get('[data-cy="terms-page"]').should('be.visible');
+    cy.contains('Terms and Conditions').should('be.visible');
+
+    cy.go('back');
+    cy.location('hash').should('eq', '#/register');
+    expectRegistrationValues(email);
+
+    cy.get('[data-cy="registration-privacy-link"]').click();
+    cy.location('hash').should('eq', '#/privacy');
+    cy.get('[data-cy="privacy-page"]').should('be.visible');
+    cy.contains('Privacy and Data Usage').should('be.visible');
+
+    cy.go('back');
+    cy.location('hash').should('eq', '#/register');
+    expectRegistrationValues(email);
+
     cy.get('[data-cy="registration-submit"]').should('not.be.disabled').click();
 
     cy.window().its('localStorage.authToken').should('exist');

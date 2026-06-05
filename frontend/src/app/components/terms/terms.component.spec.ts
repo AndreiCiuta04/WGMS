@@ -17,9 +17,12 @@ describe('TermsComponent', () => {
   });
 
   it('should render the terms headings', () => {
-    const text = fixture.nativeElement.textContent;
+    const element: HTMLElement = fixture.nativeElement;
+    const text = element.textContent || '';
+    expect(element.querySelector('[data-cy="terms-page"]')).toBeTruthy();
     expect(text).toContain('Terms and Conditions');
     expect(text).toContain('User responsibilities');
     expect(text).toContain('No production guarantee');
+    expect(text).not.toContain('Data we store');
   });
 });

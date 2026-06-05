@@ -134,6 +134,45 @@ public class UserEndpointTest implements TestData {
     }
 
     @Test
+    public void givenRegisteredUser_whenGetCurrentUserProfile_thenReturnsProfileAndLoadsGdprFields() throws Exception {
+        UserRegistrationDto userRegistrationDto = new UserRegistrationDto();
+        userRegistrationDto.setEmail("registered.profile@example.com");
+        userRegistrationDto.setPassword("Password123!");
+        userRegistrationDto.setFirstName("Registered");
+        userRegistrationDto.setLastName("Profile");
+        userRegistrationDto.setTermsAccepted(true);
+
+        MvcResult registrationResult = this.mockMvc.perform(post("/api/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(userRegistrationDto)))
+            .andReturn();
+
+        assertEquals(HttpStatus.CREATED.value(), registrationResult.getResponse().getStatus());
+        String authHeader = registrationResult.getResponse().getContentAsString();
+
+        MvcResult profileResult = this.mockMvc.perform(get("/api/v1/users/me")
+                .header(securityProperties.getAuthHeader(), authHeader))
+            .andReturn();
+
+        assertEquals(HttpStatus.OK.value(), profileResult.getResponse().getStatus());
+        UserProfileDto profile = jsonMapper.readValue(profileResult.getResponse().getContentAsString(), UserProfileDto.class);
+        assertEquals("registered.profile@example.com", profile.email());
+        assertEquals("Registered", profile.firstName());
+        assertEquals("Profile", profile.lastName());
+        assertEquals("USER", profile.role());
+
+        ApplicationUser savedUser = userRepository.findUserByEmail("registered.profile@example.com");
+        assertNotNull(savedUser);
+        assertFalse(savedUser.isAnonymized());
+        assertEquals(0, savedUser.getFailedLoginAttempts());
+        assertNull(savedUser.getAccountLockedUntil());
+        assertNotNull(savedUser.getTermsAcceptedAt());
+        assertEquals("v1.0", savedUser.getTermsVersion());
+        assertNotNull(savedUser.getPrivacyAcknowledgedAt());
+        assertEquals("v1.0", savedUser.getPrivacyVersion());
+    }
+
+    @Test
     public void givenExistingUser_whenRegisterSameEmail_thenReturns409() throws Exception {
         ApplicationUser existingUser = new ApplicationUser("existing@example.com", "hashedpassword", "Existing", "User", false);
         userRepository.save(existingUser);

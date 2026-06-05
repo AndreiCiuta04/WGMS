@@ -3,6 +3,7 @@ import { UntypedFormBuilder, UntypedFormGroup, Validators } from '@angular/forms
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { UserRegistration } from '../../dtos/user-registration';
+import { RegisterDraftService } from '../../services/register-draft.service';
 
 @Component({
   selector: 'app-register',
@@ -17,7 +18,12 @@ export class RegisterComponent implements OnInit {
   error = false;
   errorMessage = '';
 
-  constructor(private formBuilder: UntypedFormBuilder, private authService: AuthService, private router: Router) {
+  constructor(
+    private formBuilder: UntypedFormBuilder,
+    private authService: AuthService,
+    private router: Router,
+    private registerDraftService: RegisterDraftService
+  ) {
     this.registerForm = this.formBuilder.group({
       firstName: ['', [Validators.required]],
       lastName: ['', [Validators.required]],
@@ -28,6 +34,10 @@ export class RegisterComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    const draft = this.registerDraftService.load();
+    if (draft) {
+      this.registerForm.patchValue(draft);
+    }
   }
 
   registerUser() {
@@ -42,6 +52,7 @@ export class RegisterComponent implements OnInit {
       };
       this.authService.registerUser(userRegistration).subscribe({
         next: () => {
+          this.registerDraftService.clear();
           const pendingToken = localStorage.getItem('pendingInviteToken');
           if (pendingToken) {
             this.router.navigate(['/invite', pendingToken]);
@@ -57,18 +68,8 @@ export class RegisterComponent implements OnInit {
             this.errorMessage = 'Email is already registered.';
           } else if (error.status === 404) {
             this.errorMessage = 'Registration endpoint not found. Did you restart the backend?';
-          } else if (error.error && typeof error.error === 'object') {
-            if (error.error.error) {
-              this.errorMessage = error.error.error;
-            } else if (error.error.detail) {
-              this.errorMessage = error.error.detail;
-            } else {
-              this.errorMessage = JSON.stringify(error.error);
-            }
-          } else if (error.error && typeof error.error === 'string') {
-            this.errorMessage = error.error;
           } else {
-            this.errorMessage = 'Unknown error occurred. Please try again.';
+            this.errorMessage = this.extractRegistrationError(error);
           }
         }
       });
@@ -77,8 +78,47 @@ export class RegisterComponent implements OnInit {
     }
   }
 
+  saveDraft(): void {
+    this.registerDraftService.save({
+      firstName: this.registerForm.controls.firstName.value || '',
+      lastName: this.registerForm.controls.lastName.value || '',
+      email: this.registerForm.controls.email.value || '',
+      password: this.registerForm.controls.password.value || '',
+      termsAccepted: !!this.registerForm.controls.termsAccepted.value
+    });
+  }
+
   vanishError() {
     this.error = false;
+  }
+
+  private extractRegistrationError(error: any): string {
+    const responseBody = error?.error;
+
+    if (typeof responseBody === 'string' && responseBody.trim().length > 0) {
+      return responseBody;
+    }
+
+    if (responseBody && typeof responseBody === 'object') {
+      const validationErrors = responseBody['Validation errors'];
+      if (Array.isArray(validationErrors) && validationErrors.length > 0) {
+        return validationErrors.join(' ');
+      }
+
+      if (responseBody.error) {
+        return responseBody.error;
+      }
+
+      if (responseBody.detail) {
+        return responseBody.detail;
+      }
+
+      if (responseBody.message) {
+        return responseBody.message;
+      }
+    }
+
+    return 'Unknown error occurred. Please try again.';
   }
 
 }

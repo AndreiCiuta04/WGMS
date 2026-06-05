@@ -84,8 +84,8 @@
           <div class="mb-4 form-check">
             <input type="checkbox" formControlName="termsAccepted" class="form-check-input" id="termsAccepted" data-cy="registration-terms-checkbox">
             <label for="termsAccepted" class="form-check-label caption">
-              I accept the <a routerLink="/legal" data-cy="registration-legal-link">Terms and Conditions</a> and acknowledge the
-              <a routerLink="/legal">Privacy/Data Usage information</a>.
+              I accept the <a routerLink="/terms" (click)="saveDraft()" data-cy="registration-terms-link">Terms and Conditions</a> and acknowledge the
+              <a routerLink="/privacy" (click)="saveDraft()" data-cy="registration-privacy-link">Privacy/Data Usage information</a>.
             </label>
             @if (submitted && registerForm.controls.termsAccepted.errors) {
               <div class="error mt-1">
