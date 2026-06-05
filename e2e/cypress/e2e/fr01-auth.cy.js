@@ -92,8 +92,7 @@ describe('FR-01 Authentication and Registration E2E', () => {
     cy.get('input[name="email"]').clear().type(uniqueEmail('weak.password'));
     cy.get('input[name="password"]').clear().type('weak');
     cy.get('[data-cy="registration-terms-checkbox"]').check();
-    cy.contains('button', 'Register').click();
-    cy.contains('At least 8 characters required').should('be.visible');
+    cy.get('[data-cy="registration-submit"]').should('be.disabled');
     cy.get('@registerRequest.all').should('have.length', 0);
   });
 

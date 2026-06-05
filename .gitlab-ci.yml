@@ -38,7 +38,14 @@ e2e-test:
   script:
     - cd backend
     - mvn -B clean install -DskipTests
-    - java -jar target/*.jar --spring.profiles.active=generateData &
+    - >
+      java -jar target/*.jar
+      --spring.profiles.active=generateData
+      "--spring.datasource.url=jdbc:h2:mem:e2e;DB_CLOSE_DELAY=-1"
+      --spring.datasource.username=sa
+      "--spring.datasource.password="
+      --spring.jpa.hibernate.ddl-auto=create
+      --logging.file.name=./log/e2e-backend.log &
     - cd ../frontend
     - npm ci --legacy-peer-deps
     - npm start -- --host 0.0.0.0 --port 4200 &
