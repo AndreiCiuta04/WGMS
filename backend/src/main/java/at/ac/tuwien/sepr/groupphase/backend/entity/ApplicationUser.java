@@ -36,6 +36,9 @@ public class ApplicationUser {
     @Column(name = "account_locked_until")
     private java.time.LocalDateTime accountLockedUntil;
 
+    @Column(nullable = false)
+    private boolean anonymized = false;
+
     public ApplicationUser() {
     }
 
@@ -46,6 +49,7 @@ public class ApplicationUser {
         this.lastName = lastName;
         this.admin = admin;
         this.failedLoginAttempts = 0;
+        this.anonymized = false;
     }
 
     public Long getId() {
@@ -110,5 +114,13 @@ public class ApplicationUser {
 
     public void setAccountLockedUntil(java.time.LocalDateTime accountLockedUntil) {
         this.accountLockedUntil = accountLockedUntil;
+    }
+
+    public boolean isAnonymized() {
+        return anonymized;
+    }
+
+    public void setAnonymized(boolean anonymized) {
+        this.anonymized = anonymized;
     }
 }

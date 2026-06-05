@@ -1,8 +1,13 @@
 package at.ac.tuwien.sepr.groupphase.backend.service.impl;
 
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserLoginDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserProfileDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserProfileUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
+import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
+import at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException;
+import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
 import at.ac.tuwien.sepr.groupphase.backend.security.JwtTokenizer;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
@@ -17,21 +22,33 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.invoke.MethodHandles;
+import java.security.SecureRandom;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class CustomUserDetailService implements UserService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private final UserRepository userRepository;
+    private final RoommateRepository roommateRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenizer jwtTokenizer;
 
     @Autowired
-    public CustomUserDetailService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenizer jwtTokenizer) {
+    public CustomUserDetailService(
+        UserRepository userRepository,
+        RoommateRepository roommateRepository,
+        PasswordEncoder passwordEncoder,
+        JwtTokenizer jwtTokenizer
+    ) {
         this.userRepository = userRepository;
+        this.roommateRepository = roommateRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenizer = jwtTokenizer;
     }
@@ -41,9 +58,12 @@ public class CustomUserDetailService implements UserService {
         LOGGER.debug("Load all user by email");
         try {
             ApplicationUser applicationUser = findApplicationUserByEmail(email);
+            if (applicationUser.isAnonymized()) {
+                throw new UsernameNotFoundException("User account is anonymized");
+            }
 
             List<GrantedAuthority> grantedAuthorities;
-            if (applicationUser.getAdmin()) {
+            if (Boolean.TRUE.equals(applicationUser.getAdmin())) {
                 grantedAuthorities = AuthorityUtils.createAuthorityList("ROLE_ADMIN", "ROLE_USER");
             } else {
                 grantedAuthorities = AuthorityUtils.createAuthorityList("ROLE_USER");
@@ -66,11 +86,113 @@ public class CustomUserDetailService implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public UserProfileDto getCurrentUserProfile(String email) {
+        LOGGER.debug("Get safe profile for authenticated user");
+        ApplicationUser user = findApplicationUserByEmail(email);
+        if (user.isAnonymized()) {
+            throw new NotFoundException("User account is anonymized.");
+        }
+        return toUserProfileDto(user);
+    }
+
+    @Override
+    @Transactional
+    public UserProfileDto updateCurrentUserProfile(String email, UserProfileUpdateDto userProfileUpdateDto) {
+        LOGGER.debug("Update safe profile for authenticated user");
+        ApplicationUser user = findApplicationUserByEmail(email);
+        if (user.isAnonymized()) {
+            throw new NotFoundException("User account is anonymized.");
+        }
+
+        String newEmail = userProfileUpdateDto.email().trim();
+        if (!user.getEmail().equalsIgnoreCase(newEmail)) {
+            ApplicationUser existingUser = userRepository.findUserByEmail(newEmail);
+            if (existingUser != null && !existingUser.getId().equals(user.getId())) {
+                throw new ConflictException("User already exists.");
+            }
+            user.setEmail(newEmail);
+        }
+
+        user.setFirstName(userProfileUpdateDto.firstName().trim());
+        user.setLastName(userProfileUpdateDto.lastName().trim());
+        return toUserProfileDto(userRepository.save(user));
+    }
+
+    @Override
+    @Transactional
+    public void anonymizeCurrentUser(String email) {
+        LOGGER.debug("Anonymize authenticated user account");
+        ApplicationUser user = findApplicationUserByEmail(email);
+        if (user.isAnonymized()) {
+            return;
+        }
+
+        user.setEmail("anonymized-user-" + user.getId() + "@deleted.local");
+        user.setFirstName("Deleted");
+        user.setLastName("User");
+        user.setPassword(passwordEncoder.encode(randomToken()));
+        user.setAdmin(false);
+        user.setFailedLoginAttempts(0);
+        user.setAccountLockedUntil(null);
+        user.setAnonymized(true);
+
+        roommateRepository.findByUserIdAndActiveTrue(user.getId())
+            .ifPresent(roommate -> {
+                roommate.setActive(false);
+                roommateRepository.save(roommate);
+            });
+
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public UserProfileDto leaveCurrentHousehold(String email) {
+        LOGGER.debug("Leave current household for authenticated user");
+        ApplicationUser user = findApplicationUserByEmail(email);
+        if (user.isAnonymized()) {
+            throw new NotFoundException("User account is anonymized.");
+        }
+
+        Roommate roommate = roommateRepository.findByUserIdAndActiveTrue(user.getId())
+            .orElseThrow(() -> new NotFoundException("User does not belong to any household."));
+        roommate.setActive(false);
+        roommateRepository.save(roommate);
+        return toUserProfileDto(user);
+    }
+
+    private UserProfileDto toUserProfileDto(ApplicationUser user) {
+        Optional<Roommate> activeRoommate = roommateRepository.findByUserIdAndActiveTrue(user.getId());
+
+        return new UserProfileDto(
+            user.getId(),
+            user.getEmail(),
+            user.getFirstName(),
+            user.getLastName(),
+            Boolean.TRUE.equals(user.getAdmin()) ? "ADMIN" : "USER",
+            activeRoommate.map(roommate -> roommate.getHousehold().getId()).orElse(null),
+            activeRoommate.map(roommate -> roommate.getHousehold().getName()).orElse(null),
+            activeRoommate.map(Roommate::getId).orElse(null)
+        );
+    }
+
+    private String randomToken() {
+        byte[] bytes = new byte[32];
+        SECURE_RANDOM.nextBytes(bytes);
+        return HexFormat.of().formatHex(bytes);
+    }
+
+    @Override
     public String login(UserLoginDto userLoginDto) {
         ApplicationUser applicationUser;
         try {
             applicationUser = findApplicationUserByEmail(userLoginDto.getEmail());
         } catch (NotFoundException e) {
+            throw new BadCredentialsException("Username or password is incorrect");
+        }
+
+        if (applicationUser.isAnonymized()) {
             throw new BadCredentialsException("Username or password is incorrect");
         }
 
@@ -90,7 +212,7 @@ public class CustomUserDetailService implements UserService {
             userRepository.save(applicationUser);
 
             List<GrantedAuthority> grantedAuthorities;
-            if (applicationUser.getAdmin()) {
+            if (Boolean.TRUE.equals(applicationUser.getAdmin())) {
                 grantedAuthorities = AuthorityUtils.createAuthorityList("ROLE_ADMIN", "ROLE_USER");
             } else {
                 grantedAuthorities = AuthorityUtils.createAuthorityList("ROLE_USER");

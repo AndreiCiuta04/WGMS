@@ -21,12 +21,16 @@ import {CleaningScheduleCreateComponent} from './components/cleaning-schedule-cr
 import {CleaningScheduleEditComponent} from './components/cleaning-schedule-edit/cleaning-schedule-edit.component';
 import {HistoryComponent} from './components/history/history.component';
 import {PaymentStatusComponent} from './components/payment-status/payment-status.component';
+import {ProfileComponent} from './components/profile/profile.component';
+import {ProfileEditComponent} from './components/profile-edit/profile-edit.component';
 
 const routes: Routes = [
   {path: '', component: HomeComponent},
   {path: 'login', component: LoginComponent},
   {path: 'register', component: RegisterComponent},
   {path: 'message', canActivate: mapToCanActivate([AuthGuard]), component: MessageComponent},
+  {path: 'profile', component: ProfileComponent, canActivate: mapToCanActivate([AuthGuard])},
+  {path: 'profile/edit', component: ProfileEditComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'household/create', component: HouseholdCreateComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'household/members', component: HouseholdMembersComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'household/invitations', component: HouseholdInvitationsComponent, canActivate: mapToCanActivate([AuthGuard])},

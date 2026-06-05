@@ -15,6 +15,10 @@
     <!-- Mobile only: show brand (sidebar is hidden on mobile) -->
     <a class="header-app-brand" routerLink="/">WGMS</a>
     <div class="header-app-actions">
+      <a routerLink="/profile" routerLinkActive="active" class="header-profile-btn">
+        <lucide-icon name="user" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+        <span class="header-profile-label">Profile</span>
+      </a>
       <a routerLink="/" (click)="authService.logoutUser()" class="header-logout-btn">
         <lucide-icon name="log-out" [size]="18" [strokeWidth]="1.75"></lucide-icon>
         <span class="header-logout-label">Logout</span>
