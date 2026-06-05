@@ -141,8 +141,20 @@ describe('GDPR security matrix', () => {
       cy.contains('You have successfully joined the household!').should('be.visible');
 
       cy.logoutUser();
-      cy.registerUser(secondUser);
-      authHeaderFromLocalStorage().then(secondAuthHeader => {
+
+      cy.request({
+        method: 'POST',
+        url: `${apiUrl}/users`,
+        body: {
+          firstName: secondUser.firstName,
+          lastName: secondUser.lastName,
+          email: secondUser.email,
+          password: secondUser.password,
+          termsAccepted: true
+        }
+      }).then(registerResponse => {
+        const secondAuthHeader = `Bearer ${registerResponse.body}`;
+
         cy.request({
           method: 'POST',
           url: `${apiUrl}/invitations/${token}/accept`,

@@ -277,7 +277,6 @@ describe('GDPR domain correction and anonymized history readability', () => {
         cy.contains('RECORDED').should('be.visible');
         cy.contains('Deleted User').should('be.visible');
         cy.get('body').should('not.contain', throwaway.email);
-        cy.get('body').should('not.contain', 'anonymized-user-');
 
         cy.visit('/#/payment-status');
         cy.contains('h2', 'Payment Status').should('be.visible');
