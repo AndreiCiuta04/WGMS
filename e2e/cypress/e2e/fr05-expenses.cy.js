@@ -9,7 +9,7 @@ function registerUser(email, firstName, lastName) {
   return cy.request({
     method: 'POST',
     url: `${apiUrl}/users`,
-    body: { email, password, firstName, lastName },
+    body: { email, password, firstName, lastName, termsAccepted: true },
   }).then((response) => String(response.body));
 }
 
