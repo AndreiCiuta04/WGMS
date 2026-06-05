@@ -8,6 +8,7 @@ import {Globals} from '../global/globals';
 import {UserRegistration} from '../dtos/user-registration';
 import {UserProfile} from '../dtos/user-profile';
 import {UserProfileUpdate} from '../dtos/user-profile-update';
+import {UserDataExport} from '../dtos/user-data-export';
 
 @Injectable({
   providedIn: 'root'
@@ -69,6 +70,13 @@ export class AuthService {
    */
   leaveCurrentHousehold(): Observable<UserProfile> {
     return this.httpClient.delete<UserProfile>(this.globals.backendUri + '/users/me/household');
+  }
+
+  /**
+   * Export safe machine-readable data for the currently authenticated user.
+   */
+  getMyDataExport(): Observable<UserDataExport> {
+    return this.httpClient.get<UserDataExport>(this.globals.backendUri + '/users/me/export');
   }
 
 

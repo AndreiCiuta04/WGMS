@@ -57,7 +57,8 @@ describe('AuthService', () => {
       email: 'anna@example.com',
       password: 'Password123!',
       firstName: 'Anna',
-      lastName: 'Berger'
+      lastName: 'Berger',
+      termsAccepted: true
     };
 
     service.registerUser(userRegistration).subscribe(response => {
@@ -140,6 +141,39 @@ describe('AuthService', () => {
     expect(request.request.method).toBe('DELETE');
 
     request.flush(profile);
+  });
+
+  it('should get my data export', () => {
+    const exportData = {
+      generatedAt: '2026-06-05T12:00:00Z',
+      account: {
+        id: 5,
+        email: 'anna@example.com',
+        firstName: 'Anna',
+        lastName: 'Berger',
+        role: 'USER',
+        termsAcceptedAt: null,
+        termsVersion: null,
+        privacyAcknowledgedAt: null,
+        privacyVersion: null
+      },
+      householdMembership: null,
+      tasks: [],
+      cleaningSchedules: [],
+      expenses: [],
+      payments: [],
+      shoppingItems: [],
+      history: {}
+    };
+
+    service.getMyDataExport().subscribe(response => {
+      expect(response).toEqual(exportData);
+    });
+
+    const request = httpTestingController.expectOne(`${backendUri}/users/me/export`);
+    expect(request.request.method).toBe('GET');
+
+    request.flush(exportData);
   });
 
   it('should delete the current user profile for anonymization', () => {

@@ -13,7 +13,8 @@ function registerViaApi(user) {
       email: user.email,
       password: user.password,
       firstName: user.firstName,
-      lastName: user.lastName
+      lastName: user.lastName,
+      termsAccepted: true
     }
   });
 }
@@ -68,6 +69,7 @@ describe('FR-01 Authentication and Registration E2E', () => {
     cy.get('input[name="lastName"]').clear().type(user.lastName);
     cy.get('input[name="email"]').clear().type(user.email);
     cy.get('input[name="password"]').clear().type(user.password);
+    cy.get('[data-cy="registration-terms-checkbox"]').check();
     cy.contains('button', 'Register').click();
 
     cy.contains('Registration failed').should('be.visible');
@@ -89,6 +91,7 @@ describe('FR-01 Authentication and Registration E2E', () => {
     cy.get('input[name="lastName"]').clear().type('Password');
     cy.get('input[name="email"]').clear().type(uniqueEmail('weak.password'));
     cy.get('input[name="password"]').clear().type('weak');
+    cy.get('[data-cy="registration-terms-checkbox"]').check();
     cy.contains('button', 'Register').click();
     cy.contains('At least 8 characters required').should('be.visible');
     cy.get('@registerRequest.all').should('have.length', 0);

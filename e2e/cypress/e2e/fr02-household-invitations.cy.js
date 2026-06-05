@@ -45,6 +45,7 @@ describe('FR-02 Household Invitations E2E', () => {
       cy.get('input[formcontrolname="lastName"]').clear().type(invited.lastName);
       cy.get('input[formcontrolname="email"]').should('have.value', invited.email);
       cy.get('input[formcontrolname="password"]').clear().type(invited.password);
+      cy.get('input[formcontrolname="termsAccepted"]').check();
 
       cy.intercept('POST', '**/api/v1/users').as('registerInvitee');
       cy.intercept('POST', '**/api/v1/invitations/*/accept').as('acceptInvitation');

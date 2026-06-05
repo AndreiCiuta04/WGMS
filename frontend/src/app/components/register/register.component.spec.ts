@@ -48,7 +48,21 @@ describe('RegisterComponent', () => {
     expect(component.registerForm.controls.lastName.errors?.required).toBeTruthy();
     expect(component.registerForm.controls.email.errors?.required).toBeTruthy();
     expect(component.registerForm.controls.password.errors?.required).toBeTruthy();
+    expect(component.registerForm.controls.termsAccepted.errors?.required).toBeTruthy();
     expect(authServiceSpy.registerUser).not.toHaveBeenCalled();
+  });
+
+  it('should have terms checkbox initially unchecked', () => {
+    expect(component.registerForm.controls.termsAccepted.value).toBeFalse();
+    expect(component.registerForm.invalid).toBeTrue();
+  });
+
+  it('should render the required legal acknowledgement selectors and link', () => {
+    const element: HTMLElement = fixture.nativeElement;
+
+    expect(element.querySelector('[data-cy="registration-terms-checkbox"]')).toBeTruthy();
+    expect(element.querySelector('[data-cy="registration-submit"]')).toBeTruthy();
+    expect(element.querySelector('[data-cy="registration-legal-link"]')?.getAttribute('routerlink')).toBe('/legal');
   });
 
   it('should reject invalid email format', () => {
@@ -91,7 +105,8 @@ describe('RegisterComponent', () => {
       email: 'anna@example.com',
       password: 'Password123!',
       firstName: 'Anna',
-      lastName: 'Berger'
+      lastName: 'Berger',
+      termsAccepted: true
     });
     expect(routerSpy.navigate).toHaveBeenCalledWith(['/']);
   });
@@ -134,12 +149,14 @@ function validRegistration(overrides: Partial<{
   lastName: string;
   email: string;
   password: string;
+  termsAccepted: boolean;
 }> = {}) {
   return {
     firstName: 'Anna',
     lastName: 'Berger',
     email: 'anna@example.com',
     password: 'Password123!',
+    termsAccepted: true,
     ...overrides
   };
 }

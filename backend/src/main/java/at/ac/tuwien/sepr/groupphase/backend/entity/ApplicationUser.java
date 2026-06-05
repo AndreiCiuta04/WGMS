@@ -39,6 +39,18 @@ public class ApplicationUser {
     @Column(nullable = false)
     private boolean anonymized = false;
 
+    @Column(name = "terms_accepted_at")
+    private java.time.LocalDateTime termsAcceptedAt;
+
+    @Column(name = "terms_version")
+    private String termsVersion;
+
+    @Column(name = "privacy_acknowledged_at")
+    private java.time.LocalDateTime privacyAcknowledgedAt;
+
+    @Column(name = "privacy_version")
+    private String privacyVersion;
+
     public ApplicationUser() {
     }
 
@@ -122,5 +134,37 @@ public class ApplicationUser {
 
     public void setAnonymized(boolean anonymized) {
         this.anonymized = anonymized;
+    }
+
+    public java.time.LocalDateTime getTermsAcceptedAt() {
+        return termsAcceptedAt;
+    }
+
+    public void setTermsAcceptedAt(java.time.LocalDateTime termsAcceptedAt) {
+        this.termsAcceptedAt = termsAcceptedAt;
+    }
+
+    public String getTermsVersion() {
+        return termsVersion;
+    }
+
+    public void setTermsVersion(String termsVersion) {
+        this.termsVersion = termsVersion;
+    }
+
+    public java.time.LocalDateTime getPrivacyAcknowledgedAt() {
+        return privacyAcknowledgedAt;
+    }
+
+    public void setPrivacyAcknowledgedAt(java.time.LocalDateTime privacyAcknowledgedAt) {
+        this.privacyAcknowledgedAt = privacyAcknowledgedAt;
+    }
+
+    public String getPrivacyVersion() {
+        return privacyVersion;
+    }
+
+    public void setPrivacyVersion(String privacyVersion) {
+        this.privacyVersion = privacyVersion;
     }
 }

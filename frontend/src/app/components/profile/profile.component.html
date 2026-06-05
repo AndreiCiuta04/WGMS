@@ -1,0 +1,117 @@
+<div class="profile-page wgms-container" data-cy="profile-page">
+  @if (profile) {
+    <section class="profile-hero">
+      <div>
+        <p class="profile-kicker">My account</p>
+        <h1>{{ getDisplayName() }}</h1>
+        <p class="profile-subtitle">
+          This page shows the account information WGMS stores for your authenticated user.
+        </p>
+      </div>
+      <div class="profile-avatar" aria-hidden="true">
+        <lucide-icon name="user" [size]="42" [strokeWidth]="1.6"></lucide-icon>
+      </div>
+    </section>
+
+    <section class="profile-grid">
+      <article class="profile-card">
+        <div class="profile-card-header">
+          <h2>Account</h2>
+          <a routerLink="/profile/edit" class="profile-secondary-action" data-cy="profile-edit-link">Edit profile</a>
+        </div>
+        @if (errorMessage) {
+          <div class="profile-alert error">{{ errorMessage }}</div>
+        }
+        @if (exportMessage) {
+          <div class="profile-alert success" data-cy="profile-export-success">{{ exportMessage }}</div>
+        }
+        <dl data-cy="profile-data">
+          <div>
+            <dt>User ID</dt>
+            <dd>{{ profile.id }}</dd>
+          </div>
+          <div>
+            <dt>Email</dt>
+            <dd>{{ profile.email }}</dd>
+          </div>
+          <div>
+            <dt>First name</dt>
+            <dd>{{ profile.firstName }}</dd>
+          </div>
+          <div>
+            <dt>Last name</dt>
+            <dd>{{ profile.lastName }}</dd>
+          </div>
+          <div>
+            <dt>Application role</dt>
+            <dd>{{ profile.role }}</dd>
+          </div>
+        </dl>
+        <button type="button" class="profile-primary-action" data-cy="profile-export-button" [disabled]="exporting" (click)="exportMyData()">
+          {{ exporting ? 'Exporting...' : 'Export my data' }}
+        </button>
+      </article>
+
+      <article class="profile-card">
+        <h2>Household</h2>
+        @if (profile.householdId) {
+          <dl>
+            <div>
+              <dt>Household ID</dt>
+              <dd>{{ profile.householdId }}</dd>
+            </div>
+            <div>
+              <dt>Household name</dt>
+              <dd>{{ profile.householdName }}</dd>
+            </div>
+            <div>
+              <dt>Roommate ID</dt>
+              <dd>{{ profile.roommateId }}</dd>
+            </div>
+          </dl>
+          <a routerLink="/household/members" class="profile-link">Open household members</a>
+        } @else {
+          <p class="profile-empty">You are not currently assigned to a household.</p>
+          <a routerLink="/household/create" class="profile-link">Create a WG</a>
+        }
+      </article>
+    </section>
+
+    <section class="privacy-note">
+      <h2>GDPR privacy note</h2>
+      <p>
+        WGMS shows only account and current household membership data needed for transparency.
+        The authenticated user is derived from your authenticated session, not from a user ID entered in
+        the browser. Internal credential records, auth material, failed-login counters, and unrelated
+        household or user records are not exposed.
+      </p>
+      <p>
+        You can view your stored account information, correct editable profile fields, and delete
+        your account. Deletion disables login and anonymizes identifying account data while preserving
+        household history needed for task, payment, and expense consistency.
+      </p>
+    </section>
+
+    <section class="danger-zone">
+      <h2>Delete account</h2>
+      <p>
+        This disables your login and anonymizes your identifying account data. Historical household
+        records remain readable for consistency, but they no longer use your original email or name.
+      </p>
+      <button type="button" class="profile-danger-action" data-cy="profile-delete-account-button" [disabled]="deleting" (click)="deleteAccount()">
+        {{ deleting ? 'Deleting...' : 'Delete account' }}
+      </button>
+    </section>
+  } @else if (!errorMessage) {
+    <div class="profile-loading">
+      <div class="spinner-border text-primary" role="status" style="color: #346739 !important;">
+        <span class="sr-only">Loading...</span>
+      </div>
+    </div>
+  } @else {
+    <div class="profile-error">
+      <h1>Profile unavailable</h1>
+      <p>{{ errorMessage }}</p>
+    </div>
+  }
+</div>

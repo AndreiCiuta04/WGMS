@@ -35,6 +35,8 @@ public class CustomUserDetailService implements UserService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final String TERMS_VERSION = "v1.0";
+    private static final String PRIVACY_VERSION = "v1.0";
     private final UserRepository userRepository;
     private final RoommateRepository roommateRepository;
     private final PasswordEncoder passwordEncoder;
@@ -250,6 +252,11 @@ public class CustomUserDetailService implements UserService {
             userRegistrationDto.getLastName(),
             false // Admin is false by default for new users
         );
+        java.time.LocalDateTime acceptedAt = java.time.LocalDateTime.now();
+        newUser.setTermsAcceptedAt(acceptedAt);
+        newUser.setTermsVersion(TERMS_VERSION);
+        newUser.setPrivacyAcknowledgedAt(acceptedAt);
+        newUser.setPrivacyVersion(PRIVACY_VERSION);
 
         userRepository.save(newUser);
 

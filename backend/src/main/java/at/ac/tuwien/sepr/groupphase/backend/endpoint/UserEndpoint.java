@@ -3,6 +3,8 @@ package at.ac.tuwien.sepr.groupphase.backend.endpoint;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserProfileDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserProfileUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserRegistrationDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserDataExportDto;
+import at.ac.tuwien.sepr.groupphase.backend.service.UserExportService;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
 import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
@@ -28,9 +30,11 @@ public class UserEndpoint {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
     private final UserService userService;
+    private final UserExportService userExportService;
 
-    public UserEndpoint(UserService userService) {
+    public UserEndpoint(UserService userService, UserExportService userExportService) {
         this.userService = userService;
+        this.userExportService = userExportService;
     }
 
     @PermitAll
@@ -46,6 +50,13 @@ public class UserEndpoint {
     public UserProfileDto getCurrentUserProfile(Authentication authentication) {
         LOGGER.info("GET /api/v1/users/me");
         return userService.getCurrentUserProfile(authentication.getName());
+    }
+
+    @GetMapping("/me/export")
+    @PreAuthorize("hasRole('USER')")
+    public UserDataExportDto exportCurrentUserData(Authentication authentication) {
+        LOGGER.info("GET /api/v1/users/me/export");
+        return userExportService.exportCurrentUser(authentication.getName());
     }
 
     @PatchMapping("/me")

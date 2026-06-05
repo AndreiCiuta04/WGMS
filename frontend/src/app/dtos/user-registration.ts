@@ -3,4 +3,5 @@ export interface UserRegistration {
   password?: string;
   firstName?: string;
   lastName?: string;
+  termsAccepted: boolean;
 }

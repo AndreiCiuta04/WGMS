@@ -92,7 +92,7 @@ public class LogFilter extends OncePerRequestFilter {
         }
         MDC.put("http_request_method", request.getMethod());
         MDC.put("http_request_url", sanitizeUri(request.getRequestURI()));
-        MDC.put("http_request_query", request.getQueryString());
+        MDC.put("http_request_query", sanitizeQueryString(request.getQueryString()));
         MDC.put("http_request_ua", request.getHeader("User-Agent"));
     }
 
@@ -108,7 +108,7 @@ public class LogFilter extends OncePerRequestFilter {
             .append(" ")
             .append(sanitizeUri(request.getRequestURI()));
 
-        var qs = request.getQueryString();
+        var qs = sanitizeQueryString(request.getQueryString());
         if (qs != null) {
             b.append("?").append(qs);
         }
@@ -121,6 +121,26 @@ public class LogFilter extends OncePerRequestFilter {
         }
 
         return uri.replaceAll("(/api/v1/invitations/)[^/]+(/accept)?", "$1{token}$2");
+    }
+
+    private static String sanitizeQueryString(String queryString) {
+        if (queryString == null) {
+            return null;
+        }
+
+        return Arrays.stream(queryString.split("&"))
+            .map(LogFilter::sanitizeQueryParameter)
+            .reduce((left, right) -> left + "&" + right)
+            .orElse("");
+    }
+
+    private static String sanitizeQueryParameter(String parameter) {
+        var separator = parameter.indexOf("=");
+        var key = separator >= 0 ? parameter.substring(0, separator) : parameter;
+        if (key.toLowerCase(Locale.ROOT).matches(".*(password|token|jwt|authorization|secret).*")) {
+            return key + "={redacted}";
+        }
+        return parameter;
     }
 
     private boolean shouldLog(HttpServletRequest request) {

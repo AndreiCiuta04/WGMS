@@ -45,6 +45,7 @@ describe('UC-02 Household Task Lifecycle E2E', () => {
       cy.get('input[formcontrolname="firstName"]').clear().type(assignee.firstName);
       cy.get('input[formcontrolname="lastName"]').clear().type(assignee.lastName);
       cy.get('input[formcontrolname="password"]').clear().type(assignee.password);
+      cy.get('input[formcontrolname="termsAccepted"]').check();
       cy.contains('button', 'Register & Join WG').click();
       cy.contains('You have successfully joined the household!').should('be.visible');
       cy.location('hash', { timeout: 3000 }).should('eq', '#/');

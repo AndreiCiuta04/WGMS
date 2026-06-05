@@ -71,8 +71,15 @@
                       <label class="caption mb-1">Password</label>
                       <input type="password" formControlName="password" class="form-control" placeholder="At least 8 chars + special">
                     </div>
+                    <div class="mb-4 form-check">
+                      <input type="checkbox" formControlName="termsAccepted" class="form-check-input" id="inviteTermsAccepted">
+                      <label for="inviteTermsAccepted" class="form-check-label caption">
+                        I accept the <a routerLink="/legal">Terms and Conditions</a> and acknowledge the
+                        <a routerLink="/legal">Privacy/Data Usage information</a>.
+                      </label>
+                    </div>
                     <div class="text-center">
-                      <button type="submit" class="btn btn-primary px-5 py-3 w-100">Register & Join WG</button>
+                      <button type="submit" class="btn btn-primary px-5 py-3 w-100" [disabled]="registerForm.invalid">Register & Join WG</button>
                       <p class="caption mt-3">Already have an account? <a href="javascript:void(0)" (click)="toggleForm()" class="font-weight-bold">Login instead</a></p>
                     </div>
                   </form>

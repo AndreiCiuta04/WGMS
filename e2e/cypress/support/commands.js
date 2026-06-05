@@ -39,6 +39,7 @@ Cypress.Commands.add('registerUser', ({ firstName, lastName, email, password }) 
     cy.get('input[name="lastName"]').clear().type(lastName);
     cy.get('input[name="email"]').clear().type(email);
     cy.get('input[name="password"]').clear().type(password);
+    cy.get('[data-cy="registration-terms-checkbox"]').check();
 
     cy.intercept('POST', '**/api/v1/users').as('registerRequest');
 

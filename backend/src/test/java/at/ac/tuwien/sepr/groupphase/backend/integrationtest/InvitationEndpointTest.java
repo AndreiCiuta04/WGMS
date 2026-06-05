@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -274,6 +275,28 @@ public class InvitationEndpointTest implements TestData {
 
         assertTrue(roommateRepository.existsByUserIdAndHouseholdIdAndActiveTrue(userB.getId(), household.getId()));
         assertEquals(2, activeMembersAfterSecondAccept);
+    }
+
+
+    @Test
+    public void givenCreatedInvitation_whenInspectTokenStorage_thenTokenIsHashedAndExpiredInvitationFails() throws Exception {
+        InvitationDto invitationDto = createInvitation("userB@test.com");
+        String rawToken = invitationDto.inviteUrl().substring(invitationDto.inviteUrl().lastIndexOf("/") + 1);
+
+        var invitation = invitationRepository.findById(invitationDto.id()).orElseThrow();
+        assertNotEquals(rawToken, invitation.getTokenHash());
+        assertEquals(64, invitation.getTokenHash().length());
+        assertFalse(invitation.getTokenHash().contains(rawToken));
+
+        invitation.setExpiresAt(LocalDateTime.now().minusHours(1));
+        invitationRepository.save(invitation);
+
+        this.mockMvc.perform(get("/api/v1/invitations/" + rawToken))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isGone());
+
+        this.mockMvc.perform(post("/api/v1/invitations/" + rawToken + "/accept")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userB@test.com", USER_ROLES)))
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isGone());
     }
 
     private InvitationDto createInvitation(String invitedEmail) throws Exception {

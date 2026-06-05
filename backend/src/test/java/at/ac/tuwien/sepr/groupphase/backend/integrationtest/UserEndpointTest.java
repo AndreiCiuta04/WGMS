@@ -2,6 +2,7 @@ package at.ac.tuwien.sepr.groupphase.backend.integrationtest;
 
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
 import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserDataExportDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserLoginDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserProfileDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserProfileUpdateDto;
@@ -10,6 +11,7 @@ import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Expense;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
+import at.ac.tuwien.sepr.groupphase.backend.entity.Payment;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Task;
 import at.ac.tuwien.sepr.groupphase.backend.entity.TaskStatus;
@@ -67,6 +69,9 @@ public class UserEndpointTest implements TestData {
     private ExpenseRepository expenseRepository;
 
     @Autowired
+    private PaymentRepository paymentRepository;
+
+    @Autowired
     private JsonMapper jsonMapper;
 
     @Autowired
@@ -83,6 +88,7 @@ public class UserEndpointTest implements TestData {
 
     @BeforeEach
     public void beforeEach() {
+        paymentRepository.deleteAll();
         expenseRepository.deleteAll();
         taskRepository.deleteAll();
         cleaningScheduleRepository.deleteAll();
@@ -99,6 +105,7 @@ public class UserEndpointTest implements TestData {
         userRegistrationDto.setPassword("Password123!");
         userRegistrationDto.setFirstName("New");
         userRegistrationDto.setLastName("User");
+        userRegistrationDto.setTermsAccepted(true);
 
         String body = jsonMapper.writeValueAsString(userRegistrationDto);
 
@@ -120,6 +127,10 @@ public class UserEndpointTest implements TestData {
         assertNull(savedUser.getAccountLockedUntil());
         assertNotEquals("Password123!", savedUser.getPassword());
         assertTrue(passwordEncoder.matches("Password123!", savedUser.getPassword()));
+        assertNotNull(savedUser.getTermsAcceptedAt());
+        assertEquals("v1.0", savedUser.getTermsVersion());
+        assertNotNull(savedUser.getPrivacyAcknowledgedAt());
+        assertEquals("v1.0", savedUser.getPrivacyVersion());
     }
 
     @Test
@@ -132,6 +143,7 @@ public class UserEndpointTest implements TestData {
         userRegistrationDto.setPassword("Password123!");
         userRegistrationDto.setFirstName("New");
         userRegistrationDto.setLastName("User");
+        userRegistrationDto.setTermsAccepted(true);
 
         String body = jsonMapper.writeValueAsString(userRegistrationDto);
 
@@ -152,6 +164,7 @@ public class UserEndpointTest implements TestData {
         userRegistrationDto.setPassword("weak"); // Too short, no numbers, no special characters
         userRegistrationDto.setFirstName("New");
         userRegistrationDto.setLastName("User");
+        userRegistrationDto.setTermsAccepted(true);
 
         String body = jsonMapper.writeValueAsString(userRegistrationDto);
 
@@ -165,6 +178,44 @@ public class UserEndpointTest implements TestData {
         String content = response.getContentAsString();
         assertTrue(content.contains("Validation errors"));
         assertTrue(content.contains("Password must be at least 8 characters long") || content.contains("Password must contain at least one number and one special character"));
+    }
+
+    @Test
+    public void givenTermsNotAccepted_whenRegister_thenReturns400() throws Exception {
+        UserRegistrationDto userRegistrationDto = new UserRegistrationDto();
+        userRegistrationDto.setEmail("terms@example.com");
+        userRegistrationDto.setPassword("Password123!");
+        userRegistrationDto.setFirstName("Terms");
+        userRegistrationDto.setLastName("User");
+        userRegistrationDto.setTermsAccepted(false);
+
+        MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(userRegistrationDto)))
+            .andReturn();
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), mvcResult.getResponse().getStatus());
+        assertTrue(mvcResult.getResponse().getContentAsString().contains("Terms and privacy acknowledgement must be accepted"));
+    }
+
+    @Test
+    public void givenTermsMissing_whenRegister_thenReturns400() throws Exception {
+        String body = """
+            {
+              "email": "missing.terms@example.com",
+              "password": "Password123!",
+              "firstName": "Missing",
+              "lastName": "Terms"
+            }
+            """;
+
+        MvcResult mvcResult = this.mockMvc.perform(post("/api/v1/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+            .andReturn();
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), mvcResult.getResponse().getStatus());
+        assertTrue(mvcResult.getResponse().getContentAsString().contains("Terms and privacy acknowledgement must be accepted"));
     }
 
     @Test
@@ -238,6 +289,82 @@ public class UserEndpointTest implements TestData {
     @Test
     public void givenNoAuthentication_whenGetCurrentUserProfile_thenRequestIsRejected() throws Exception {
         MvcResult mvcResult = this.mockMvc.perform(get("/api/v1/users/me"))
+            .andReturn();
+
+        int status = mvcResult.getResponse().getStatus();
+        assertTrue(status == HttpStatus.UNAUTHORIZED.value() || status == HttpStatus.FORBIDDEN.value());
+    }
+
+    @Test
+    public void givenAuthenticatedUserInHousehold_whenExportCurrentUserData_thenReturnsSafeHouseholdScopedJson() throws Exception {
+        ApplicationUser currentUser = new ApplicationUser("export@example.com", "hashed-password", "Export", "User", false);
+        ApplicationUser otherUser = new ApplicationUser("other.export@example.com", "other-password", "Other", "User", false);
+        userRepository.save(currentUser);
+        userRepository.save(otherUser);
+
+        Household household = new Household();
+        household.setName("Export WG");
+        household.setAddress("Address");
+        household.setCreatedBy(currentUser);
+        householdRepository.save(household);
+
+        Household otherHousehold = new Household();
+        otherHousehold.setName("Private Other WG");
+        otherHousehold.setAddress("Other address");
+        otherHousehold.setCreatedBy(otherUser);
+        householdRepository.save(otherHousehold);
+
+        Roommate roommate = new Roommate();
+        roommate.setUser(currentUser);
+        roommate.setHousehold(household);
+        roommate.setRole(HouseholdRole.MAIN_TENANT);
+        roommate.setActive(true);
+        roommateRepository.save(roommate);
+
+        Task task = new Task();
+        task.setHousehold(household);
+        task.setTitle("Exported task");
+        task.setDescription("Visible in export");
+        task.setDueDate(TEST_TASK_DUE_DATE);
+        task.setStatus(TaskStatus.DONE);
+        task.setCreatedBy(currentUser);
+        task.setAssignedTo(currentUser);
+        taskRepository.save(task);
+
+        Task otherTask = new Task();
+        otherTask.setHousehold(otherHousehold);
+        otherTask.setTitle("Other household private task");
+        otherTask.setDescription("Must not be exported");
+        otherTask.setDueDate(TEST_TASK_DUE_DATE);
+        otherTask.setStatus(TaskStatus.DONE);
+        otherTask.setCreatedBy(otherUser);
+        otherTask.setAssignedTo(otherUser);
+        taskRepository.save(otherTask);
+
+        MvcResult mvcResult = this.mockMvc.perform(get("/api/v1/users/me/export")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("export@example.com", USER_ROLES)))
+            .andReturn();
+
+        assertEquals(HttpStatus.OK.value(), mvcResult.getResponse().getStatus());
+        UserDataExportDto export = jsonMapper.readValue(mvcResult.getResponse().getContentAsString(), UserDataExportDto.class);
+        assertNotNull(export.generatedAt());
+        assertEquals(currentUser.getId(), export.account().id());
+        assertEquals("export@example.com", export.account().email());
+        assertEquals(household.getId(), export.householdMembership().householdId());
+        assertTrue(export.tasks().stream().anyMatch(t -> "Exported task".equals(t.title())));
+
+        String content = mvcResult.getResponse().getContentAsString();
+        assertFalse(content.contains("password"));
+        assertFalse(content.contains("passwordHash"));
+        assertFalse(content.contains("token"));
+        assertFalse(content.contains("jwt"));
+        assertFalse(content.contains("Other household private task"));
+        assertFalse(content.contains("other.export@example.com"));
+    }
+
+    @Test
+    public void givenNoAuthentication_whenExportCurrentUserData_thenRequestIsRejected() throws Exception {
+        MvcResult mvcResult = this.mockMvc.perform(get("/api/v1/users/me/export"))
             .andReturn();
 
         int status = mvcResult.getResponse().getStatus();
@@ -394,6 +521,15 @@ public class UserEndpointTest implements TestData {
         expense.setDate(TEST_TASK_DUE_DATE);
         expenseRepository.save(expense);
 
+        Payment payment = new Payment();
+        payment.setHousehold(household);
+        payment.setFromRoommate(currentRoommate);
+        payment.setToRoommate(otherRoommate);
+        payment.setCreatedBy(currentRoommate);
+        payment.setAmount(new BigDecimal("5.00"));
+        payment.setDate(TEST_TASK_DUE_DATE);
+        paymentRepository.save(payment);
+
         MvcResult deleteResult = this.mockMvc.perform(delete("/api/v1/users/me")
                 .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("delete@example.com", USER_ROLES)))
             .andReturn();
@@ -430,5 +566,16 @@ public class UserEndpointTest implements TestData {
         assertTrue(history.contains("Historic groceries"));
         assertTrue(history.contains("anonymized-user-" + currentUser.getId()));
         assertFalse(history.contains("delete@example.com"));
+
+        MvcResult paymentOverviewResult = this.mockMvc.perform(get("/api/v1/payments/overview")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("remaining@example.com", USER_ROLES)))
+            .andReturn();
+
+        assertEquals(HttpStatus.OK.value(), paymentOverviewResult.getResponse().getStatus());
+        String paymentOverview = paymentOverviewResult.getResponse().getContentAsString();
+        assertTrue(paymentOverview.contains("Deleted User"));
+        assertTrue(paymentOverview.contains("anonymized-user-" + currentUser.getId()));
+        assertTrue(paymentOverview.contains("5.00"));
+        assertFalse(paymentOverview.contains("delete@example.com"));
     }
 }

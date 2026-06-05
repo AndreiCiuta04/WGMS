@@ -22,7 +22,8 @@ export class RegisterComponent implements OnInit {
       firstName: ['', [Validators.required]],
       lastName: ['', [Validators.required]],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(8), Validators.pattern('^(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,}$')]]
+      password: ['', [Validators.required, Validators.minLength(8), Validators.pattern('^(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,}$')]],
+      termsAccepted: [false, [Validators.requiredTrue]]
     });
   }
 
@@ -36,7 +37,8 @@ export class RegisterComponent implements OnInit {
         email: this.registerForm.controls.email.value,
         password: this.registerForm.controls.password.value,
         firstName: this.registerForm.controls.firstName.value,
-        lastName: this.registerForm.controls.lastName.value
+        lastName: this.registerForm.controls.lastName.value,
+        termsAccepted: this.registerForm.controls.termsAccepted.value
       };
       this.authService.registerUser(userRegistration).subscribe({
         next: () => {

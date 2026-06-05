@@ -95,7 +95,7 @@ public class DemoDataGenerator implements ApplicationRunner {
         createShoppingItems(household, users);
 
         LOGGER.info("Demo data generated successfully.");
-        LOGGER.info("Demo login accounts, password for all users: {}", DEMO_PASSWORD);
+        LOGGER.info("Demo login accounts were generated. Use documented demo credentials outside application logs.");
         LOGGER.info("Active WG users:");
         LOGGER.info("cemil.demo@wgms.local     Main Tenant");
         LOGGER.info("dzovani.demo@wgms.local   Roommate");
