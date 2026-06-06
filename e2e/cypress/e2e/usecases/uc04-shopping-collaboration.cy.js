@@ -54,6 +54,7 @@ describe('UC-04 Shopping Collaboration E2E', () => {
       cy.get('input[formcontrolname="firstName"]').clear().type(buyer.firstName);
       cy.get('input[formcontrolname="lastName"]').clear().type(buyer.lastName);
       cy.get('input[formcontrolname="password"]').clear().type(buyer.password);
+      cy.get('input[formcontrolname="termsAccepted"]').check();
       cy.contains('button', 'Register & Join WG').click();
       cy.contains('You have successfully joined the household!').should('be.visible');
       cy.location('hash', { timeout: 3000 }).should('eq', '#/');

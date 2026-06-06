@@ -45,14 +45,15 @@
   </nav>
 
   <div class="sidebar-footer">
-    <div class="sidebar-user">
+    <a class="sidebar-user" routerLink="/profile" routerLinkActive="active" aria-label="Open my profile">
       <div class="sidebar-user-avatar">
         <lucide-icon name="user" [size]="18" [strokeWidth]="1.75"></lucide-icon>
       </div>
       <div class="sidebar-user-info">
         <span class="sidebar-user-name">{{ getUserDisplayName() }}</span>
-        <a routerLink="/" (click)="authService.logoutUser()" class="sidebar-user-action">Logout</a>
+        <span class="sidebar-user-action">View profile</span>
       </div>
-    </div>
+    </a>
+    <a routerLink="/" (click)="authService.logoutUser()" class="sidebar-logout-action">Logout</a>
   </div>
 </aside>

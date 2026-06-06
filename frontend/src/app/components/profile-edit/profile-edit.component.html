@@ -1,0 +1,72 @@
+<div class="profile-edit-page wgms-container" data-cy="profile-edit-page">
+  <section class="profile-edit-card">
+    <a routerLink="/profile" class="profile-back-link">Back to profile</a>
+    <p class="profile-kicker">Edit profile</p>
+    <h1>Correct editable account data</h1>
+    <p class="profile-subtitle">
+      Only the fields and actions shown below are editable. Account role and internal security
+      fields cannot be changed here.
+    </p>
+
+    @if (successMessage) {
+      <div class="profile-alert success" data-cy="profile-save-success">{{ successMessage }}</div>
+    }
+    @if (errorMessage) {
+      <div class="profile-alert error">{{ errorMessage }}</div>
+    }
+
+    <form class="profile-form" data-cy="profile-edit-form" (ngSubmit)="saveProfile()" #profileForm="ngForm">
+      <label>
+        <span>Email</span>
+        <input
+          data-cy="profile-email-input"
+          type="email"
+          name="email"
+          [(ngModel)]="email"
+          required
+          maxlength="255">
+      </label>
+      <label>
+        <span>First name</span>
+        <input
+          data-cy="profile-first-name-input"
+          type="text"
+          name="firstName"
+          [(ngModel)]="firstName"
+          required
+          maxlength="255">
+      </label>
+      <label>
+        <span>Last name</span>
+        <input
+          data-cy="profile-last-name-input"
+          type="text"
+          name="lastName"
+          [(ngModel)]="lastName"
+          required
+          maxlength="255">
+      </label>
+      @if (submitted && (!email.trim() || !firstName.trim() || !lastName.trim())) {
+        <p class="profile-validation">Email, first name, and last name must not be blank.</p>
+      }
+      <div class="profile-action-row">
+        <button type="submit" class="profile-primary-action" data-cy="profile-save-button" [disabled]="saving">
+          {{ saving ? 'Saving...' : 'Save changes' }}
+        </button>
+        <a routerLink="/profile" class="profile-secondary-action">Cancel</a>
+      </div>
+    </form>
+
+    <section class="profile-membership-actions">
+      <h2>WG membership</h2>
+      @if (profile?.householdId) {
+        <p>You are currently in {{ profile?.householdName }}.</p>
+        <button type="button" class="profile-danger-action" [disabled]="leavingHousehold" (click)="leaveHousehold()">
+          {{ leavingHousehold ? 'Leaving...' : 'Leave current WG' }}
+        </button>
+      } @else {
+        <p>You are not currently assigned to a WG.</p>
+      }
+    </section>
+  </section>
+</div>

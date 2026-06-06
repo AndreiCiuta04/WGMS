@@ -13,7 +13,8 @@ function registerViaApi(user) {
       email: user.email,
       password: user.password,
       firstName: user.firstName,
-      lastName: user.lastName
+      lastName: user.lastName,
+      termsAccepted: true
     }
   });
 }
@@ -36,6 +37,11 @@ describe('FR-01 Authentication and Registration E2E', () => {
     cy.location('hash').should('eq', '#/');
     cy.contains(/Welcome home|Welcome to WGMS!/).should('be.visible');
     cy.window().its('localStorage.authToken').should('exist');
+    cy.visit('/#/profile');
+    cy.get('[data-cy="profile-page"]').should('be.visible');
+    cy.get('[data-cy="profile-data"]').should('contain', user.email);
+    cy.get('[data-cy="profile-data"]').should('contain', user.firstName);
+    cy.get('[data-cy="profile-data"]').should('contain', user.lastName);
 
     cy.logoutUser();
     cy.location('hash').should('eq', '#/');
@@ -44,6 +50,9 @@ describe('FR-01 Authentication and Registration E2E', () => {
     cy.loginUser(user.email, user.password);
     cy.location('hash').should('eq', '#/');
     cy.contains(/Welcome home|Welcome to WGMS!/).should('be.visible');
+    cy.visit('/#/profile');
+    cy.get('[data-cy="profile-page"]').should('be.visible');
+    cy.get('[data-cy="profile-data"]').should('contain', user.email);
   });
 
   it('FR-01 negative: invalid login and duplicate registration show readable errors', () => {
@@ -68,6 +77,7 @@ describe('FR-01 Authentication and Registration E2E', () => {
     cy.get('input[name="lastName"]').clear().type(user.lastName);
     cy.get('input[name="email"]').clear().type(user.email);
     cy.get('input[name="password"]').clear().type(user.password);
+    cy.get('[data-cy="registration-terms-checkbox"]').check();
     cy.contains('button', 'Register').click();
 
     cy.contains('Registration failed').should('be.visible');
@@ -89,8 +99,8 @@ describe('FR-01 Authentication and Registration E2E', () => {
     cy.get('input[name="lastName"]').clear().type('Password');
     cy.get('input[name="email"]').clear().type(uniqueEmail('weak.password'));
     cy.get('input[name="password"]').clear().type('weak');
-    cy.contains('button', 'Register').click();
-    cy.contains('At least 8 characters required').should('be.visible');
+    cy.get('[data-cy="registration-terms-checkbox"]').check();
+    cy.get('[data-cy="registration-submit"]').should('be.disabled');
     cy.get('@registerRequest.all').should('have.length', 0);
   });
 

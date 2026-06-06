@@ -22,7 +22,10 @@ function registerViaApi(user) {
   return cy.request({
     method: 'POST',
     url: `${apiUrl}/users`,
-    body: user
+    body: {
+      ...user,
+      termsAccepted: true
+    }
   }).then((response) => {
     expect(response.status).to.be.oneOf([200, 201]);
     return String(response.body);

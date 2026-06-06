@@ -1,7 +1,9 @@
 package at.ac.tuwien.sepr.groupphase.backend.endpoint.dto;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -23,14 +25,19 @@ public class UserRegistrationDto {
     @NotBlank(message = "Last name must not be blank")
     private String lastName;
 
+    @NotNull(message = "Terms and privacy acknowledgement must be accepted.")
+    @AssertTrue(message = "Terms and privacy acknowledgement must be accepted.")
+    private Boolean termsAccepted;
+
     public UserRegistrationDto() {
     }
 
-    public UserRegistrationDto(String email, String password, String firstName, String lastName) {
+    public UserRegistrationDto(String email, String password, String firstName, String lastName, Boolean termsAccepted) {
         this.email = email;
         this.password = password;
         this.firstName = firstName;
         this.lastName = lastName;
+        this.termsAccepted = termsAccepted;
     }
 
     public String getEmail() {
@@ -63,5 +70,13 @@ public class UserRegistrationDto {
 
     public void setLastName(String lastName) {
         this.lastName = lastName;
+    }
+
+    public Boolean getTermsAccepted() {
+        return termsAccepted;
+    }
+
+    public void setTermsAccepted(Boolean termsAccepted) {
+        this.termsAccepted = termsAccepted;
     }
 }

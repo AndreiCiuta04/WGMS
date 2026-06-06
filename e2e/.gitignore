@@ -1,3 +1,7 @@
 .idea
 node_modules
 reports
+cypress/downloads/
+cypress/reports/
+cypress/results/
+cypress/screenshots/

@@ -1,0 +1,80 @@
+<div class="legal-page wgms-container" data-cy="legal-page">
+  <section class="legal-card">
+    <p class="legal-kicker">WGMS legal information</p>
+    <h1>Privacy, Terms, and GDPR Demo Support</h1>
+
+    <section data-cy="legal-privacy-section">
+      <h2>Privacy and Data Usage</h2>
+      <h3>Project scope</h3>
+      <p>
+        WGMS is a university demo project and not a production service or legal privacy policy.
+        It is built to demonstrate shared-flat management features and reasonable GDPR support for
+        project scope.
+      </p>
+
+      <h3>Data we store</h3>
+      <p>
+        WGMS stores account data such as name, email, password hash, and user role; WG membership
+        data such as household membership, invitation links, roles, and join/leave timestamps where
+        implemented; tasks, assigned chores, completion status, due dates, and task history;
+        cleaning schedules with title, recurrence, assignment, and due dates; expenses, splits,
+        payments, and balances; shopping items, visibility, status, and shopping history;
+        dashboard/history data derived from app activity; and technical/security data needed for
+        login, sessions, timestamps, errors, and authentication handling.
+      </p>
+      <p>
+        No special-category personal data is required for WGMS. The app records expense/payment
+        tracking data for household organization, but it does not process real banking data,
+        payment-provider data, or real money transfers.
+      </p>
+
+      <h3>Why we store it</h3>
+      <p>
+        Data is stored to provide authentication, WG membership management, task assignment,
+        cleaning schedules, expense/payment tracking, shopping management, and dashboard/history
+        display.
+      </p>
+
+      <h3>Data minimization</h3>
+      <p>
+        The app should only expose data needed for the current feature. Password hashes and tokens
+        are not shown to users and are not included in exports.
+      </p>
+    </section>
+
+    <section data-cy="legal-terms-section">
+      <h2>Terms and Conditions</h2>
+      <p>
+        WGMS is for university/demo use. Users should enter only appropriate demo/project data and
+        are responsible for the correctness of the tasks, expenses, payments, and shopping items
+        they create.
+      </p>
+      <p>
+        Data entered into a household may be visible to authorized members of the same WG where a
+        feature requires sharing. WGMS does not perform real money transfers; in short, there are no real money transfers. It is not a legal,
+        accounting, tax, rental-management, or banking system.
+      </p>
+      <p>Terms version: v1.0.</p>
+    </section>
+
+    <section data-cy="legal-gdpr-support-section">
+      <h2>GDPR Demo Support</h2>
+      <p>
+        Users can view their own profile/account data through GET /api/v1/users/me and export their
+        data through GET /api/v1/users/me/export. Domain data can be corrected or deleted where the
+        app implements editing/deletion features. Account deletion is implemented as anonymization
+        so historical task, payment, and expense records remain consistent.
+      </p>
+    </section>
+
+    <section data-cy="legal-limitations-section">
+      <h2>Current Limitations</h2>
+      <p>
+        WGMS does not claim full production GDPR compliance. Formal retention rules are not
+        implemented. Account deletion/anonymization is limited to preserving historical household
+        consistency. No real banking/payment data is processed, no special-category personal data
+        is required, and external hosting/processor handling is only relevant for a real deployment.
+      </p>
+    </section>
+  </section>
+</div>

@@ -1,0 +1,46 @@
+<div class="legal-page wgms-container" data-cy="privacy-page">
+  <section class="legal-card">
+    <p class="legal-kicker">WGMS demo</p>
+    <h1>Privacy and Data Usage</h1>
+
+    <h2>Project scope</h2>
+    <p>WGMS is a university demo project and not a production service or legal privacy policy.</p>
+
+    <h2>Data we store</h2>
+    <p>
+      WGMS stores account data such as name, email, and login identity; household/WG membership
+      data; tasks and cleaning schedules; expenses and payments; shopping list items and requests;
+      dashboard/history data derived from app activity; and technical/security data needed for
+      login and session handling.
+    </p>
+
+    <h2>Why we store it</h2>
+    <p>
+      Data is stored to provide authentication, household membership, task assignment, cleaning
+      schedules, expense/payment tracking, shopping aggregation, and dashboard/history views.
+    </p>
+
+    <h2>Data minimization</h2>
+    <p>
+      The app should only expose data needed for the current feature. Password hashes and tokens
+      are not shown to users or included in exports.
+    </p>
+
+    <h2>User rights supported in this demo</h2>
+    <p>
+      Users can view their own profile/account data through GET /api/v1/users/me, export their
+      data through GET /api/v1/users/me/export, and create/update/delete domain data where the app
+      implements those actions.
+    </p>
+
+    <h2>Current limitations</h2>
+    <p>
+      A full production GDPR process is not implemented. Formal retention rules are not implemented.
+      Account deletion is implemented as anonymization so historical task, payment, and expense
+      records remain consistent. This page is not a legal privacy policy for production deployment.
+    </p>
+
+    <h2>Contact / project note</h2>
+    <p>For this university project, GDPR-related limitations are documented in the QA/NFR checklist.</p>
+  </section>
+</div>

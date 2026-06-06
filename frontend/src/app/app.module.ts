@@ -32,6 +32,11 @@ import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
 import {httpInterceptorProviders} from './interceptors';
 import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw, ReceiptText, HandCoins, Scale} from 'lucide-angular';
 import {PaymentStatusComponent} from './components/payment-status/payment-status.component';
+import {ProfileComponent} from './components/profile/profile.component';
+import {ProfileEditComponent} from './components/profile-edit/profile-edit.component';
+import {PrivacyComponent} from './components/privacy/privacy.component';
+import {TermsComponent} from './components/terms/terms.component';
+import {LegalComponent} from './components/legal/legal.component';
 
 @NgModule({
   declarations: [
@@ -60,6 +65,11 @@ import {PaymentStatusComponent} from './components/payment-status/payment-status
     SidebarComponent,
     BottomTabBarComponent,
     PaymentStatusComponent,
+    ProfileComponent,
+    ProfileEditComponent,
+    PrivacyComponent,
+    TermsComponent,
+    LegalComponent,
   ],
   bootstrap: [AppComponent],
   imports: [BrowserModule,

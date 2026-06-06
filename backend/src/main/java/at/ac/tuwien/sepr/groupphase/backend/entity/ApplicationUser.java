@@ -36,6 +36,21 @@ public class ApplicationUser {
     @Column(name = "account_locked_until")
     private java.time.LocalDateTime accountLockedUntil;
 
+    @Column(nullable = false)
+    private boolean anonymized = false;
+
+    @Column(name = "terms_accepted_at")
+    private java.time.LocalDateTime termsAcceptedAt;
+
+    @Column(name = "terms_version")
+    private String termsVersion;
+
+    @Column(name = "privacy_acknowledged_at")
+    private java.time.LocalDateTime privacyAcknowledgedAt;
+
+    @Column(name = "privacy_version")
+    private String privacyVersion;
+
     public ApplicationUser() {
     }
 
@@ -46,6 +61,7 @@ public class ApplicationUser {
         this.lastName = lastName;
         this.admin = admin;
         this.failedLoginAttempts = 0;
+        this.anonymized = false;
     }
 
     public Long getId() {
@@ -110,5 +126,45 @@ public class ApplicationUser {
 
     public void setAccountLockedUntil(java.time.LocalDateTime accountLockedUntil) {
         this.accountLockedUntil = accountLockedUntil;
+    }
+
+    public boolean isAnonymized() {
+        return anonymized;
+    }
+
+    public void setAnonymized(boolean anonymized) {
+        this.anonymized = anonymized;
+    }
+
+    public java.time.LocalDateTime getTermsAcceptedAt() {
+        return termsAcceptedAt;
+    }
+
+    public void setTermsAcceptedAt(java.time.LocalDateTime termsAcceptedAt) {
+        this.termsAcceptedAt = termsAcceptedAt;
+    }
+
+    public String getTermsVersion() {
+        return termsVersion;
+    }
+
+    public void setTermsVersion(String termsVersion) {
+        this.termsVersion = termsVersion;
+    }
+
+    public java.time.LocalDateTime getPrivacyAcknowledgedAt() {
+        return privacyAcknowledgedAt;
+    }
+
+    public void setPrivacyAcknowledgedAt(java.time.LocalDateTime privacyAcknowledgedAt) {
+        this.privacyAcknowledgedAt = privacyAcknowledgedAt;
+    }
+
+    public String getPrivacyVersion() {
+        return privacyVersion;
+    }
+
+    public void setPrivacyVersion(String privacyVersion) {
+        this.privacyVersion = privacyVersion;
     }
 }
