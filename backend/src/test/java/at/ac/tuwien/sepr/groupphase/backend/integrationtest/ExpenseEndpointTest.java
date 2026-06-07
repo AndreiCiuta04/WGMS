@@ -3,6 +3,8 @@ package at.ac.tuwien.sepr.groupphase.backend.integrationtest;
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
 import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BalanceDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BillExpensePreviewDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BillExpensePreviewRequestDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.EqualSplitRequestDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseDto;
@@ -485,6 +487,130 @@ public class ExpenseEndpointTest implements TestData {
             () -> assertEquals(0, money("3.34").compareTo(splits[0].amountOwed())),
             () -> assertEquals(0, money("3.33").compareTo(splits[1].amountOwed())),
             () -> assertEquals(0, money("3.33").compareTo(splits[2].amountOwed()))
+        );
+    }
+
+    @Test
+    public void givenValidBillPreviewRequest_whenPreviewBillExpense_thenEqualSplitPayloadIsReturned() throws Exception {
+        Roommate secondRoommate = saveRoommate(saveUser(SECOND_ROOMMATE_EMAIL, "Second", "Roommate"), household, HouseholdRole.ROOMMATE);
+        BillExpensePreviewRequestDto requestDto = new BillExpensePreviewRequestDto(
+            "  Bill scanner groceries  ",
+            money("10.00"),
+            EXPENSE_DATE,
+            List.of(mainTenantRoommate.getId(), roommateRecord.getId(), secondRoommate.getId())
+        );
+
+        MvcResult mvcResult = this.mockMvc.perform(post(EXPENSE_BASE_URI + "/bill-preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(requestDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        BillExpensePreviewDto previewDto = jsonMapper.readValue(mvcResult.getResponse().getContentAsString(), BillExpensePreviewDto.class);
+        BigDecimal splitSum = previewDto.splits().stream()
+            .map(ExpenseSplitCreateDto::amountOwed)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals("Bill scanner groceries", previewDto.description()),
+            () -> assertEquals(0, money("10.00").compareTo(previewDto.totalAmount())),
+            () -> assertEquals(EXPENSE_DATE, previewDto.date()),
+            () -> assertEquals(mainTenantRoommate.getId(), previewDto.paidByRoommateId()),
+            () -> assertEquals(3, previewDto.splits().size()),
+            () -> assertEquals(0, money("10.00").compareTo(splitSum)),
+            () -> assertEquals(0, money("3.34").compareTo(previewDto.splits().get(0).amountOwed())),
+            () -> assertEquals(0, money("3.33").compareTo(previewDto.splits().get(1).amountOwed())),
+            () -> assertEquals(0, money("3.33").compareTo(previewDto.splits().get(2).amountOwed())),
+            () -> assertEquals(0, expenseRepository.findAll().size())
+        );
+    }
+
+    @Test
+    public void givenBillPreviewPayload_whenCreateExpense_thenExpenseIsPersistedAndBalanceUpdates() throws Exception {
+        BillExpensePreviewRequestDto requestDto = new BillExpensePreviewRequestDto(
+            "Bill scanner dinner",
+            money("18.00"),
+            EXPENSE_DATE,
+            List.of(mainTenantRoommate.getId(), roommateRecord.getId())
+        );
+
+        MvcResult previewResult = this.mockMvc.perform(post(EXPENSE_BASE_URI + "/bill-preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(requestDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+        BillExpensePreviewDto previewDto = jsonMapper.readValue(previewResult.getResponse().getContentAsString(), BillExpensePreviewDto.class);
+        ExpenseCreateDto createDto = new ExpenseCreateDto(
+            previewDto.description(),
+            previewDto.totalAmount(),
+            previewDto.date(),
+            previewDto.paidByRoommateId(),
+            previewDto.splits()
+        );
+
+        MvcResult createResult = this.mockMvc.perform(post(EXPENSE_BASE_URI)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(createDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+        MvcResult balanceResult = this.mockMvc.perform(get(EXPENSE_BASE_URI + "/balances")
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+        BalanceDto[] balances = jsonMapper.readValue(balanceResult.getResponse().getContentAsString(), BalanceDto[].class);
+
+        assertAll(
+            () -> assertEquals(HttpStatus.CREATED.value(), createResult.getResponse().getStatus()),
+            () -> assertEquals(1, expenseRepository.findAll().size()),
+            () -> assertEquals(2, expenseSplitRepository.findAll().size()),
+            () -> assertEquals(HttpStatus.OK.value(), balanceResult.getResponse().getStatus()),
+            () -> assertEquals(1, balances.length),
+            () -> assertEquals(roommateRecord.getId(), balances[0].fromRoommateId()),
+            () -> assertEquals(mainTenantRoommate.getId(), balances[0].toRoommateId()),
+            () -> assertEquals(0, money("9.00").compareTo(balances[0].amount()))
+        );
+    }
+
+    @Test
+    public void givenInvalidBillPreviewRequest_whenPreviewBillExpense_then400AndNoExpenseIsCreated() throws Exception {
+        BillExpensePreviewRequestDto requestDto = new BillExpensePreviewRequestDto(
+            "",
+            money("-1.00"),
+            EXPENSE_DATE,
+            List.of(mainTenantRoommate.getId(), roommateRecord.getId())
+        );
+
+        MvcResult mvcResult = this.mockMvc.perform(post(EXPENSE_BASE_URI + "/bill-preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(requestDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.BAD_REQUEST.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals(0, expenseRepository.findAll().size()),
+            () -> assertEquals(0, expenseSplitRepository.findAll().size())
+        );
+    }
+
+    @Test
+    public void givenBillPreviewWithoutCurrentPayer_whenPreviewBillExpense_then409AndNoExpenseIsCreated() throws Exception {
+        BillExpensePreviewRequestDto requestDto = new BillExpensePreviewRequestDto(
+            "Missing payer",
+            money("12.00"),
+            EXPENSE_DATE,
+            List.of(roommateRecord.getId())
+        );
+
+        MvcResult mvcResult = this.mockMvc.perform(post(EXPENSE_BASE_URI + "/bill-preview")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(requestDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.CONFLICT.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals(0, expenseRepository.findAll().size())
         );
     }
 

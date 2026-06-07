@@ -1,6 +1,8 @@
 package at.ac.tuwien.sepr.groupphase.backend.service;
 
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BalanceDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BillExpensePreviewDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BillExpensePreviewRequestDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseSplitCreateDto;
@@ -26,6 +28,11 @@ public interface ExpenseService {
     List<ExpenseSplitCreateDto> calculateEqualSplits(
         BigDecimal totalAmount,
         List<Long> participantRoommateIds,
+        String currentUserEmail
+    );
+
+    BillExpensePreviewDto previewBillExpense(
+        BillExpensePreviewRequestDto previewRequestDto,
         String currentUserEmail
     );
 }

@@ -10,6 +10,7 @@ import { AuthService } from '../../services/auth.service';
 import { BalanceDto, ExpenseDto, ExpenseSplitCreateDto } from '../../dtos/expense';
 import { Household } from '../../dtos/household';
 import { Roommate } from '../../dtos/roommate';
+import { ReceiptOcrService } from '../../services/receipt-ocr.service';
 
 describe('ExpensesComponent', () => {
   let component: ExpensesComponent;
@@ -17,6 +18,7 @@ describe('ExpensesComponent', () => {
   let expenseService: jasmine.SpyObj<ExpenseService>;
   let householdService: jasmine.SpyObj<HouseholdService>;
   let authService: jasmine.SpyObj<AuthService>;
+  let receiptOcrService: jasmine.SpyObj<ReceiptOcrService>;
 
   beforeEach(async () => {
     expenseService = jasmine.createSpyObj<ExpenseService>('ExpenseService', [
@@ -26,20 +28,37 @@ describe('ExpensesComponent', () => {
       'update',
       'delete',
       'calculateEqualSplits',
+      'previewBillExpense',
       'calculateBalances'
     ]);
     householdService = jasmine.createSpyObj<HouseholdService>('HouseholdService', ['getMyHousehold', 'getMembers']);
     authService = jasmine.createSpyObj<AuthService>('AuthService', ['getUserEmail']);
+    receiptOcrService = jasmine.createSpyObj<ReceiptOcrService>('ReceiptOcrService', ['scanReceipt']);
 
     householdService.getMyHousehold.and.returnValue(of(household()));
     householdService.getMembers.and.returnValue(of(roommates()));
     authService.getUserEmail.and.returnValue('main@example.com');
+    receiptOcrService.scanReceipt.and.resolveTo({
+      description: 'Scanned supermarket receipt',
+      totalAmount: 12.5,
+      date: '2026-06-05'
+    });
     expenseService.findAll.and.returnValue(of([expense()]));
     expenseService.calculateBalances.and.returnValue(of([balance()]));
     expenseService.calculateEqualSplits.and.returnValue(of([
       { roommateId: 1, amountOwed: 6 },
       { roommateId: 2, amountOwed: 6 }
     ]));
+    expenseService.previewBillExpense.and.returnValue(of({
+      description: 'Bill scanner groceries',
+      totalAmount: 12,
+      date: '2026-06-05',
+      paidByRoommateId: 1,
+      splits: [
+        { roommateId: 1, amountOwed: 6 },
+        { roommateId: 2, amountOwed: 6 }
+      ]
+    }));
     expenseService.create.and.returnValue(of(expense()));
     expenseService.update.and.returnValue(of(expense({ description: 'Updated groceries' })));
     expenseService.delete.and.returnValue(of(void 0));
@@ -50,7 +69,8 @@ describe('ExpensesComponent', () => {
       providers: [
         { provide: ExpenseService, useValue: expenseService },
         { provide: HouseholdService, useValue: householdService },
-        { provide: AuthService, useValue: authService }
+        { provide: AuthService, useValue: authService },
+        { provide: ReceiptOcrService, useValue: receiptOcrService }
       ],
       schemas: [NO_ERRORS_SCHEMA]
     }).compileComponents();
@@ -158,6 +178,83 @@ describe('ExpensesComponent', () => {
       { id: 1, selected: true, amount: '6,00' },
       { id: 2, selected: true, amount: '6,00' }
     ]);
+  });
+
+  it('should call bill preview service with bill data and selected participant ids', () => {
+    fixture.detectChanges();
+    component.billForm.patchValue(validExpenseForm({ description: 'Bill scanner groceries' }));
+    component.updateSplitSelection(component.splitRows[1], true);
+
+    component.previewBillExpense();
+
+    expect(expenseService.previewBillExpense).toHaveBeenCalledOnceWith({
+      description: 'Bill scanner groceries',
+      totalAmount: 12,
+      date: '2026-06-05',
+      participantRoommateIds: [1, 2]
+    });
+  });
+
+  it('should apply bill preview to the editable expense form for review', () => {
+    fixture.detectChanges();
+    component.billCalculatorOpen = true;
+    component.billForm.patchValue(validExpenseForm({ description: 'Bill scanner groceries' }));
+    component.updateSplitSelection(component.splitRows[1], true);
+
+    component.previewBillExpense();
+
+    expect(component.successMessage).toBe('Bill data ready for review.');
+    expect(component.billCalculatorOpen).toBeFalse();
+    expect(component.expenseForm.value).toEqual(validExpenseForm({ description: 'Bill scanner groceries' }));
+    expect(component.splitRows.map(row => ({ id: row.roommate.id, selected: row.selected, amount: row.amountOwed }))).toEqual([
+      { id: 1, selected: true, amount: '6,00' },
+      { id: 2, selected: true, amount: '6,00' }
+    ]);
+  });
+
+  it('should show readable error when bill preview input is incomplete', () => {
+    fixture.detectChanges();
+    component.billForm.patchValue(validExpenseForm({ description: '', totalAmount: '' }));
+
+    component.previewBillExpense();
+
+    expect(component.errorMessage).toBe('Enter bill data and select at least one participant.');
+    expect(expenseService.previewBillExpense).not.toHaveBeenCalled();
+  });
+
+  it('should show readable backend bill preview error', () => {
+    fixture.detectChanges();
+    expenseService.previewBillExpense.and.returnValue(throwError(() => ({ error: { message: 'The paying roommate must be included.' } })));
+    component.billForm.patchValue(validExpenseForm({ description: 'Bill scanner groceries' }));
+
+    component.previewBillExpense();
+
+    expect(component.errorMessage).toBe('The paying roommate must be included.');
+    expect(component.isPreviewingBill).toBeFalse();
+  });
+
+  it('should scan a receipt image and prefill bill data for review', async () => {
+    fixture.detectChanges();
+    const file = new File(['fake image'], 'receipt.png', { type: 'image/png' });
+    const event = {
+      target: {
+        files: [file],
+        value: 'receipt.png'
+      }
+    } as unknown as Event;
+
+    component.scanReceiptImage(event);
+    await fixture.whenStable();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(receiptOcrService.scanReceipt).toHaveBeenCalledOnceWith(file);
+    expect(component.billForm.value).toEqual({
+      description: 'Scanned supermarket receipt',
+      totalAmount: '12,50',
+      date: '2026-06-05'
+    });
+    expect(component.successMessage).toBe('Receipt scanned. Review the extracted bill data.');
+    expect(component.isScanningReceipt).toBeFalse();
   });
 
   it('should show readable error when equal split input is incomplete', () => {

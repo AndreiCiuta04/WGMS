@@ -1,6 +1,8 @@
 package at.ac.tuwien.sepr.groupphase.backend.service.impl;
 
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BalanceDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BillExpensePreviewDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BillExpensePreviewRequestDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseSplitCreateDto;
@@ -198,6 +200,32 @@ public class ExpenseServiceImpl implements ExpenseService {
         return buildEqualSplits(totalAmount, participantRoommateIds);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public BillExpensePreviewDto previewBillExpense(
+        BillExpensePreviewRequestDto previewRequestDto,
+        String currentUserEmail
+    ) {
+        LOGGER.debug("Preview bill expense by user {}", currentUserEmail);
+
+        ApplicationUser currentUser = userService.findApplicationUserByEmail(currentUserEmail);
+        Roommate currentRoommate = getCurrentRoommate(currentUser);
+        List<Long> participantRoommateIds = previewRequestDto.participantRoommateIds();
+
+        validateEqualSplitInput(previewRequestDto.totalAmount(), participantRoommateIds);
+        validateParticipantRoommatesAreUnique(participantRoommateIds);
+        validateParticipantsAreInCurrentHousehold(participantRoommateIds, currentRoommate.getHousehold().getId());
+        validateCurrentRoommateIsIncluded(participantRoommateIds, currentRoommate);
+
+        return new BillExpensePreviewDto(
+            previewRequestDto.description().trim(),
+            toMoney(previewRequestDto.totalAmount()),
+            previewRequestDto.date(),
+            currentRoommate.getId(),
+            buildEqualSplits(previewRequestDto.totalAmount(), participantRoommateIds)
+        );
+    }
+
     private Roommate getCurrentRoommateByEmail(String currentUserEmail) {
         ApplicationUser currentUser = userService.findApplicationUserByEmail(currentUserEmail);
         return getCurrentRoommate(currentUser);
@@ -273,6 +301,12 @@ public class ExpenseServiceImpl implements ExpenseService {
     private void validateParticipantsAreInCurrentHousehold(List<Long> participantRoommateIds, Long householdId) {
         for (Long roommateId : participantRoommateIds) {
             getActiveRoommateInHousehold(roommateId, householdId);
+        }
+    }
+
+    private void validateCurrentRoommateIsIncluded(List<Long> participantRoommateIds, Roommate currentRoommate) {
+        if (!participantRoommateIds.contains(currentRoommate.getId())) {
+            throw new ConflictException("The paying roommate must be included in the generated expense.");
         }
     }
 
