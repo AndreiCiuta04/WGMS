@@ -5,6 +5,8 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemStatusUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionCreateDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.service.ShoppingItemService;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
@@ -76,6 +78,43 @@ public class ShoppingItemEndpoint {
         LOGGER.info("GET /api/v1/shopping-items/history");
         ApplicationUser currentUser = userService.findApplicationUserByEmail(authentication.getName());
         return shoppingItemService.findHouseholdShoppingHistory(currentUser);
+    }
+
+    @PostMapping("/suggestions")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('USER')")
+    public ShoppingItemSuggestionDto createSuggestion(
+        @Valid @RequestBody ShoppingItemSuggestionCreateDto dto,
+        Authentication authentication) {
+        LOGGER.info("POST /api/v1/shopping-items/suggestions");
+        ApplicationUser currentUser = userService.findApplicationUserByEmail(authentication.getName());
+        return shoppingItemService.createSuggestion(dto, currentUser);
+    }
+
+    @GetMapping("/suggestions")
+    @PreAuthorize("hasRole('USER')")
+    public List<ShoppingItemSuggestionDto> findSuggestions(Authentication authentication) {
+        LOGGER.info("GET /api/v1/shopping-items/suggestions");
+        ApplicationUser currentUser = userService.findApplicationUserByEmail(authentication.getName());
+        return shoppingItemService.findSuggestions(currentUser);
+    }
+
+    @PostMapping("/suggestions/{id}/votes")
+    @PreAuthorize("hasRole('USER')")
+    public ShoppingItemSuggestionDto voteForSuggestion(@PathVariable("id") Long id,
+                                                       Authentication authentication) {
+        LOGGER.info("POST /api/v1/shopping-items/suggestions/{}/votes", id);
+        ApplicationUser currentUser = userService.findApplicationUserByEmail(authentication.getName());
+        return shoppingItemService.voteForSuggestion(id, currentUser);
+    }
+
+    @DeleteMapping("/suggestions/{id}/votes")
+    @PreAuthorize("hasRole('USER')")
+    public ShoppingItemSuggestionDto removeVoteFromSuggestion(@PathVariable("id") Long id,
+                                                              Authentication authentication) {
+        LOGGER.info("DELETE /api/v1/shopping-items/suggestions/{}/votes", id);
+        ApplicationUser currentUser = userService.findApplicationUserByEmail(authentication.getName());
+        return shoppingItemService.removeVoteFromSuggestion(id, currentUser);
     }
 
     @GetMapping("/{id}")
