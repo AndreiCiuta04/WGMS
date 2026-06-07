@@ -5,6 +5,8 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemStatusUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionCreateDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 
 import java.util.List;
@@ -132,5 +134,43 @@ public interface ShoppingItemService {
      * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException
      *     if the user is not allowed to delete the shopping item
      */
+    /**
+     * Creates a new household shopping suggestion. The creator's vote is counted
+     * automatically.
+     *
+     * @param dto         the suggestion request body
+     * @param currentUser the currently authenticated user
+     * @return the created suggestion
+     */
+    ShoppingItemSuggestionDto createSuggestion(ShoppingItemSuggestionCreateDto dto,
+                                               ApplicationUser currentUser);
+
+    /**
+     * Lists active suggestions for the current user's household, ordered by vote
+     * count and creation date.
+     *
+     * @param currentUser the currently authenticated user
+     * @return active household suggestions
+     */
+    List<ShoppingItemSuggestionDto> findSuggestions(ApplicationUser currentUser);
+
+    /**
+     * Adds the current user's vote to a suggestion.
+     *
+     * @param id          the suggestion id
+     * @param currentUser the currently authenticated user
+     * @return the updated suggestion
+     */
+    ShoppingItemSuggestionDto voteForSuggestion(Long id, ApplicationUser currentUser);
+
+    /**
+     * Removes the current user's vote from a suggestion.
+     *
+     * @param id          the suggestion id
+     * @param currentUser the currently authenticated user
+     * @return the updated suggestion
+     */
+    ShoppingItemSuggestionDto removeVoteFromSuggestion(Long id, ApplicationUser currentUser);
+
     void delete(Long id, ApplicationUser currentUser);
 }

@@ -6,6 +6,8 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemStatusUpdat
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemSourceDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionCreateDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.mapper.ShoppingItemMapper;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
@@ -160,7 +162,7 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         Roommate roommate = requireActiveRoommate(currentUser);
 
         List<ShoppingItem> sharedNeededItems = shoppingItemRepository
-            .findAllByHouseholdIdAndVisibilityAndStatusOrderByCreatedAtDesc(
+            .findAllByHouseholdIdAndVisibilityAndStatusAndSuggestedFalseOrderByCreatedAtDesc(
                 roommate.getHousehold().getId(),
                 ShoppingItemVisibility.SHARED,
                 ShoppingItemStatus.NEEDED
@@ -187,11 +189,80 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         Roommate roommate = requireActiveRoommate(currentUser);
 
         return shoppingItemMapper.entityToDto(
-            shoppingItemRepository.findAllByHouseholdIdAndStatusInOrderByUpdatedAtDesc(
+            shoppingItemRepository.findAllByHouseholdIdAndSuggestedFalseAndStatusInOrderByUpdatedAtDesc(
                 roommate.getHousehold().getId(),
                 List.of(ShoppingItemStatus.BOUGHT, ShoppingItemStatus.CANCELLED)
             )
         );
+    }
+
+    @Override
+    @Transactional
+    public ShoppingItemSuggestionDto createSuggestion(ShoppingItemSuggestionCreateDto dto,
+                                                      ApplicationUser currentUser) {
+        LOGGER.debug("Create shopping item suggestion {} for user {}",
+            dto.name(), currentUser.getEmail());
+
+        Roommate roommate = requireActiveRoommate(currentUser);
+
+        ShoppingItem item = new ShoppingItem();
+        item.setName(dto.name());
+        item.setQuantity(dto.quantity());
+        item.setNotes(dto.notes());
+        item.setStatus(ShoppingItemStatus.NEEDED);
+        item.setVisibility(ShoppingItemVisibility.SHARED);
+        item.setHousehold(roommate.getHousehold());
+        item.setCreatedBy(currentUser);
+        item.setTargetUser(null);
+        item.setSuggested(true);
+        item.getVotedBy().add(currentUser);
+
+        return toSuggestionDto(shoppingItemRepository.save(item), currentUser);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ShoppingItemSuggestionDto> findSuggestions(ApplicationUser currentUser) {
+        LOGGER.debug("Find shopping item suggestions for user {}", currentUser.getEmail());
+
+        Roommate roommate = requireActiveRoommate(currentUser);
+
+        return shoppingItemRepository.findSuggestionsForHousehold(
+                roommate.getHousehold().getId(),
+                ShoppingItemStatus.NEEDED
+            ).stream()
+            .map(item -> toSuggestionDto(item, currentUser))
+            .toList();
+    }
+
+    @Override
+    @Transactional
+    public ShoppingItemSuggestionDto voteForSuggestion(Long id, ApplicationUser currentUser) {
+        LOGGER.debug("Vote for shopping item suggestion {} by user {}", id, currentUser.getEmail());
+
+        ShoppingItem item = loadAndAuthorizeSuggestion(id, currentUser);
+
+        boolean alreadyVoted = item.getVotedBy().stream()
+            .anyMatch(user -> user.getId().equals(currentUser.getId()));
+
+        if (!alreadyVoted) {
+            item.getVotedBy().add(currentUser);
+        }
+
+        return toSuggestionDto(shoppingItemRepository.save(item), currentUser);
+    }
+
+    @Override
+    @Transactional
+    public ShoppingItemSuggestionDto removeVoteFromSuggestion(Long id, ApplicationUser currentUser) {
+        LOGGER.debug("Remove vote from shopping item suggestion {} by user {}",
+            id, currentUser.getEmail());
+
+        ShoppingItem item = loadAndAuthorizeSuggestion(id, currentUser);
+
+        item.getVotedBy().removeIf(user -> user.getId().equals(currentUser.getId()));
+
+        return toSuggestionDto(shoppingItemRepository.save(item), currentUser);
     }
 
     // ------------------------------------------------------------------------
@@ -344,4 +415,48 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
     }
 
     private record AggregationKey(String normalizedName, String normalizedQuantity) {}
+
+    private ShoppingItem loadAndAuthorizeSuggestion(Long id, ApplicationUser currentUser) {
+        Roommate roommate = requireActiveRoommate(currentUser);
+
+        ShoppingItem item = shoppingItemRepository.findById(id)
+            .orElseThrow(() -> new NotFoundException(
+                "Shopping item suggestion with id " + id + " not found."));
+
+        if (!item.isSuggested()) {
+            throw new ConflictException("Shopping item with id " + id + " is not a suggestion.");
+        }
+
+        if (!item.getHousehold().getId().equals(roommate.getHousehold().getId())) {
+            throw new ForbiddenException("You are not allowed to access this shopping item suggestion.");
+        }
+
+        if (item.getStatus() != ShoppingItemStatus.NEEDED) {
+            throw new ConflictException("Only active shopping item suggestions can be voted on.");
+        }
+
+        return item;
+    }
+
+    private ShoppingItemSuggestionDto toSuggestionDto(ShoppingItem item,
+                                                      ApplicationUser currentUser) {
+        boolean votedByCurrentUser = item.getVotedBy().stream()
+            .anyMatch(user -> user.getId().equals(currentUser.getId()));
+
+        return new ShoppingItemSuggestionDto(
+            item.getId(),
+            item.getName(),
+            item.getQuantity(),
+            item.getNotes(),
+            item.getHousehold().getId(),
+            item.getCreatedBy().getId(),
+            item.getCreatedBy().getEmail(),
+            item.getCreatedBy().getFirstName(),
+            item.getCreatedBy().getLastName(),
+            item.getVotedBy().size(),
+            votedByCurrentUser,
+            item.getCreatedAt(),
+            item.getUpdatedAt()
+        );
+    }
 }
