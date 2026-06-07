@@ -25,6 +25,7 @@ public interface ShoppingItemRepository extends JpaRepository<ShoppingItem, Long
     List<ShoppingItem> findVisibleItems(@Param("householdId") Long householdId,
                                         @Param("userId") Long userId,
                                         @Param("sharedVisibility") ShoppingItemVisibility sharedVisibility);
+
     @Query("SELECT s FROM ShoppingItem s WHERE s.household.id = :householdId "
         + "AND s.suggested = true "
         + "AND s.status = :status "

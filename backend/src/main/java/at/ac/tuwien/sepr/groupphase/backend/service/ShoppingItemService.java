@@ -124,16 +124,7 @@ public interface ShoppingItemService {
      */
     ShoppingItemDto updateStatus(Long id, ShoppingItemStatusUpdateDto dto, ApplicationUser currentUser);
 
-    /**
-     * Deletes a shopping item. Only the creator (or an admin) may delete an item.
-     *
-     * @param id          the id of the shopping item to delete
-     * @param currentUser the currently authenticated user
-     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException
-     *     if no shopping item with the given id exists
-     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException
-     *     if the user is not allowed to delete the shopping item
-     */
+
     /**
      * Creates a new household shopping suggestion. The creator's vote is counted
      * automatically.
@@ -171,6 +162,16 @@ public interface ShoppingItemService {
      * @return the updated suggestion
      */
     ShoppingItemSuggestionDto removeVoteFromSuggestion(Long id, ApplicationUser currentUser);
+    /**
+     * Deletes a shopping item. Only the creator (or an admin) may delete an item.
+     *
+     * @param id          the id of the shopping item to delete
+     * @param currentUser the currently authenticated user
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException
+     *     if no shopping item with the given id exists
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException
+     *     if the user is not allowed to delete the shopping item
+     */
 
     void delete(Long id, ApplicationUser currentUser);
 }
