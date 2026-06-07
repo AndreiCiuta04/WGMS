@@ -6,6 +6,7 @@ import { DashboardService } from '../../services/dashboard.service';
 import { TaskDetailDto, TaskStatus } from '../../dtos/task';
 import { CleaningScheduleDetailDto } from '../../dtos/cleaning-schedule';
 import { ShoppingItemDto, ShoppingItemStatus } from '../../dtos/shopping-item';
+import { UserProfile } from '../../dtos/user-profile';
 
 @Component({
     selector: 'app-home',
@@ -36,6 +37,7 @@ export class HomeComponent implements OnInit {
   dashboardLoading = true;
   currentUserEmail: string | null = null;
   hasNoHousehold = false;
+  profile: UserProfile | null = null;
 
   constructor(
     public authService: AuthService,
@@ -46,11 +48,19 @@ export class HomeComponent implements OnInit {
 
   ngOnInit() {
     if (this.authService.isLoggedIn()) {
+      this.authService.getCurrentUserProfile().subscribe({
+        next: profile => this.profile = profile,
+        error: () => this.profile = null
+      });
       this.loadDashboard();
     }
   }
 
   getUserFirstName(): string {
+    if (this.profile?.firstName) {
+      const name = this.profile.firstName;
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    }
     const email = this.authService.getUserEmail();
     if (email) {
       const name = email.split('@')[0];

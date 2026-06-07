@@ -8,6 +8,7 @@ import at.ac.tuwien.sepr.groupphase.backend.entity.ExpenseSplit;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
+import at.ac.tuwien.sepr.groupphase.backend.entity.QuantityUnit;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItem;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItemStatus;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItemVisibility;
@@ -726,55 +727,61 @@ public class DemoDataGenerator implements ApplicationRunner {
     // -------------------------------------------------------------------------
 
     private void createShoppingItems(Household household, DemoUsers users) {
-        createShoppingItem(household, "Milk", "2L", "For coffee and breakfast", ShoppingItemStatus.NEEDED,
+        createShoppingItem(household, "Milk", null, bd("2"), QuantityUnit.LITER, "For coffee and breakfast", ShoppingItemStatus.NEEDED,
             ShoppingItemVisibility.SHARED, users.cemil(), null, 22);
-        createShoppingItem(household, " milk ", "2L", "Second request to demonstrate aggregation", ShoppingItemStatus.NEEDED,
+        createShoppingItem(household, " milk ", null, bd("2"), QuantityUnit.LITER, "Second request to demonstrate aggregation", ShoppingItemStatus.NEEDED,
             ShoppingItemVisibility.SHARED, users.dzovani(), null, 21);
-        createShoppingItem(household, "Pasta", "3 packs", "For shared dinner", ShoppingItemStatus.NEEDED,
+        createShoppingItem(household, "Pasta", null, bd("3"), QuantityUnit.PACK, "For shared dinner", ShoppingItemStatus.NEEDED,
             ShoppingItemVisibility.SHARED, users.joan(), null, 20);
-        createShoppingItem(household, "Tomatoes", "1kg", "Dzovani passes the supermarket today", ShoppingItemStatus.NEEDED,
+        createShoppingItem(household, "Tomatoes", null, bd("1"), QuantityUnit.KILOGRAM, "Dzovani passes the supermarket today", ShoppingItemStatus.NEEDED,
             ShoppingItemVisibility.TARGETED, users.cemil(), users.dzovani(), 19);
-        createShoppingItem(household, "Coffee beans", "500g", "Personal coffee stash", ShoppingItemStatus.NEEDED,
+        createShoppingItem(household, "Coffee beans", null, bd("500"), QuantityUnit.GRAM, "Personal coffee stash", ShoppingItemStatus.NEEDED,
             ShoppingItemVisibility.PERSONAL, users.cemil(), null, 18);
-        createShoppingItem(household, "Toilet paper", "12 rolls", "Bulk pack already bought", ShoppingItemStatus.BOUGHT,
+        createShoppingItem(household, "Toilet paper", null, bd("12"), QuantityUnit.PIECE, "Bulk pack already bought", ShoppingItemStatus.BOUGHT,
             ShoppingItemVisibility.SHARED, users.daniel(), null, 17);
-        createShoppingItem(household, "Dish soap", "1 bottle", "Cancelled because Joan found one", ShoppingItemStatus.CANCELLED,
+        createShoppingItem(household, "Dish soap", null, bd("1"), QuantityUnit.PIECE, "Cancelled because Joan found one", ShoppingItemStatus.CANCELLED,
             ShoppingItemVisibility.SHARED, users.joan(), null, 16);
-        createShoppingItem(household, "Oat milk", "2 cartons", "For Joan", ShoppingItemStatus.NEEDED,
+        createShoppingItem(household, "Oat milk", null, bd("2"), QuantityUnit.PIECE, "For Joan", ShoppingItemStatus.NEEDED,
             ShoppingItemVisibility.TARGETED, users.taras(), users.joan(), 15);
-        createShoppingItem(household, "Rice", "2kg", "Shared pantry restock", ShoppingItemStatus.NEEDED,
+        createShoppingItem(household, "Rice", null, bd("2"), QuantityUnit.KILOGRAM, "Shared pantry restock", ShoppingItemStatus.NEEDED,
             ShoppingItemVisibility.SHARED, users.dzovani(), null, 14);
-        createShoppingItem(household, "Rice", "2kg", "Duplicate request to show aggregation count", ShoppingItemStatus.NEEDED,
+        createShoppingItem(household, "Rice", null, bd("2"), QuantityUnit.KILOGRAM, "Duplicate request to show aggregation count", ShoppingItemStatus.NEEDED,
             ShoppingItemVisibility.SHARED, users.daniel(), null, 13);
-        createShoppingItem(household, "Laundry detergent", "1 bottle", "Already bought after last wash", ShoppingItemStatus.BOUGHT,
+        createShoppingItem(household, "Laundry detergent", null, bd("1"), QuantityUnit.PIECE, "Already bought after last wash", ShoppingItemStatus.BOUGHT,
             ShoppingItemVisibility.SHARED, users.joan(), null, 12);
-        createShoppingItem(household, "Apples", "1 bag", "For shared fruit bowl", ShoppingItemStatus.NEEDED,
+        createShoppingItem(household, "Apples", null, bd("1"), QuantityUnit.PIECE, "For shared fruit bowl", ShoppingItemStatus.NEEDED,
             ShoppingItemVisibility.SHARED, users.andrei(), null, 11);
-        createShoppingItem(household, "Trash bags", "30L", "Kitchen bin size", ShoppingItemStatus.NEEDED,
+        createShoppingItem(household, "Trash bags", 5, bd("3"), QuantityUnit.LITER, "Kitchen bin size", ShoppingItemStatus.NEEDED,
             ShoppingItemVisibility.SHARED, users.taras(), null, 10);
-        createShoppingItem(household, "Toothpaste", "1 tube", "Personal item example", ShoppingItemStatus.NEEDED,
+        createShoppingItem(household, "Toothpaste", null, bd("1"), QuantityUnit.PIECE, "Personal item example", ShoppingItemStatus.NEEDED,
             ShoppingItemVisibility.PERSONAL, users.dzovani(), null, 9);
-        createShoppingItem(household, "Kitchen sponges", "4 pack", "Bought with cleaning supplies", ShoppingItemStatus.BOUGHT,
+        createShoppingItem(household, "Kitchen sponges", null, bd("4"), QuantityUnit.PACK, "Bought with cleaning supplies", ShoppingItemStatus.BOUGHT,
             ShoppingItemVisibility.SHARED, users.daniel(), null, 8);
-        createShoppingItem(household, "Olive oil", "1 bottle", "For shared cooking", ShoppingItemStatus.NEEDED,
+        createShoppingItem(household, "Olive oil", null, bd("1"), QuantityUnit.PIECE, "For shared cooking", ShoppingItemStatus.NEEDED,
             ShoppingItemVisibility.SHARED, users.joan(), null, 7);
-        createShoppingItem(household, "Salt", "1 pack", "Cancelled duplicate", ShoppingItemStatus.CANCELLED,
+        createShoppingItem(household, "Salt", null, bd("1"), QuantityUnit.PACK, "Cancelled duplicate", ShoppingItemStatus.CANCELLED,
             ShoppingItemVisibility.SHARED, users.dzovani(), null, 6);
-        createShoppingItem(household, "Bananas", "6 pieces", "Breakfast supply", ShoppingItemStatus.BOUGHT,
+        createShoppingItem(household, "Bananas", null, bd("6"), QuantityUnit.PIECE, "Breakfast supply", ShoppingItemStatus.BOUGHT,
             ShoppingItemVisibility.SHARED, users.taras(), null, 5);
-        createShoppingItem(household, "Paper towels", "2 rolls", "Kitchen cleanup", ShoppingItemStatus.NEEDED,
+        createShoppingItem(household, "Paper towels", null, bd("2"), QuantityUnit.PIECE, "Kitchen cleanup", ShoppingItemStatus.NEEDED,
             ShoppingItemVisibility.SHARED, users.cemil(), null, 4);
-        createShoppingItem(household, "Mozzarella", "2 packs", "Targeted request for Dzovani", ShoppingItemStatus.NEEDED,
+        createShoppingItem(household, "Mozzarella", null, bd("2"), QuantityUnit.PACK, "Targeted request for Dzovani", ShoppingItemStatus.NEEDED,
             ShoppingItemVisibility.TARGETED, users.joan(), users.dzovani(), 3);
-        createShoppingItem(household, "Cereal", "1 box", "For breakfast shelf", ShoppingItemStatus.NEEDED,
+        createShoppingItem(household, "Cereal", null, bd("1"), QuantityUnit.PACK, "For breakfast shelf", ShoppingItemStatus.NEEDED,
             ShoppingItemVisibility.SHARED, users.andrei(), null, 2);
-        createShoppingItem(household, "Cereal", "1 box", "Aggregation example", ShoppingItemStatus.NEEDED,
+        createShoppingItem(household, "Cereal", null, bd("1"), QuantityUnit.PACK, "Aggregation example", ShoppingItemStatus.NEEDED,
             ShoppingItemVisibility.SHARED, users.taras(), null, 1);
+    }
+
+    private static BigDecimal bd(String value) {
+        return new BigDecimal(value);
     }
 
     private void createShoppingItem(Household household,
                                     String name,
-                                    String quantity,
+                                    Integer quantityCount,
+                                    BigDecimal quantityAmount,
+                                    QuantityUnit quantityUnit,
                                     String notes,
                                     ShoppingItemStatus status,
                                     ShoppingItemVisibility visibility,
@@ -786,7 +793,9 @@ public class DemoDataGenerator implements ApplicationRunner {
         ShoppingItem item = new ShoppingItem();
         item.setHousehold(household);
         item.setName(name);
-        item.setQuantity(quantity);
+        item.setQuantityCount(quantityCount);
+        item.setQuantityAmount(quantityAmount);
+        item.setQuantityUnit(quantityUnit);
         item.setNotes(notes);
         item.setStatus(status);
         item.setVisibility(visibility);

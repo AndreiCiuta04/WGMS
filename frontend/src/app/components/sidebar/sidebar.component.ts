@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { AuthService } from '../../services/auth.service';
 import { UserProfile } from '../../dtos/user-profile';
+import { NAV_ITEMS } from '../../global/nav-items';
 
 @Component({
   selector: 'app-sidebar',
@@ -11,6 +12,7 @@ import { UserProfile } from '../../dtos/user-profile';
 export class SidebarComponent implements OnInit {
 
   profile: UserProfile | null = null;
+  navItems = NAV_ITEMS;
 
   constructor(public authService: AuthService) { }
 

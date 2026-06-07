@@ -1,5 +1,8 @@
 package at.ac.tuwien.sepr.groupphase.backend.endpoint.dto;
 
+import at.ac.tuwien.sepr.groupphase.backend.entity.QuantityUnit;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -7,7 +10,9 @@ import java.time.LocalDateTime;
  *
  * @param id                 source shopping item id
  * @param name               original item name
- * @param quantity           original free-text quantity
+ * @param quantityCount      original multiplier, or {@code null}
+ * @param quantityAmount     original measure amount, or {@code null}
+ * @param quantityUnit       original measure unit, or {@code null}
  * @param notes              original notes
  * @param createdById        id of the user who created the source item
  * @param createdByEmail     email of the creator
@@ -18,7 +23,9 @@ import java.time.LocalDateTime;
 public record AggregatedShoppingItemSourceDto(
     Long id,
     String name,
-    String quantity,
+    Integer quantityCount,
+    BigDecimal quantityAmount,
+    QuantityUnit quantityUnit,
     String notes,
     Long createdById,
     String createdByEmail,

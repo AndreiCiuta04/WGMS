@@ -1,0 +1,87 @@
+$forest-green: #346739;
+$text-primary: #1F2A1F;
+$text-secondary: #5F6B5F;
+
+.mobile-nav-sheet {
+  padding: 8px 16px 24px;
+}
+
+.mobile-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px 16px;
+}
+
+.mobile-nav-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: $text-primary;
+}
+
+.mobile-nav-close {
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  color: $text-secondary;
+  padding: 4px 8px;
+  cursor: pointer;
+
+  &:hover {
+    color: $forest-green;
+  }
+}
+
+.mobile-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 8px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: $text-secondary;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(52, 103, 57, 0.04);
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: $forest-green;
+  }
+
+  &.active {
+    color: $forest-green;
+    background: rgba(52, 103, 57, 0.12);
+    font-weight: 600;
+  }
+}
+
+.mobile-nav-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 20px;
+  padding: 12px;
+  border: 1px solid rgba(31, 42, 31, 0.12);
+  border-radius: 12px;
+  background: transparent;
+  color: $text-secondary;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    color: $forest-green;
+    border-color: rgba(52, 103, 57, 0.4);
+  }
+}

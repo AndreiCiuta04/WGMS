@@ -6,6 +6,7 @@ import { CleaningScheduleListComponent } from './cleaning-schedule-list.componen
 import { CleaningScheduleService } from '../../services/cleaning-schedule.service';
 import { HouseholdService } from '../../services/household.service';
 import { AuthService } from '../../services/auth.service';
+import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 import { CleaningFrequency, CleaningScheduleDetailDto } from '../../dtos/cleaning-schedule';
 import { Household } from '../../dtos/household';
 import { Roommate } from '../../dtos/roommate';
@@ -17,6 +18,7 @@ describe('CleaningScheduleListComponent', () => {
   let cleaningScheduleService: jasmine.SpyObj<CleaningScheduleService>;
   let householdService: jasmine.SpyObj<HouseholdService>;
   let authService: jasmine.SpyObj<AuthService>;
+  let confirmDialog: jasmine.SpyObj<ConfirmDialogService>;
 
   beforeEach(async () => {
     cleaningScheduleService = jasmine.createSpyObj<CleaningScheduleService>('CleaningScheduleService', [
@@ -37,13 +39,16 @@ describe('CleaningScheduleListComponent', () => {
     householdService.getMyHousehold.and.returnValue(of(household()));
     householdService.getMembers.and.returnValue(of([roommate()]));
     authService.isLoggedIn.and.returnValue(true);
+    confirmDialog = jasmine.createSpyObj<ConfirmDialogService>('ConfirmDialogService', ['confirm']);
+    confirmDialog.confirm.and.returnValue(Promise.resolve(true));
 
     await TestBed.configureTestingModule({
       declarations: [CleaningScheduleListComponent],
       providers: [
         { provide: CleaningScheduleService, useValue: cleaningScheduleService },
         { provide: HouseholdService, useValue: householdService },
-        { provide: AuthService, useValue: authService }
+        { provide: AuthService, useValue: authService },
+        { provide: ConfirmDialogService, useValue: confirmDialog }
       ],
       schemas: [NO_ERRORS_SCHEMA]
     }).compileComponents();
@@ -140,37 +145,40 @@ describe('CleaningScheduleListComponent', () => {
     expect(component.errorMessage).toBe('Task already exists.');
   });
 
-  it('should delete schedule after confirmation and refresh', () => {
+  it('should delete schedule after confirmation and refresh', fakeAsync(() => {
     fixture.detectChanges();
-    spyOn(window, 'confirm').and.returnValue(true);
+    confirmDialog.confirm.and.returnValue(Promise.resolve(true));
     cleaningScheduleService.findAll.calls.reset();
 
     component.deleteSchedule(schedule({ id: 8, title: 'Kitchen rotation' }));
+    tick();
 
     expect(cleaningScheduleService.delete).toHaveBeenCalledOnceWith(8);
     expect(cleaningScheduleService.findAll).toHaveBeenCalledTimes(1);
-  });
+  }));
 
-  it('should not delete schedule when confirmation is cancelled', () => {
+  it('should not delete schedule when confirmation is cancelled', fakeAsync(() => {
     fixture.detectChanges();
-    spyOn(window, 'confirm').and.returnValue(false);
+    confirmDialog.confirm.and.returnValue(Promise.resolve(false));
 
     component.deleteSchedule(schedule({ id: 8, title: 'Kitchen rotation' }));
+    tick();
 
     expect(cleaningScheduleService.delete).not.toHaveBeenCalled();
-  });
+  }));
 
-  it('should show conflict-specific fallback when delete fails with 409', () => {
+  it('should show conflict-specific fallback when delete fails with 409', fakeAsync(() => {
     fixture.detectChanges();
-    spyOn(window, 'confirm').and.returnValue(true);
+    confirmDialog.confirm.and.returnValue(Promise.resolve(true));
     cleaningScheduleService.delete.and.returnValue(throwError(() => ({ status: 409 })));
 
     component.deleteSchedule(schedule({ title: 'Kitchen rotation' }));
+    tick();
 
     expect(component.errorMessage).toBe(
       'Cannot delete "Kitchen rotation" because it already generated tasks. Pause it instead if you do not want it to create more tasks.'
     );
-  });
+  }));
 
   it('should show readable error when loading schedules fails', () => {
     cleaningScheduleService.findAll.and.returnValue(throwError(() => ({ status: 500 })));

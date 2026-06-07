@@ -65,7 +65,7 @@
       </div>
     }
 
-    @for (item of aggregatedItems; track item.name + '-' + item.quantity) {
+    @for (item of aggregatedItems; track item.name + '|' + item.quantityCount + '|' + item.quantityAmount + '|' + item.quantityUnit) {
       <div class="aggregated-item" data-cy="aggregated-shopping-item">
         <div class="needed-item-left">
           <div class="needed-indicator aggregated-indicator">
@@ -81,7 +81,7 @@
               }
             </div>
             <span class="needed-item-meta">
-              @if (item.quantity) { {{ item.quantity }} · }
+              @if (item | shoppingQuantity; as q) { {{ q }} · }
               Requested by
               @for (source of item.sourceItems; track source.id; let last = $last) {
                 {{ source.createdByFirstName }} {{ source.createdByLastName }}@if (!last) {,}
@@ -152,7 +152,7 @@
               </span>
             </div>
             <span class="completed-item-meta">
-              @if (item.quantity) { {{ item.quantity }} · }
+              @if (item | shoppingQuantity; as q) { {{ q }} · }
               Added by {{ item.createdByFirstName }} {{ item.createdByLastName }}
               @if (item.targetUserEmail || item.targetUserFirstName || item.targetUserLastName) {
                 · <span class="target-user-label">For: {{ item.targetUserFirstName }} {{ item.targetUserLastName }}</span>
@@ -224,7 +224,7 @@
               </span>
             </div>
             <span class="needed-item-meta">
-              @if (item.quantity) { {{ item.quantity }} · }
+              @if (item | shoppingQuantity; as q) { {{ q }} · }
               Added by {{ item.createdByFirstName }} {{ item.createdByLastName }}
               @if (item.visibility === ShoppingItemVisibility.TARGETED && item.targetUserEmail) {
                 · <span class="target-user-label">For: {{ item.targetUserFirstName }} {{ item.targetUserLastName }}</span>
@@ -296,7 +296,7 @@
                       [class.status-cancelled]="item.status === ShoppingItemStatus.CANCELLED">
                   {{ item.status === ShoppingItemStatus.BOUGHT ? 'Bought' : 'Cancelled' }}
                 </span>
-                @if (item.quantity) { · {{ item.quantity }} }
+                @if (item | shoppingQuantity; as q) { · {{ q }} }
                 · {{ item.createdByFirstName }} {{ item.createdByLastName }}
                 @if (item.visibility === ShoppingItemVisibility.TARGETED && item.targetUserEmail) {
                   · <span class="target-user-label">For: {{ item.targetUserFirstName }} {{ item.targetUserLastName }}</span>

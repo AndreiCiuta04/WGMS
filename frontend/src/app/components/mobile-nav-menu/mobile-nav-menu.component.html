@@ -1,0 +1,25 @@
+<div class="mobile-nav-sheet">
+  <div class="mobile-nav-header">
+    <span class="mobile-nav-title">Menu</span>
+    <button type="button" class="mobile-nav-close" (click)="close()" aria-label="Close menu">&times;</button>
+  </div>
+
+  <nav class="mobile-nav-grid">
+    @for (item of overflowItems; track item.route) {
+      <a [routerLink]="item.route" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: !!item.exact }"
+         class="mobile-nav-item" (click)="close()">
+        <lucide-icon [name]="item.icon" [size]="22" [strokeWidth]="1.75"></lucide-icon>
+        <span>{{ item.label }}</span>
+      </a>
+    }
+    <a routerLink="/profile" routerLinkActive="active" class="mobile-nav-item" (click)="close()">
+      <lucide-icon name="user" [size]="22" [strokeWidth]="1.75"></lucide-icon>
+      <span>Profile</span>
+    </a>
+  </nav>
+
+  <button type="button" class="mobile-nav-logout" (click)="logout()">
+    <lucide-icon name="log-out" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+    <span>Logout</span>
+  </button>
+</div>

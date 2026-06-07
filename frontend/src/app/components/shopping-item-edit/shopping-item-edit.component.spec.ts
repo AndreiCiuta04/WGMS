@@ -7,7 +7,7 @@ import { ShoppingItemEditComponent } from './shopping-item-edit.component';
 import { ShoppingItemService } from '../../services/shopping-item.service';
 import { HouseholdService } from '../../services/household.service';
 import { AuthService } from '../../services/auth.service';
-import { ShoppingItemDto, ShoppingItemStatus, ShoppingItemVisibility } from '../../dtos/shopping-item';
+import { ShoppingItemDto, ShoppingItemStatus, ShoppingItemVisibility, QuantityUnit } from '../../dtos/shopping-item';
 import { Roommate } from '../../dtos/roommate';
 
 describe('ShoppingItemEditComponent', () => {
@@ -19,7 +19,7 @@ describe('ShoppingItemEditComponent', () => {
   let routerSpy: jasmine.SpyObj<Router>;
 
   const existing: ShoppingItemDto = {
-    id: 42, name: 'Milk', quantity: '2L', notes: 'whole',
+    id: 42, name: 'Milk', quantityCount: null, quantityAmount: 2, quantityUnit: QuantityUnit.LITER, notes: 'whole',
     status: ShoppingItemStatus.NEEDED, visibility: ShoppingItemVisibility.TARGETED,
     householdId: 10, createdById: 100,
     createdByEmail: 'me@test.com', createdByFirstName: 'Me', createdByLastName: '!',
@@ -75,6 +75,9 @@ describe('ShoppingItemEditComponent', () => {
     expect(shoppingSpy.findOne).toHaveBeenCalledWith(42);
     expect(component.itemForm.value.visibility).toBe(ShoppingItemVisibility.TARGETED);
     expect(component.itemForm.value.targetUserEmail).toBe('bob@test.com');
+    expect(component.itemForm.value.quantityAmount).toBe(2);
+    expect(component.itemForm.value.quantityUnit).toBe(QuantityUnit.LITER);
+    expect(component.quantityPreview).toBe('2 L');
     expect(component.loading).toBeFalse();
   });
 
