@@ -162,7 +162,7 @@ public class ShoppingItemRepositoryTest {
         save("Other household", householdB, userB, null, ShoppingItemVisibility.SHARED, LocalDateTime.now());
 
         List<ShoppingItem> result = shoppingItemRepository
-            .findAllByHouseholdIdAndVisibilityAndStatusOrderByCreatedAtDesc(
+            .findAllByHouseholdIdAndVisibilityAndStatusAndSuggestedFalseOrderByCreatedAtDesc(
                 householdA.getId(),
                 ShoppingItemVisibility.SHARED,
                 ShoppingItemStatus.NEEDED
@@ -191,7 +191,7 @@ public class ShoppingItemRepositoryTest {
         markStatusAndUpdatedAt(otherHousehold, ShoppingItemStatus.BOUGHT, base.plusHours(2));
 
         List<ShoppingItem> result = shoppingItemRepository
-            .findAllByHouseholdIdAndStatusInOrderByUpdatedAtDesc(
+            .findAllByHouseholdIdAndSuggestedFalseAndStatusInOrderByUpdatedAtDesc(
                 householdA.getId(),
                 List.of(ShoppingItemStatus.BOUGHT, ShoppingItemStatus.CANCELLED)
             );

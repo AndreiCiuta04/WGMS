@@ -312,7 +312,7 @@ public class ShoppingItemServiceTest {
         bread.setQuantity("1 pack");
 
         when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
-        when(shoppingItemRepository.findAllByHouseholdIdAndVisibilityAndStatusOrderByCreatedAtDesc(
+        when(shoppingItemRepository.findAllByHouseholdIdAndVisibilityAndStatusAndSuggestedFalseOrderByCreatedAtDesc(
             10L,
             ShoppingItemVisibility.SHARED,
             ShoppingItemStatus.NEEDED
@@ -346,7 +346,7 @@ public class ShoppingItemServiceTest {
         cancelled.setStatus(ShoppingItemStatus.CANCELLED);
 
         when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
-        when(shoppingItemRepository.findAllByHouseholdIdAndStatusInOrderByUpdatedAtDesc(
+        when(shoppingItemRepository.findAllByHouseholdIdAndSuggestedFalseAndStatusInOrderByUpdatedAtDesc(
             10L,
             List.of(ShoppingItemStatus.BOUGHT, ShoppingItemStatus.CANCELLED)
         )).thenReturn(List.of(bought, cancelled));
@@ -356,7 +356,7 @@ public class ShoppingItemServiceTest {
         assertEquals(2, result.size());
         assertEquals(ShoppingItemStatus.BOUGHT, result.get(0).status());
         assertEquals(ShoppingItemStatus.CANCELLED, result.get(1).status());
-        verify(shoppingItemRepository).findAllByHouseholdIdAndStatusInOrderByUpdatedAtDesc(
+        verify(shoppingItemRepository).findAllByHouseholdIdAndSuggestedFalseAndStatusInOrderByUpdatedAtDesc(
             eq(10L),
             eq(List.of(ShoppingItemStatus.BOUGHT, ShoppingItemStatus.CANCELLED))
         );
