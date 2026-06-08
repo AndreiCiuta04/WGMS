@@ -38,15 +38,15 @@
               <label class="font-weight-bold">Quantity</label>
               <div class="quantity-fields">
                 <div class="quantity-stepper">
-                  <button type="button" class="quantity-step-btn" (click)="adjustCount(-1)" aria-label="Decrease how many">−</button>
+                  <button type="button" class="quantity-step-btn" (click)="adjustCount(-1)" aria-label="Decrease how many" data-cy="quantity-count-decrement">−</button>
                   <input type="number" min="1" step="1" class="form-control quantity-count" formControlName="quantityCount"
-                         placeholder="1" aria-label="How many" readonly>
-                  <button type="button" class="quantity-step-btn" (click)="adjustCount(1)" aria-label="Increase how many">+</button>
+                         placeholder="1" aria-label="How many" readonly data-cy="quantity-count">
+                  <button type="button" class="quantity-step-btn" (click)="adjustCount(1)" aria-label="Increase how many" data-cy="quantity-count-increment">+</button>
                 </div>
                 <span class="quantity-times">×</span>
                 <input type="number" min="0" step="any" class="form-control quantity-amount" formControlName="quantityAmount"
-                       placeholder="Amount" aria-label="Amount">
-                <select class="form-control quantity-unit" formControlName="quantityUnit" aria-label="Unit">
+                       placeholder="Amount" aria-label="Amount" data-cy="quantity-amount">
+                <select class="form-control quantity-unit" formControlName="quantityUnit" aria-label="Unit" data-cy="quantity-unit">
                   <option [ngValue]="null">— unit —</option>
                   @for (opt of quantityUnitOptions; track opt.value) {
                     <option [ngValue]="opt.value">{{ opt.label }}</option>

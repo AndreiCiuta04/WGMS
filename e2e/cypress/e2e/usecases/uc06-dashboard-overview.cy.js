@@ -200,7 +200,8 @@ describe('UC-06 Dashboard Overview After Household Activity E2E', () => {
       })
         .then(() => createShoppingItem(ownerToken, {
           name: shoppingName,
-          quantity: '2 l',
+          quantityAmount: 2,
+          quantityUnit: 'LITER',
           notes: 'UC-06 dashboard shopping item',
           visibility: 'SHARED'
         }))
