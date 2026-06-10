@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { ShoppingItemService } from '../../services/shopping-item.service';
-import { AggregatedShoppingItemDto, ShoppingItemDto, ShoppingItemStatus, ShoppingItemVisibility } from '../../dtos/shopping-item';
+import { AggregatedShoppingItemDto, ShoppingItemDto, ShoppingItemStatus, ShoppingItemSuggestionDto, ShoppingItemVisibility } from '../../dtos/shopping-item';
 
 @Component({
   selector: 'app-shopping-item-list',
@@ -15,11 +15,17 @@ export class ShoppingItemListComponent implements OnInit {
   targetedItems: ShoppingItemDto[] = [];
   aggregatedItems: AggregatedShoppingItemDto[] = [];
   historyItems: ShoppingItemDto[] = [];
+  suggestions: ShoppingItemSuggestionDto[] = [];
 
-  currentTab: 'ALL' | 'TARGETED' | 'AGGREGATED' | 'HISTORY' = 'ALL';
+  currentTab: 'ALL' | 'TARGETED' | 'AGGREGATED' | 'SUGGESTIONS' | 'HISTORY' = 'ALL';
   loading = false;
   actionError: string | null = null;
   successMessage: string | null = null;
+
+  suggestionName = '';
+  suggestionQuantity = '';
+  suggestionNotes = '';
+  suggestionSubmitting = false;
 
   /** Controls visibility of the Bought & Cancelled section */
   completedExpanded = false;
@@ -57,11 +63,15 @@ export class ShoppingItemListComponent implements OnInit {
     return this.currentTab === 'HISTORY';
   }
 
+  get isSuggestionsTab(): boolean {
+    return this.currentTab === 'SUGGESTIONS';
+  }
+
   toggleCompletedExpanded(): void {
     this.completedExpanded = !this.completedExpanded;
   }
 
-  switchTab(tab: 'ALL' | 'TARGETED' | 'AGGREGATED' | 'HISTORY') {
+  switchTab(tab: 'ALL' | 'TARGETED' | 'AGGREGATED' | 'SUGGESTIONS' | 'HISTORY') {
     this.currentTab = tab;
   }
 
@@ -72,13 +82,15 @@ export class ShoppingItemListComponent implements OnInit {
       all: this.shoppingItemService.findAll(),
       targeted: this.shoppingItemService.findTargetedAtMe(),
       aggregated: this.shoppingItemService.findAggregatedHouseholdShoppingList(),
+      suggestions: this.shoppingItemService.findSuggestions(),
       history: this.shoppingItemService.findHouseholdShoppingHistory()
 
     }).subscribe({
-      next: ({ all, targeted, aggregated, history }) => {
+      next: ({ all, targeted, aggregated, suggestions, history }) => {
         this.allItems = all;
         this.targetedItems = targeted;
         this.aggregatedItems = aggregated;
+        this.suggestions = suggestions;
         this.historyItems = history;
         this.loading = false;
       },
@@ -116,6 +128,69 @@ export class ShoppingItemListComponent implements OnInit {
         }
       });
     }
+  }
+
+  createSuggestion(): void {
+    const name = this.suggestionName.trim();
+    const quantity = this.suggestionQuantity.trim();
+    const notes = this.suggestionNotes.trim();
+
+    if (!name) {
+      this.actionError = 'Suggestion name is required.';
+      return;
+    }
+
+    this.actionError = null;
+    this.suggestionSubmitting = true;
+
+    this.shoppingItemService.createSuggestion({
+      name,
+      quantity: quantity || null,
+      notes: notes || null
+    }).subscribe({
+      next: () => {
+        this.suggestionName = '';
+        this.suggestionQuantity = '';
+        this.suggestionNotes = '';
+        this.suggestionSubmitting = false;
+        this.showSuccess('Suggestion created.');
+        this.loadItems();
+        this.currentTab = 'SUGGESTIONS';
+      },
+      error: (err) => {
+        console.error('Error creating shopping item suggestion', err);
+        this.actionError = this.extractError(err, 'Failed to create suggestion.');
+        this.suggestionSubmitting = false;
+      }
+    });
+  }
+
+  voteForSuggestion(suggestion: ShoppingItemSuggestionDto): void {
+    this.actionError = null;
+    this.shoppingItemService.voteForSuggestion(suggestion.id).subscribe({
+      next: () => {
+        this.showSuccess('Vote added.');
+        this.loadItems();
+      },
+      error: (err) => {
+        console.error('Error voting for suggestion', err);
+        this.actionError = this.extractError(err, 'Failed to vote for suggestion.');
+      }
+    });
+  }
+
+  removeVoteFromSuggestion(suggestion: ShoppingItemSuggestionDto): void {
+    this.actionError = null;
+    this.shoppingItemService.removeVoteFromSuggestion(suggestion.id).subscribe({
+      next: () => {
+        this.showSuccess('Vote removed.');
+        this.loadItems();
+      },
+      error: (err) => {
+        console.error('Error removing suggestion vote', err);
+        this.actionError = this.extractError(err, 'Failed to remove vote.');
+      }
+    });
   }
 
   private updateStatus(item: ShoppingItemDto, status: ShoppingItemStatus, label: string, successMsg: string) {
