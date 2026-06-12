@@ -38,23 +38,24 @@
         <div class="receipt-scan-row">
           <div>
             <h4>Scan Receipt</h4>
-            <p class="caption mb-0">Use your camera or upload a receipt image, then review the extracted fields.</p>
+            <p class="caption mb-0">Point camera at receipt, then capture.</p>
           </div>
-          <label class="btn btn-outline-primary btn-sm receipt-upload-btn" for="receiptImage">
-            {{ isScanningReceipt ? 'Scanning...' : 'Choose Image' }}
-          </label>
-          <input
-            id="receiptImage"
-            type="file"
-            accept="image/*"
-            capture="environment"
-            class="visually-hidden"
-            [disabled]="isScanningReceipt"
-            (change)="scanReceiptImage($event)">
+          @if (!isCameraActive && !isScanningReceipt) {
+            <button type="button" class="btn btn-outline-primary btn-sm" (click)="startCamera()">Open Camera</button>
+          }
+          @if (isCameraActive) {
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="stopCamera()">Cancel</button>
+          }
+          @if (isScanningReceipt) {
+            <span class="caption scanning-label">Scanning...</span>
+          }
         </div>
 
-        @if (selectedReceiptFileName) {
-          <p class="caption receipt-file-name">Selected: {{ selectedReceiptFileName }}</p>
+        @if (isCameraActive) {
+          <div class="camera-preview">
+            <video #receiptVideo autoplay playsinline class="camera-video"></video>
+            <button type="button" class="btn btn-primary btn-sm" (click)="captureAndScan()">Capture &amp; Scan</button>
+          </div>
         }
 
         <form [formGroup]="billForm" (ngSubmit)="previewBillExpense()">

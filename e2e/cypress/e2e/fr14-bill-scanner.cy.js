@@ -64,8 +64,33 @@ function openExpenses() {
   cy.contains('h3', 'Create Expense').should('be.visible');
 }
 
+function stubCameraAndVisionApi(visionText) {
+  cy.intercept('POST', 'https://vision.googleapis.com/v1/images:annotate**', {
+    statusCode: 200,
+    body: {
+      responses: [{
+        textAnnotations: [{ description: visionText }]
+      }]
+    }
+  }).as('visionApi');
+
+  cy.window().then((win) => {
+    const canvas = win.document.createElement('canvas');
+    canvas.width = 100;
+    canvas.height = 100;
+    const stream = canvas.captureStream(0);
+    cy.stub(win.navigator.mediaDevices, 'getUserMedia').resolves(stream);
+  });
+}
+
+function openCameraAndScan() {
+  cy.contains('button', 'Open Camera').click();
+  cy.get('video.camera-video').should('be.visible');
+  cy.contains('button', 'Capture & Scan').click();
+}
+
 describe('FR-14 Bill Scanner E2E', () => {
-  it('FR-14 positive: scans a receipt image, creates a reviewed expense, and updates payment status', () => {
+  it('FR-14 positive: scans a receipt via camera, creates a reviewed expense, and updates payment status', () => {
     createExpenseHousehold().then(({ mainEmail }) => {
       login(mainEmail);
       openExpenses();
@@ -75,8 +100,13 @@ describe('FR-14 Bill Scanner E2E', () => {
         .check();
 
       cy.contains('button', 'Bill Scanner').click();
-      cy.get('#receiptImage').selectFile('cypress/fixtures/fr14-receipt.png', { force: true });
-      cy.contains('Receipt scanned. Review the extracted bill data.', { timeout: 120000 }).should('be.visible');
+
+      stubCameraAndVisionApi('FR14 MARKET\n07.06.2026\nTotal EUR 18,00\n');
+
+      openCameraAndScan();
+
+      cy.wait('@visionApi');
+      cy.contains('Receipt scanned. Review the extracted bill data.', { timeout: 15000 }).should('be.visible');
       cy.get('#billDescription').should('have.value', 'FR14 MARKET');
       cy.get('#billTotalAmount').should('have.value', '18,00');
       cy.get('#billDate').should('have.value', '2026-06-07');
@@ -115,6 +145,23 @@ describe('FR-14 Bill Scanner E2E', () => {
       cy.contains('.balance-row', 'FR14 Room owes FR14 Main')
         .contains('9.00')
         .should('be.visible');
+    });
+  });
+
+  it('FR-14 negative: camera permission denied shows error message', () => {
+    createExpenseHousehold().then(({ mainEmail }) => {
+      login(mainEmail);
+      openExpenses();
+
+      cy.contains('button', 'Bill Scanner').click();
+
+      cy.window().then((win) => {
+        cy.stub(win.navigator.mediaDevices, 'getUserMedia').rejects(new win.DOMException('Permission denied', 'NotAllowedError'));
+      });
+
+      cy.contains('button', 'Open Camera').click();
+      cy.contains('Camera not accessible. Allow camera permission in browser.').should('be.visible');
+      cy.get('video.camera-video').should('not.exist');
     });
   });
 

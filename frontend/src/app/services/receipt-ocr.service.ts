@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { environment } from '../../environments/environment';
 
 export interface ReceiptOcrDraft {
   description: string;
@@ -11,10 +12,30 @@ export interface ReceiptOcrDraft {
 })
 export class ReceiptOcrService {
 
-  async scanReceipt(file: File): Promise<ReceiptOcrDraft> {
-    const { recognize } = await import('tesseract.js');
-    const result = await recognize(file, 'eng');
-    return this.parseReceiptText(result.data.text);
+  async scanCanvas(canvas: HTMLCanvasElement): Promise<ReceiptOcrDraft> {
+    const base64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+
+    const response = await fetch(
+      `https://vision.googleapis.com/v1/images:annotate?key=${environment.googleVisionApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requests: [{
+            image: { content: base64 },
+            features: [{ type: 'TEXT_DETECTION', maxResults: 1 }]
+          }]
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Vision API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const text: string = data?.responses?.[0]?.textAnnotations?.[0]?.description ?? '';
+    return this.parseReceiptText(text);
   }
 
   parseReceiptText(text: string): ReceiptOcrDraft {
@@ -75,7 +96,7 @@ export class ReceiptOcrService {
   }
 
   private extractAmountsFromLine(line: string): number[] {
-    const matches = line.match(/(?:EUR\s*)?\d{1,6}(?:[.,]\d{2})\b/gi) ?? [];
+    const matches = line.match(/(?:EUR\s*)?\d{1,6}(?:[.,]\d{1,2})\b/gi) ?? [];
     return matches
       .map(match => Number(match.replace(/EUR/i, '').trim().replace(',', '.')))
       .filter(amount => Number.isFinite(amount));

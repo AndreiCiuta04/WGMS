@@ -141,12 +141,25 @@ $text-secondary: #5F6B5F;
   }
 }
 
-.receipt-upload-btn {
-  white-space: nowrap;
+.scanning-label {
+  color: $text-secondary;
+  font-size: 13px;
 }
 
-.receipt-file-name {
-  margin: -4px 0 12px;
+.camera-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.camera-video {
+  width: 100%;
+  max-width: 480px;
+  border-radius: 8px;
+  border: 1px solid rgba(52, 103, 57, 0.2);
+  background: #000;
 }
 
 .bill-grid {

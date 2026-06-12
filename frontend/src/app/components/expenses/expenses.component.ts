@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { ExpenseService } from '../../services/expense.service';
@@ -19,7 +19,7 @@ interface SplitRow {
   styleUrls: ['./expenses.component.scss'],
   standalone: false
 })
-export class ExpensesComponent implements OnInit {
+export class ExpensesComponent implements OnInit, OnDestroy {
 
   expenseForm: FormGroup;
   billForm: FormGroup;
@@ -32,11 +32,14 @@ export class ExpensesComponent implements OnInit {
   expensePendingDelete: ExpenseDto | null = null;
   submitted = false;
   billSubmitted = false;
+  @ViewChild('receiptVideo') receiptVideoRef!: ElementRef<HTMLVideoElement>;
+
   isSaving = false;
   isPreviewingBill = false;
   isScanningReceipt = false;
+  isCameraActive = false;
   billCalculatorOpen = false;
-  selectedReceiptFileName = '';
+  videoStream: MediaStream | null = null;
   errorMessage = '';
   successMessage = '';
 
@@ -165,18 +168,46 @@ export class ExpensesComponent implements OnInit {
     });
   }
 
-  scanReceiptImage(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) {
+  async startCamera(): Promise<void> {
+    this.clearMessages();
+    try {
+      this.videoStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } }
+      });
+      this.isCameraActive = true;
+      setTimeout(() => {
+        const video = this.receiptVideoRef?.nativeElement;
+        if (video) {
+          video.srcObject = this.videoStream;
+        }
+      }, 0);
+    } catch {
+      this.errorMessage = 'Camera not accessible. Allow camera permission in browser.';
+    }
+  }
+
+  stopCamera(): void {
+    this.videoStream?.getTracks().forEach(t => t.stop());
+    this.videoStream = null;
+    this.isCameraActive = false;
+  }
+
+  captureAndScan(): void {
+    const video = this.receiptVideoRef?.nativeElement;
+    if (!video) {
       return;
     }
 
-    this.clearMessages();
-    this.selectedReceiptFileName = file.name;
-    this.isScanningReceipt = true;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d')!.drawImage(video, 0, 0);
 
-    this.receiptOcrService.scanReceipt(file)
+    this.stopCamera();
+    this.isScanningReceipt = true;
+    this.clearMessages();
+
+    this.receiptOcrService.scanCanvas(canvas)
       .then(draft => {
         this.billForm.patchValue({
           description: draft.description,
@@ -192,18 +223,21 @@ export class ExpensesComponent implements OnInit {
       })
       .finally(() => {
         this.isScanningReceipt = false;
-        input.value = '';
       });
   }
 
   resetBillCalculator(): void {
     this.billSubmitted = false;
-    this.selectedReceiptFileName = '';
+    this.stopCamera();
     this.billForm.reset({
       description: '',
       totalAmount: '',
       date: this.today()
     });
+  }
+
+  ngOnDestroy(): void {
+    this.stopCamera();
   }
 
   submit(): void {
