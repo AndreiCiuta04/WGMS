@@ -8,7 +8,7 @@ import { ShoppingItemCreateComponent } from './shopping-item-create.component';
 import { ShoppingItemService } from '../../services/shopping-item.service';
 import { HouseholdService } from '../../services/household.service';
 import { AuthService } from '../../services/auth.service';
-import { ShoppingItemDto, ShoppingItemStatus, ShoppingItemVisibility } from '../../dtos/shopping-item';
+import { ShoppingItemDto, ShoppingItemStatus, ShoppingItemVisibility, QuantityUnit } from '../../dtos/shopping-item';
 import { Roommate } from '../../dtos/roommate';
 
 describe('ShoppingItemCreateComponent', () => {
@@ -28,7 +28,7 @@ describe('ShoppingItemCreateComponent', () => {
     role: 'ROOMMATE', joinedAt: ''
   };
   const created: ShoppingItemDto = {
-    id: 1, name: 'X', quantity: null, notes: null,
+    id: 1, name: 'X', quantityCount: null, quantityAmount: null, quantityUnit: null, notes: null,
     status: ShoppingItemStatus.NEEDED, visibility: ShoppingItemVisibility.PERSONAL,
     householdId: 10, createdById: 100,
     createdByEmail: 'me@test.com', createdByFirstName: 'Me', createdByLastName: '!',
@@ -106,6 +106,35 @@ describe('ShoppingItemCreateComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/shopping-items']);
   });
 
+  it('sends the structured quantity in the create DTO', () => {
+    component.itemForm.patchValue({
+      name: 'Trash bags', quantityCount: 5, quantityAmount: 3, quantityUnit: QuantityUnit.LITER
+    });
+    fixture.detectChanges();
+    component.onSubmit();
+    const dto = shoppingSpy.create.calls.mostRecent().args[0] as any;
+    expect(dto.quantityCount).toBe(5);
+    expect(dto.quantityAmount).toBe(3);
+    expect(dto.quantityUnit).toBe(QuantityUnit.LITER);
+  });
+
+  it('builds a live "5 × 3 L" quantity preview', () => {
+    component.itemForm.patchValue({ quantityCount: 5, quantityAmount: 3, quantityUnit: QuantityUnit.LITER });
+    expect(component.quantityPreview).toBe('5 × 3 L');
+  });
+
+  it('the count stepper increments from empty and clears below 1', () => {
+    expect(component.itemForm.value.quantityCount).toBeNull();
+    component.adjustCount(1);
+    expect(component.itemForm.value.quantityCount).toBe(1);
+    component.adjustCount(1);
+    expect(component.itemForm.value.quantityCount).toBe(2);
+    component.adjustCount(-1);
+    expect(component.itemForm.value.quantityCount).toBe(1);
+    component.adjustCount(-1);
+    expect(component.itemForm.value.quantityCount).toBeNull();
+  });
+
   it('omits targetUserEmail when not TARGETED', () => {
     component.itemForm.patchValue({
       name: 'Milk', visibility: ShoppingItemVisibility.SHARED,
@@ -133,7 +162,7 @@ describe('ShoppingItemCreateComponent', () => {
   });
 
   it('form should be invalid when name is blank', () => {
-    component.itemForm.patchValue({ name: '', quantity: '', notes: '' });
+    component.itemForm.patchValue({ name: '', notes: '' });
     fixture.detectChanges();
     expect(component.itemForm.invalid).toBeTrue();
   });

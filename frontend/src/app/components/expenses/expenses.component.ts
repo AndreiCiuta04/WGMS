@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { ExpenseService } from '../../services/expense.service';
 import { HouseholdService } from '../../services/household.service';
+import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 import { BalanceDto, ExpenseCreateDto, ExpenseDto, ExpenseSplitCreateDto } from '../../dtos/expense';
 import { Roommate } from '../../dtos/roommate';
 
@@ -27,7 +28,6 @@ export class ExpensesComponent implements OnInit {
   splitRows: SplitRow[] = [];
   currentRoommate: Roommate | null = null;
   editingExpense: ExpenseDto | null = null;
-  expensePendingDelete: ExpenseDto | null = null;
   submitted = false;
   isSaving = false;
   errorMessage = '';
@@ -37,7 +37,8 @@ export class ExpensesComponent implements OnInit {
     private formBuilder: FormBuilder,
     private expenseService: ExpenseService,
     private householdService: HouseholdService,
-    private authService: AuthService
+    private authService: AuthService,
+    private confirmDialog: ConfirmDialogService
   ) {
     this.expenseForm = this.formBuilder.group({
       description: ['', [Validators.required, Validators.maxLength(500)]],
@@ -160,30 +161,26 @@ export class ExpensesComponent implements OnInit {
   }
 
   deleteExpense(expense: ExpenseDto): void {
-    this.expensePendingDelete = expense;
-  }
-
-  cancelDelete(): void {
-    this.expensePendingDelete = null;
-  }
-
-  confirmDelete(): void {
-    if (!this.expensePendingDelete) {
-      return;
-    }
-
-    const expense = this.expensePendingDelete;
-    this.expenseService.delete(expense.id).subscribe({
-      next: () => {
-        this.successMessage = 'Expense deleted.';
-        this.expensePendingDelete = null;
-        this.loadExpenses();
-        this.loadBalances();
-        if (this.editingExpense?.id === expense.id) {
-          this.resetForm();
-        }
-      },
-      error: err => this.errorMessage = this.extractErrorMessage(err, 'Could not delete expense.')
+    this.confirmDialog.confirm({
+      title: 'Delete expense?',
+      message: `${expense.description} will be permanently removed from the shared expense history.`,
+      confirmLabel: 'Delete',
+      danger: true
+    }).then(confirmed => {
+      if (!confirmed) {
+        return;
+      }
+      this.expenseService.delete(expense.id).subscribe({
+        next: () => {
+          this.successMessage = 'Expense deleted.';
+          this.loadExpenses();
+          this.loadBalances();
+          if (this.editingExpense?.id === expense.id) {
+            this.resetForm();
+          }
+        },
+        error: err => this.errorMessage = this.extractErrorMessage(err, 'Could not delete expense.')
+      });
     });
   }
 

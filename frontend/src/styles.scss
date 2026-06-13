@@ -243,3 +243,85 @@ hr, .divider {
   background-color: rgba(95, 107, 95, 0.1) !important;
   color: #5F6B5F !important;
 }
+
+/* Mobile "More" navigation bottom sheet (NgbOffcanvas renders at body level) */
+.offcanvas.mobile-nav-sheet-panel {
+  height: auto;
+  max-height: 80vh;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+}
+
+/* Structured shopping quantity inputs: count × amount [unit] */
+.quantity-fields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.quantity-fields .quantity-amount {
+  flex: 1 1 90px;
+  min-width: 80px;
+}
+
+.quantity-fields .quantity-unit {
+  flex: 0 1 110px;
+}
+
+.quantity-fields .quantity-times {
+  color: #5F6B5F;
+  font-weight: 600;
+}
+
+/* "How many" counter: − [value] + */
+.quantity-stepper {
+  display: inline-flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+}
+
+.quantity-stepper .quantity-step-btn {
+  width: 38px;
+  border: 1px solid #ced4da;
+  background: #FFFFFF;
+  color: #346739;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.quantity-stepper .quantity-step-btn:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.quantity-stepper .quantity-step-btn:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.quantity-stepper .quantity-step-btn:hover {
+  background: rgba(52, 103, 57, 0.08);
+}
+
+.quantity-stepper .quantity-count {
+  width: 52px;
+  text-align: center;
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  background: #FFFFFF;
+}
+
+/* Hide the native number spinner on the button-driven counter */
+.quantity-stepper .quantity-count::-webkit-outer-spin-button,
+.quantity-stepper .quantity-count::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.quantity-stepper .quantity-count {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

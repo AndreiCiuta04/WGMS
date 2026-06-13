@@ -1,23 +1,29 @@
 package at.ac.tuwien.sepr.groupphase.backend.endpoint.dto;
 
+import at.ac.tuwien.sepr.groupphase.backend.entity.QuantityUnit;
+
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
  * Aggregated household shopping-list entry for FR-09.
  *
- * <p>Because the existing shopping item quantity is stored as free text,
- * aggregation groups equal normalized item names and equal normalized quantities.
- * The service does not perform unsafe numeric parsing of values such as
- * "2L", "1 pack", or "some".</p>
+ * <p>Items are grouped by equal normalized name and equal structured quantity
+ * (count + amount + unit), so requests like "Milk 2 L" merge regardless of how
+ * each roommate typed them.</p>
  *
- * @param name        display name of the aggregated item
- * @param quantity    free-text quantity shared by all grouped source items
- * @param itemCount   number of source items in this group
- * @param sourceItems original shopping items contributing to this group
+ * @param name           display name of the aggregated item
+ * @param quantityCount  shared multiplier of the grouped source items, or {@code null}
+ * @param quantityAmount shared measure amount of the grouped source items, or {@code null}
+ * @param quantityUnit   shared measure unit of the grouped source items, or {@code null}
+ * @param itemCount      number of source items in this group
+ * @param sourceItems    original shopping items contributing to this group
  */
 public record AggregatedShoppingItemDto(
     String name,
-    String quantity,
+    Integer quantityCount,
+    BigDecimal quantityAmount,
+    QuantityUnit quantityUnit,
     int itemCount,
     List<AggregatedShoppingItemSourceDto> sourceItems
 ) {}

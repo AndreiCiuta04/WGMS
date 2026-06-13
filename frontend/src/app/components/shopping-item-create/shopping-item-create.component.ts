@@ -5,7 +5,7 @@ import { ShoppingItemService } from '../../services/shopping-item.service';
 import { HouseholdService } from '../../services/household.service';
 import { AuthService } from '../../services/auth.service';
 import { Roommate } from '../../dtos/roommate';
-import { ShoppingItemCreateDto, ShoppingItemVisibility } from '../../dtos/shopping-item';
+import { ShoppingItemCreateDto, ShoppingItemVisibility, QUANTITY_UNIT_OPTIONS, formatQuantity } from '../../dtos/shopping-item';
 
 @Component({
   selector: 'app-shopping-item-create',
@@ -23,6 +23,7 @@ export class ShoppingItemCreateComponent implements OnInit {
   errorMessage = '';
 
   ShoppingItemVisibility = ShoppingItemVisibility;
+  quantityUnitOptions = QUANTITY_UNIT_OPTIONS;
 
   constructor(
     private formBuilder: FormBuilder,
@@ -33,7 +34,9 @@ export class ShoppingItemCreateComponent implements OnInit {
   ) {
     this.itemForm = this.formBuilder.group({
       name: ['', [Validators.required, Validators.maxLength(100)]],
-      quantity: ['', [Validators.maxLength(50)]],
+      quantityCount: [null, [Validators.min(1)]],
+      quantityAmount: [null, [Validators.min(0.001)]],
+      quantityUnit: [null],
       notes: ['', [Validators.maxLength(2000)]],
       visibility: [ShoppingItemVisibility.PERSONAL, [Validators.required]],
       targetUserEmail: ['']
@@ -67,6 +70,32 @@ export class ShoppingItemCreateComponent implements OnInit {
     return this.itemForm.get('visibility')?.value === ShoppingItemVisibility.TARGETED;
   }
 
+  /** Live "5 × 3 L" preview of the structured quantity inputs. */
+  get quantityPreview(): string {
+    const v = this.itemForm.value;
+    return formatQuantity({
+      quantityCount: this.toNum(v.quantityCount),
+      quantityAmount: this.toNum(v.quantityAmount),
+      quantityUnit: v.quantityUnit || null
+    });
+  }
+
+  /** Steps the "how many" count up/down; clears it when it drops below 1. */
+  adjustCount(delta: number): void {
+    const ctrl = this.itemForm.get('quantityCount');
+    const next = (this.toNum(ctrl?.value) ?? 0) + delta;
+    ctrl?.setValue(next < 1 ? null : next);
+    ctrl?.markAsDirty();
+  }
+
+  private toNum(value: any): number | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    const n = Number(value);
+    return isNaN(n) ? null : n;
+  }
+
   onSubmit() {
     this.submitted = true;
 
@@ -82,7 +111,9 @@ export class ShoppingItemCreateComponent implements OnInit {
     const raw = this.itemForm.value;
     const dto: ShoppingItemCreateDto = {
       name: raw.name,
-      quantity: raw.quantity || undefined,
+      quantityCount: this.toNum(raw.quantityCount) ?? undefined,
+      quantityAmount: this.toNum(raw.quantityAmount) ?? undefined,
+      quantityUnit: raw.quantityUnit || undefined,
       notes: raw.notes || undefined,
       visibility: raw.visibility,
       targetUserEmail: raw.visibility === ShoppingItemVisibility.TARGETED
@@ -116,7 +147,7 @@ export class ShoppingItemCreateComponent implements OnInit {
         if (errorsArray.length > 0) {
           errorMsg = errorsArray.map((e: string) => {
             const parts = e.split(' ');
-            if (parts.length > 1 && ['name', 'quantity', 'notes', 'visibility', 'targetUserEmail'].includes(parts[0])) {
+            if (parts.length > 1 && ['name', 'quantityCount', 'quantityAmount', 'quantityUnit', 'notes', 'visibility', 'targetUserEmail'].includes(parts[0])) {
               return parts.slice(1).join(' ');
             }
             return e;

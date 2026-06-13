@@ -1,6 +1,7 @@
 package at.ac.tuwien.sepr.groupphase.backend.endpoint.dto;
 
 import at.ac.tuwien.sepr.groupphase.backend.entity.CleaningFrequency;
+import at.ac.tuwien.sepr.groupphase.backend.entity.QuantityUnit;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItemStatus;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItemVisibility;
 import at.ac.tuwien.sepr.groupphase.backend.entity.TaskStatus;
@@ -106,7 +107,9 @@ public record UserDataExportDto(
         Long id,
         Long householdId,
         String name,
-        String quantity,
+        Integer quantityCount,
+        BigDecimal quantityAmount,
+        QuantityUnit quantityUnit,
         String notes,
         ShoppingItemStatus status,
         ShoppingItemVisibility visibility,

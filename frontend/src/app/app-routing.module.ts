@@ -47,7 +47,6 @@ const routes: Routes = [
   {path: 'expenses', component: ExpensesComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'payment-status', component: PaymentStatusComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'history', component: HistoryComponent, canActivate: mapToCanActivate([AuthGuard])},
-  {path: 'payment-status', component: PaymentStatusComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'shopping-items', component: ShoppingItemListComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'shopping-items/create', component: ShoppingItemCreateComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'shopping-items/:id/edit', component: ShoppingItemEditComponent, canActivate: mapToCanActivate([AuthGuard])},

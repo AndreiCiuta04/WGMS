@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
@@ -6,12 +6,14 @@ import { LucideAngularModule, User } from 'lucide-angular';
 
 import { ProfileComponent } from './profile.component';
 import { AuthService } from '../../services/auth.service';
+import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 import { UserProfile } from '../../dtos/user-profile';
 
 describe('ProfileComponent', () => {
   let fixture: ComponentFixture<ProfileComponent>;
   let component: ProfileComponent;
   let authService: jasmine.SpyObj<AuthService>;
+  let confirmDialog: jasmine.SpyObj<ConfirmDialogService>;
   let router: Router;
 
   beforeEach(async () => {
@@ -45,6 +47,9 @@ describe('ProfileComponent', () => {
       history: {}
     }));
 
+    confirmDialog = jasmine.createSpyObj<ConfirmDialogService>('ConfirmDialogService', ['confirm']);
+    confirmDialog.confirm.and.returnValue(Promise.resolve(true));
+
     await TestBed.configureTestingModule({
       declarations: [ProfileComponent],
       imports: [
@@ -52,7 +57,8 @@ describe('ProfileComponent', () => {
         LucideAngularModule.pick({ User })
       ],
       providers: [
-        { provide: AuthService, useValue: authService }
+        { provide: AuthService, useValue: authService },
+        { provide: ConfirmDialogService, useValue: confirmDialog }
       ]
     }).compileComponents();
 
@@ -79,15 +85,16 @@ describe('ProfileComponent', () => {
     expect(component.errorMessage).toBe('Could not load your profile information.');
   });
 
-  it('should delete account after confirmation and log out', () => {
-    spyOn(window, 'confirm').and.returnValue(true);
+  it('should delete account after confirmation and log out', fakeAsync(() => {
+    confirmDialog.confirm.and.returnValue(Promise.resolve(true));
 
     component.deleteAccount();
+    tick();
 
     expect(authService.anonymizeCurrentUser).toHaveBeenCalled();
     expect(authService.logoutUser).toHaveBeenCalled();
     expect(router.navigate).toHaveBeenCalledWith(['/login']);
-  });
+  }));
 
   it('should request my data export', () => {
     spyOn(window.URL, 'createObjectURL').and.returnValue('blob:url');

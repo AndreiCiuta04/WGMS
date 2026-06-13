@@ -47,7 +47,7 @@ describe('FR-08 Targeted Shopping Visibility E2E', () => {
       cy.visit('/#/shopping-items/create');
       cy.contains('h2', 'Add Shopping Item').should('be.visible');
       cy.get('#name').type(itemName);
-      cy.get('#quantity').type('1 bag');
+      cy.fillShoppingQuantity({ amount: 1, unit: 'PIECE' });
       cy.get('#visibility').select('TARGETED');
       cy.get('#targetUserEmail')
         .find(`option[value="${buyer.email}"]`)

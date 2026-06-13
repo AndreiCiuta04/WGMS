@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { HomeComponent } from './home.component';
+import { ShoppingQuantityPipe } from '../../pipes/shopping-quantity.pipe';
 import { RouterTestingModule } from '@angular/router/testing';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
@@ -43,10 +44,10 @@ describe('HomeComponent', () => {
 
   beforeEach(waitForAsync(() => {
     dashboardServiceSpy = jasmine.createSpyObj('DashboardService', ['getDashboardData']);
-    authServiceSpy = jasmine.createSpyObj('AuthService', ['isLoggedIn', 'getUserEmail']);
+    authServiceSpy = jasmine.createSpyObj('AuthService', ['isLoggedIn', 'getUserEmail', 'getCurrentUserProfile']);
 
     TestBed.configureTestingModule({
-      declarations: [HomeComponent],
+      declarations: [HomeComponent, ShoppingQuantityPipe],
       imports: [RouterTestingModule],
       providers: [
         { provide: DashboardService, useValue: dashboardServiceSpy },
@@ -61,6 +62,7 @@ describe('HomeComponent', () => {
   beforeEach(() => {
     authServiceSpy.isLoggedIn.and.returnValue(true);
     authServiceSpy.getUserEmail.and.returnValue('me@test.com');
+    authServiceSpy.getCurrentUserProfile.and.returnValue(of(null as any));
     dashboardServiceSpy.getDashboardData.and.returnValue(of(dummyDashboardData));
 
     fixture = TestBed.createComponent(HomeComponent);

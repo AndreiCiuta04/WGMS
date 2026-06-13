@@ -16,13 +16,17 @@ describe('FR-07 Shopping CRUD E2E', () => {
 
     const shoppingItem = {
         name: `Milk ${runId}`,
-        quantity: '2 Liters',
+        amount: 2,
+        unit: 'LITER',
+        quantityDisplay: '2 L',
         notes: 'Whole milk preferred'
     };
 
     const updatedItem = {
         name: `Soy Milk ${runId}`,
-        quantity: '3 Liters',
+        amount: 3,
+        unit: 'LITER',
+        quantityDisplay: '3 L',
         notes: 'Unsweetened'
     };
 
@@ -57,7 +61,7 @@ describe('FR-07 Shopping CRUD E2E', () => {
 
         // Create a valid shopping item
         cy.get('#name').type(shoppingItem.name);
-        cy.get('#quantity').type(shoppingItem.quantity);
+        cy.fillShoppingQuantity({ amount: shoppingItem.amount, unit: shoppingItem.unit });
         cy.get('#notes').type(shoppingItem.notes);
         
         cy.intercept('POST', '**/api/v1/shopping-items').as('createRequest');
@@ -67,7 +71,7 @@ describe('FR-07 Shopping CRUD E2E', () => {
         // Verify it appears in the Needed list
         cy.location('hash').should('eq', '#/shopping-items');
         cy.contains(shoppingItem.name).should('be.visible');
-        cy.contains(shoppingItem.quantity).should('be.visible');
+        cy.contains(shoppingItem.quantityDisplay).should('be.visible');
         cy.contains(shoppingItem.notes).should('be.visible');
 
         // Edit the shopping item
@@ -75,7 +79,7 @@ describe('FR-07 Shopping CRUD E2E', () => {
         cy.location('hash').should('include', '/edit');
         
         cy.get('#name').clear().type(updatedItem.name);
-        cy.get('#quantity').clear().type(updatedItem.quantity);
+        cy.fillShoppingQuantity({ amount: updatedItem.amount, unit: updatedItem.unit });
         cy.get('#notes').clear().type(updatedItem.notes);
 
         cy.intercept('PUT', '**/api/v1/shopping-items/*').as('updateRequest');
@@ -85,7 +89,7 @@ describe('FR-07 Shopping CRUD E2E', () => {
         // Verify list shows updated values
         cy.location('hash').should('eq', '#/shopping-items');
         cy.contains(updatedItem.name).should('be.visible');
-        cy.contains(updatedItem.quantity).should('be.visible');
+        cy.contains(updatedItem.quantityDisplay).should('be.visible');
         cy.contains(updatedItem.notes).should('be.visible');
 
         // Mark as Bought
@@ -119,6 +123,7 @@ describe('FR-07 Shopping CRUD E2E', () => {
         // Delete the item
         cy.intercept('DELETE', '**/api/v1/shopping-items/*').as('deleteRequest');
         cy.contains('.completed-item', updatedItem.name).find('button[title="Delete"]').click();
+        cy.confirmDialog();
         cy.wait('@deleteRequest').its('response.statusCode').should('eq', 204);
 
         // Verify it is gone entirely

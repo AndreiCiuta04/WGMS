@@ -278,8 +278,8 @@
                 <div class="shopping-item">
                   <div class="shopping-info">
                     <span class="item-name">{{ item.name }}</span>
-                    @if (item.quantity) {
-                      <span class="item-quantity">({{ item.quantity }})</span>
+                    @if (item | shoppingQuantity; as q) {
+                      <span class="item-quantity">({{ q }})</span>
                     }
                     @if (item.notes) {
                       <span class="item-notes">{{ item.notes }}</span>

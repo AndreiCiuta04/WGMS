@@ -132,6 +132,39 @@ Cypress.Commands.add('visitInviteUrl', (inviteUrl) => {
     cy.visit(`/#/invite/${token}`);
 });
 
+// Confirms the shared in-app confirmation dialog (replaces the old native window.confirm()).
+Cypress.Commands.add('confirmDialog', () => {
+    cy.get('[data-cy="confirm-dialog-confirm"]').should('be.visible').click();
+    cy.get('[data-cy="confirm-dialog"]').should('not.exist');
+});
+
+// Visible label for each QuantityUnit (the <select> uses [ngValue], so the DOM value
+// is not the enum string — we select by the rendered label instead).
+const QUANTITY_UNIT_LABEL = {
+    MILLILITER: 'ml',
+    LITER: 'L',
+    GRAM: 'g',
+    KILOGRAM: 'kg',
+    PIECE: 'pcs',
+    PACK: 'pack'
+};
+
+// Fills the structured shopping quantity (count stepper + amount + unit) on the create/edit form.
+// Pass { count, amount, unit } — all optional. Assumes the count starts empty (create form).
+Cypress.Commands.add('fillShoppingQuantity', ({ count, amount, unit } = {}) => {
+    if (count) {
+        for (let i = 0; i < count; i++) {
+            cy.get('[data-cy="quantity-count-increment"]').click();
+        }
+    }
+    if (amount !== undefined && amount !== null && amount !== '') {
+        cy.get('[data-cy="quantity-amount"]').clear().type(String(amount));
+    }
+    if (unit) {
+        cy.get('[data-cy="quantity-unit"]').select(QUANTITY_UNIT_LABEL[unit] || unit);
+    }
+});
+
 Cypress.Commands.add('createTask', ({ title, description, dueDate, assignedToEmail }) => {
     cy.window()
         .its('localStorage.authToken')

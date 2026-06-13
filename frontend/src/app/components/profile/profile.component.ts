@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 import { UserProfile } from '../../dtos/user-profile';
 
 @Component({
@@ -17,7 +18,11 @@ export class ProfileComponent implements OnInit {
   deleting = false;
   exporting = false;
 
-  constructor(private authService: AuthService, private router: Router) { }
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    private confirmDialog: ConfirmDialogService
+  ) { }
 
   ngOnInit(): void {
     this.loadProfile();
@@ -31,22 +36,28 @@ export class ProfileComponent implements OnInit {
   }
 
   deleteAccount(): void {
-    const confirmed = window.confirm('Delete your account? Your login will be disabled and your identifying account data will be anonymized.');
-    if (!confirmed) {
-      return;
-    }
-
-    this.deleting = true;
-    this.errorMessage = '';
-    this.authService.anonymizeCurrentUser().subscribe({
-      next: () => {
-        this.authService.logoutUser();
-        this.router.navigate(['/login']);
-      },
-      error: () => {
-        this.deleting = false;
-        this.errorMessage = 'Could not delete your account.';
+    this.confirmDialog.confirm({
+      title: 'Delete your account?',
+      message: 'Your login will be disabled and your identifying account data will be anonymized.',
+      confirmLabel: 'Delete account',
+      danger: true
+    }).then(confirmed => {
+      if (!confirmed) {
+        return;
       }
+
+      this.deleting = true;
+      this.errorMessage = '';
+      this.authService.anonymizeCurrentUser().subscribe({
+        next: () => {
+          this.authService.logoutUser();
+          this.router.navigate(['/login']);
+        },
+        error: () => {
+          this.deleting = false;
+          this.errorMessage = 'Could not delete your account.';
+        }
+      });
     });
   }
 

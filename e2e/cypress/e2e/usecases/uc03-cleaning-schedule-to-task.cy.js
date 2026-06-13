@@ -50,7 +50,7 @@ describe('UC-03 Cleaning Schedule Generates Task E2E', () => {
 
     cy.visit('/#/tasks');
     cy.contains('.wgms-card', scheduleTitle).within(() => {
-      cy.contains('OPEN').should('be.visible');
+      cy.contains('Open').should('be.visible');
       cy.contains(user.email).should('be.visible');
     });
   });
@@ -87,8 +87,8 @@ describe('UC-03 Cleaning Schedule Generates Task E2E', () => {
     cy.contains(`Task created for "${scheduleTitle}"!`).should('be.visible');
 
     cy.contains('.manage-header', 'Manage Schedules').click();
-    cy.on('window:confirm', () => true);
     cy.contains('.manage-item', scheduleTitle).find('button[title="Delete"]').click();
+    cy.confirmDialog();
     cy.contains(/open tasks|complete or cancel|generated tasks|Cannot delete|Pause it|Request conflicts|conflict/i)
       .should('be.visible');
   });
