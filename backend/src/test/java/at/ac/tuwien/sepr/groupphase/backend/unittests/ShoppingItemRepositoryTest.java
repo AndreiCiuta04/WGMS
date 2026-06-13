@@ -252,6 +252,38 @@ public class ShoppingItemRepositoryTest {
         assertEquals("Normal shared", result.get(0).getName());
     }
 
+    @Test
+    public void findAllBySuggestedFalse_returnsOnlyNormalShoppingItems() {
+        ShoppingItem normal = save(
+            "Normal item",
+            householdA,
+            userA,
+            null,
+            ShoppingItemVisibility.SHARED,
+            LocalDateTime.now()
+        );
+        normal.setSuggested(false);
+        shoppingItemRepository.save(normal);
+
+        ShoppingItem suggestion = save(
+            "Suggested item",
+            householdA,
+            userA,
+            null,
+            ShoppingItemVisibility.SHARED,
+            LocalDateTime.now()
+        );
+        suggestion.setSuggested(true);
+        shoppingItemRepository.save(suggestion);
+
+        List<ShoppingItem> result =
+            shoppingItemRepository.findAllBySuggestedFalseOrderByCreatedAtDesc();
+
+        assertEquals(1, result.size());
+        assertEquals("Normal item", result.get(0).getName());
+        assertTrue(!result.get(0).isSuggested());
+    }
+
     private void markStatusAndUpdatedAt(ShoppingItem item, ShoppingItemStatus status, LocalDateTime updatedAt) {
         item.setStatus(status);
         shoppingItemRepository.saveAndFlush(item);
