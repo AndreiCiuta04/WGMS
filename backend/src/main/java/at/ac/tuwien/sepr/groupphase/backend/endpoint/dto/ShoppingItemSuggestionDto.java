@@ -1,6 +1,7 @@
 package at.ac.tuwien.sepr.groupphase.backend.endpoint.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Response body for a shopping item suggestion with voting information.
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
  * @param createdByLastName  last name of the creator
  * @param voteCount          number of votes
  * @param votedByCurrentUser whether the current user has voted
+ * @param voters             household members who voted for the suggestion
  * @param createdAt          creation timestamp
  * @param updatedAt          last update timestamp
  */
@@ -31,6 +33,7 @@ public record ShoppingItemSuggestionDto(
     String createdByLastName,
     int voteCount,
     boolean votedByCurrentUser,
+    List<ShoppingItemSuggestionVoterDto> voters,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {}

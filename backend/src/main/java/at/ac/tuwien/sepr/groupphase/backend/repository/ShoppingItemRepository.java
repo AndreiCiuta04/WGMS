@@ -52,4 +52,6 @@ public interface ShoppingItemRepository extends JpaRepository<ShoppingItem, Long
     List<ShoppingItem> findAllByHouseholdIdAndSuggestedFalseAndStatusInOrderByUpdatedAtDesc(
         Long householdId,
         List<ShoppingItemStatus> statuses);
+
+    List<ShoppingItem> findAllBySuggestedFalseOrderByCreatedAtDesc();
 }

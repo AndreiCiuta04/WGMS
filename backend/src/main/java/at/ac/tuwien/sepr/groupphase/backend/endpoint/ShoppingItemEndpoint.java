@@ -117,6 +117,30 @@ public class ShoppingItemEndpoint {
         return shoppingItemService.removeVoteFromSuggestion(id, currentUser);
     }
 
+    @PostMapping("/suggestions/{id}/promote")
+    @PreAuthorize("hasRole('USER')")
+    public ShoppingItemDto promoteSuggestion(@PathVariable("id") Long id,
+                                             Authentication authentication) {
+        LOGGER.info("POST /api/v1/shopping-items/suggestions/{}/promote", id);
+        ApplicationUser currentUser =
+            userService.findApplicationUserByEmail(authentication.getName());
+
+        return shoppingItemService.promoteSuggestion(id, currentUser);
+    }
+
+    @DeleteMapping("/suggestions/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('USER')")
+    public void deleteSuggestion(@PathVariable("id") Long id,
+                                 Authentication authentication) {
+        LOGGER.info("DELETE /api/v1/shopping-items/suggestions/{}", id);
+
+        ApplicationUser currentUser =
+            userService.findApplicationUserByEmail(authentication.getName());
+
+        shoppingItemService.deleteSuggestion(id, currentUser);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('USER')")
     public ShoppingItemDto findOne(@PathVariable("id") Long id, Authentication authentication) {

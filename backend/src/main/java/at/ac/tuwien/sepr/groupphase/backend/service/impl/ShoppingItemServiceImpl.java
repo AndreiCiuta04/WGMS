@@ -8,6 +8,7 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemD
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemSourceDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionVoterDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.mapper.ShoppingItemMapper;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.lang.invoke.MethodHandles;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Locale;
 
@@ -86,7 +88,7 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         LOGGER.debug("Find visible shopping items for user {}", currentUser.getEmail());
 
         if (Boolean.TRUE.equals(currentUser.getAdmin())) {
-            return shoppingItemMapper.entityToDto(shoppingItemRepository.findAll());
+            return shoppingItemMapper.entityToDto(shoppingItemRepository.findAllBySuggestedFalseOrderByCreatedAtDesc());
         }
 
         Roommate roommate = requireActiveRoommate(currentUser);
@@ -204,11 +206,39 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
             dto.name(), currentUser.getEmail());
 
         Roommate roommate = requireActiveRoommate(currentUser);
+        Long householdId = roommate.getHousehold().getId();
+
+        List<ShoppingItem> activeSuggestions =
+            shoppingItemRepository.findSuggestionsForHousehold(
+                householdId,
+                ShoppingItemStatus.NEEDED
+            );
+
+        String normalizedName = normalize(dto.name());
+        String normalizedQuantity = normalize(dto.quantity());
+
+        ShoppingItem duplicate = activeSuggestions.stream()
+            .filter(item -> normalize(item.getName()).equals(normalizedName))
+            .filter(item -> normalize(item.getQuantity()).equals(normalizedQuantity))
+            .findFirst()
+            .orElse(null);
+
+        if (duplicate != null) {
+            boolean alreadyVoted = duplicate.getVotedBy().stream()
+                .anyMatch(voter -> voter.getId().equals(currentUser.getId()));
+
+            if (!alreadyVoted) {
+                duplicate.getVotedBy().add(currentUser);
+                duplicate = shoppingItemRepository.save(duplicate);
+            }
+
+            return toSuggestionDto(duplicate, currentUser);
+        }
 
         ShoppingItem item = new ShoppingItem();
-        item.setName(dto.name());
-        item.setQuantity(dto.quantity());
-        item.setNotes(dto.notes());
+        item.setName(cleanDisplayValue(dto.name()));
+        item.setQuantity(cleanDisplayValue(dto.quantity()));
+        item.setNotes(cleanDisplayValue(dto.notes()));
         item.setStatus(ShoppingItemStatus.NEEDED);
         item.setVisibility(ShoppingItemVisibility.SHARED);
         item.setHousehold(roommate.getHousehold());
@@ -263,6 +293,59 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         item.getVotedBy().removeIf(user -> user.getId().equals(currentUser.getId()));
 
         return toSuggestionDto(shoppingItemRepository.save(item), currentUser);
+    }
+
+    @Override
+    @Transactional
+    public ShoppingItemDto promoteSuggestion(Long id, ApplicationUser currentUser) {
+        LOGGER.debug("Promote shopping item suggestion {} by user {}",
+            id, currentUser.getEmail());
+
+        ShoppingItem item = loadAndAuthorizeSuggestion(id, currentUser);
+
+        item.setSuggested(false);
+        item.setVisibility(ShoppingItemVisibility.SHARED);
+        item.setStatus(ShoppingItemStatus.NEEDED);
+        item.setTargetUser(null);
+
+        /*
+         * Votes apply only while the item is a suggestion. Once promoted, clearing
+         * the relation prevents obsolete vote records from remaining attached to a
+         * normal shopping item.
+         */
+        item.getVotedBy().clear();
+
+        return shoppingItemMapper.entityToDto(
+            shoppingItemRepository.save(item)
+        );
+    }
+
+    @Override
+    @Transactional
+    public void deleteSuggestion(Long id, ApplicationUser currentUser) {
+        LOGGER.debug("Delete shopping item suggestion {} by user {}",
+            id, currentUser.getEmail());
+
+        ShoppingItem item = shoppingItemRepository.findById(id)
+            .orElseThrow(() -> new NotFoundException(
+                "Shopping item suggestion with id " + id + " not found."));
+
+        if (!item.isSuggested()) {
+            throw new ConflictException(
+                "Shopping item with id " + id + " is not a suggestion.");
+        }
+
+        if (item.getStatus() != ShoppingItemStatus.NEEDED) {
+            throw new ConflictException(
+                "Only active shopping item suggestions can be removed.");
+        }
+
+        if (!canManage(item, currentUser)) {
+            throw new ForbiddenException(
+                "You are not allowed to remove this shopping item suggestion.");
+        }
+
+        shoppingItemRepository.delete(item);
     }
 
     // ------------------------------------------------------------------------
@@ -443,6 +526,27 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         boolean votedByCurrentUser = item.getVotedBy().stream()
             .anyMatch(user -> user.getId().equals(currentUser.getId()));
 
+        List<ShoppingItemSuggestionVoterDto> voters = item.getVotedBy().stream()
+            .sorted(
+                Comparator.comparing(
+                    ApplicationUser::getFirstName,
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
+                ).thenComparing(
+                    ApplicationUser::getLastName,
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
+                ).thenComparing(
+                    ApplicationUser::getEmail,
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
+                )
+            )
+            .map(user -> new ShoppingItemSuggestionVoterDto(
+                user.getId(),
+                user.getEmail(),
+                user.getFirstName(),
+                user.getLastName()
+            ))
+            .toList();
+
         return new ShoppingItemSuggestionDto(
             item.getId(),
             item.getName(),
@@ -453,8 +557,9 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
             item.getCreatedBy().getEmail(),
             item.getCreatedBy().getFirstName(),
             item.getCreatedBy().getLastName(),
-            item.getVotedBy().size(),
+            voters.size(),
             votedByCurrentUser,
+            voters,
             item.getCreatedAt(),
             item.getUpdatedAt()
         );

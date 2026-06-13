@@ -162,6 +162,38 @@ public interface ShoppingItemService {
      * @return the updated suggestion
      */
     ShoppingItemSuggestionDto removeVoteFromSuggestion(Long id, ApplicationUser currentUser);
+
+    /**
+     * Promotes an active household suggestion to a normal shared shopping item.
+     * Any active member of the same household may promote the suggestion.
+     *
+     * @param id          suggestion id
+     * @param currentUser currently authenticated user
+     * @return the promoted normal shopping item
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException
+     *     if the suggestion does not exist
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException
+     *     if the user is not an active member of the suggestion's household
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException
+     *     if the item is not an active suggestion
+     */
+    ShoppingItemDto promoteSuggestion(Long id, ApplicationUser currentUser);
+
+    /**
+     * Removes an active shopping-item suggestion.
+     * Only the creator or an administrator may remove it.
+     *
+     * @param id          suggestion id
+     * @param currentUser currently authenticated user
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException
+     *     if the item does not exist
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException
+     *     if the current user may not remove the suggestion
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException
+     *     if the item is not an active suggestion
+     */
+    void deleteSuggestion(Long id, ApplicationUser currentUser);
+
     /**
      * Deletes a shopping item. Only the creator (or an admin) may delete an item.
      *
@@ -172,6 +204,5 @@ public interface ShoppingItemService {
      * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException
      *     if the user is not allowed to delete the shopping item
      */
-
     void delete(Long id, ApplicationUser currentUser);
 }
