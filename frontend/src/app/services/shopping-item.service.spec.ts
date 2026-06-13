@@ -6,6 +6,8 @@ import {
   ShoppingItemDto,
   ShoppingItemStatus,
   ShoppingItemStatusUpdateDto,
+  ShoppingItemSuggestionCreateDto,
+  ShoppingItemSuggestionDto,
   ShoppingItemUpdateDto,
   ShoppingItemVisibility
 } from '../dtos/shopping-item';
@@ -23,6 +25,36 @@ describe('ShoppingItemService', () => {
     createdByEmail: 'a@test.com', createdByFirstName: 'A', createdByLastName: 'B',
     targetUserId: null, targetUserEmail: null, targetUserFirstName: null, targetUserLastName: null,
     createdAt: '2026-05-17T10:00:00', updatedAt: '2026-05-17T10:00:00'
+  };
+
+  const sampleSuggestion: ShoppingItemSuggestionDto = {
+    id: 5,
+    name: 'Dishwasher tabs',
+    quantity: '1 pack',
+    notes: 'Almost empty',
+    householdId: 10,
+    createdById: 100,
+    createdByEmail: 'a@test.com',
+    createdByFirstName: 'A',
+    createdByLastName: 'B',
+    voteCount: 2,
+    votedByCurrentUser: true,
+    voters: [
+      {
+        userId: 100,
+        email: 'a@test.com',
+        firstName: 'A',
+        lastName: 'B'
+      },
+      {
+        userId: 200,
+        email: 'b@test.com',
+        firstName: 'B',
+        lastName: 'C'
+      }
+    ],
+    createdAt: '2026-05-17T10:00:00',
+    updatedAt: '2026-05-17T10:05:00'
   };
 
   beforeEach(() => {
@@ -165,6 +197,106 @@ describe('ShoppingItemService', () => {
   it('delete() should issue DELETE to /shopping-items/{id}', () => {
     service.delete(1).subscribe();
     const req = httpMock.expectOne(globals.backendUri + '/shopping-items/1');
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+  });
+
+  it('createSuggestion() should POST the suggestion dto', () => {
+    const dto: ShoppingItemSuggestionCreateDto = {
+      name: 'Dishwasher tabs',
+      quantity: '1 pack',
+      notes: 'Almost empty'
+    };
+
+    service.createSuggestion(dto).subscribe(result => {
+      expect(result).toEqual(sampleSuggestion);
+    });
+
+    const req = httpMock.expectOne(
+      globals.backendUri + '/shopping-items/suggestions'
+    );
+
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(dto);
+    req.flush(sampleSuggestion);
+  });
+
+  it('findSuggestions() should GET household suggestions', () => {
+    service.findSuggestions().subscribe(result => {
+      expect(result).toEqual([sampleSuggestion]);
+      expect(result[0].voters.length).toBe(2);
+    });
+
+    const req = httpMock.expectOne(
+      globals.backendUri + '/shopping-items/suggestions'
+    );
+
+    expect(req.request.method).toBe('GET');
+    req.flush([sampleSuggestion]);
+  });
+
+  it('voteForSuggestion() should POST with no request body', () => {
+    service.voteForSuggestion(5).subscribe(result => {
+      expect(result.voteCount).toBe(2);
+    });
+
+    const req = httpMock.expectOne(
+      globals.backendUri + '/shopping-items/suggestions/5/votes'
+    );
+
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toBeNull();
+    req.flush(sampleSuggestion);
+  });
+
+  it('removeVoteFromSuggestion() should DELETE the current users vote', () => {
+    service.removeVoteFromSuggestion(5).subscribe(result => {
+      expect(result.votedByCurrentUser).toBeFalse();
+    });
+
+    const req = httpMock.expectOne(
+      globals.backendUri + '/shopping-items/suggestions/5/votes'
+    );
+
+    expect(req.request.method).toBe('DELETE');
+    req.flush({
+      ...sampleSuggestion,
+      voteCount: 1,
+      votedByCurrentUser: false,
+      voters: [sampleSuggestion.voters[0]]
+    });
+  });
+
+  it('promoteSuggestion() should POST to the promotion endpoint', () => {
+    const promotedItem: ShoppingItemDto = {
+      ...sampleItem,
+      id: 5,
+      name: 'Dishwasher tabs',
+      quantity: '1 pack',
+      notes: 'Almost empty',
+      visibility: ShoppingItemVisibility.SHARED
+    };
+
+    service.promoteSuggestion(5).subscribe(result => {
+      expect(result).toEqual(promotedItem);
+    });
+
+    const req = httpMock.expectOne(
+      globals.backendUri + '/shopping-items/suggestions/5/promote'
+    );
+
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toBeNull();
+    req.flush(promotedItem);
+  });
+
+  it('deleteSuggestion() should DELETE the suggestion', () => {
+    service.deleteSuggestion(5).subscribe();
+
+    const req = httpMock.expectOne(
+      globals.backendUri + '/shopping-items/suggestions/5'
+    );
+
     expect(req.request.method).toBe('DELETE');
     req.flush(null);
   });

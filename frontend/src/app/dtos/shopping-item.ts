@@ -75,6 +75,13 @@ export interface ShoppingItemSuggestionCreateDto {
   notes?: string | null;
 }
 
+export interface ShoppingItemSuggestionVoterDto {
+  userId: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
 export interface ShoppingItemSuggestionDto {
   id: number;
   name: string;
@@ -87,6 +94,7 @@ export interface ShoppingItemSuggestionDto {
   createdByLastName: string;
   voteCount: number;
   votedByCurrentUser: boolean;
+  voters: ShoppingItemSuggestionVoterDto[];
   createdAt: string;
   updatedAt: string;
 }

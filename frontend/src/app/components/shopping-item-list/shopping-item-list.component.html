@@ -177,49 +177,129 @@
         }
 
         @for (suggestion of suggestions; track suggestion.id) {
-          <div class="needed-item suggestion-item" data-cy="shopping-suggestion-item">
+          <div class="needed-item suggestion-item"
+               data-cy="shopping-suggestion-item">
+
             <div class="needed-item-left">
               <div class="needed-indicator aggregated-indicator">
-                <lucide-icon name="shopping-bag" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+                <lucide-icon
+                  name="shopping-bag"
+                  [size]="18"
+                  [strokeWidth]="1.75">
+                </lucide-icon>
               </div>
+
               <div class="needed-item-info">
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                  <span class="needed-item-title">{{ suggestion.name }}</span>
-                  <span class="badge aggregate-count" data-cy="suggestion-vote-count">
-                    {{ suggestion.voteCount }} {{ suggestion.voteCount === 1 ? 'vote' : 'votes' }}
+                  <span class="needed-item-title">
+                    {{ suggestion.name }}
                   </span>
+
+                  <span class="badge aggregate-count"
+                        data-cy="suggestion-vote-count">
+                    {{ suggestion.voteCount }}
+                    {{ suggestion.voteCount === 1 ? 'vote' : 'votes' }}
+                  </span>
+
+                  @if (isPopularSuggestion(suggestion)) {
+                    <span class="badge suggestion-popular-badge"
+                          data-cy="suggestion-popular-badge">
+                      Popular
+                    </span>
+                  }
+
                   @if (suggestion.votedByCurrentUser) {
-                    <span class="badge badge-shared" data-cy="suggestion-voted-badge">You voted</span>
+                    <span class="badge badge-shared"
+                          data-cy="suggestion-voted-badge">
+                      You voted
+                    </span>
                   }
                 </div>
+
                 <span class="needed-item-meta">
-                  @if (suggestion.quantity) { {{ suggestion.quantity }} · }
-                  Suggested by {{ suggestion.createdByFirstName }} {{ suggestion.createdByLastName }}
-                  @if (suggestion.notes) { · {{ suggestion.notes }} }
+                  @if (suggestion.quantity) {
+                    {{ suggestion.quantity }} ·
+                  }
+
+                  Suggested by
+                  {{ suggestion.createdByFirstName }}
+                  {{ suggestion.createdByLastName }}
+
+                  @if (suggestion.notes) {
+                    · {{ suggestion.notes }}
+                  }
                 </span>
+
+                @if (suggestion.voters.length > 0) {
+                  <span class="suggestion-voters"
+                        data-cy="suggestion-voter-list">
+                    Voted by
+                    @for (voter of suggestion.voters;
+                          track voter.userId;
+                          let last = $last) {
+                      {{ voterDisplayName(voter) }}@if (!last) {, }
+                    }
+                  </span>
+                }
               </div>
             </div>
 
-            <div class="item-actions">
+            <div class="item-actions suggestion-actions">
               @if (suggestion.votedByCurrentUser) {
                 <button
                   class="action-btn muted"
                   type="button"
                   data-cy="remove-suggestion-vote-action"
+                  [disabled]="isSuggestionActionPending(suggestion.id)"
                   (click)="removeVoteFromSuggestion(suggestion)"
                   title="Remove vote">
-                  <lucide-icon name="circle-x" [size]="15" [strokeWidth]="2"></lucide-icon>
+
+                  <lucide-icon
+                    name="circle-x"
+                    [size]="15"
+                    [strokeWidth]="2">
+                  </lucide-icon>
                 </button>
               } @else {
                 <button
                   class="action-btn success"
                   type="button"
                   data-cy="vote-suggestion-action"
+                  [disabled]="isSuggestionActionPending(suggestion.id)"
                   (click)="voteForSuggestion(suggestion)"
                   title="Vote">
-                  <lucide-icon name="circle-check" [size]="15" [strokeWidth]="2"></lucide-icon>
+
+                  <lucide-icon
+                    name="circle-check"
+                    [size]="15"
+                    [strokeWidth]="2">
+                  </lucide-icon>
                 </button>
               }
+
+              <button
+                class="btn btn-sm btn-outline-success suggestion-promote-button"
+                type="button"
+                data-cy="promote-suggestion-action"
+                [disabled]="isSuggestionActionPending(suggestion.id)"
+                (click)="promoteSuggestion(suggestion)">
+                Add to list
+              </button>
+
+              <button
+                class="action-btn danger"
+                type="button"
+                data-cy="delete-suggestion-action"
+                [disabled]="isSuggestionActionPending(suggestion.id)"
+                (click)="deleteSuggestion(suggestion)"
+                title="Delete suggestion">
+
+                <lucide-icon
+                  name="trash-2"
+                  [size]="14"
+                  [strokeWidth]="2">
+                </lucide-icon>
+              </button>
             </div>
           </div>
         }

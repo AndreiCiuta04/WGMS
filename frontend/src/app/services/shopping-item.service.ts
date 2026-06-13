@@ -70,6 +70,17 @@ export class ShoppingItemService {
     return this.http.delete<ShoppingItemSuggestionDto>(`${this.baseUri}/suggestions/${id}/votes`);
   }
 
+  promoteSuggestion(id: number): Observable<ShoppingItemDto> {
+    return this.http.post<ShoppingItemDto>(
+      `${this.baseUri}/suggestions/${id}/promote`,
+      null
+    );
+  }
+
+  deleteSuggestion(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUri}/suggestions/${id}`);
+  }
+
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUri}/${id}`);
   }

@@ -27,6 +27,8 @@ export class ShoppingItemListComponent implements OnInit {
   suggestionNotes = '';
   suggestionSubmitting = false;
 
+  suggestionActionIds = new Set<number>();
+
   /** Controls visibility of the Bought & Cancelled section */
   completedExpanded = false;
 
@@ -153,7 +155,7 @@ export class ShoppingItemListComponent implements OnInit {
         this.suggestionQuantity = '';
         this.suggestionNotes = '';
         this.suggestionSubmitting = false;
-        this.showSuccess('Suggestion created.');
+        this.showSuccess('Suggestion saved and your vote recorded.');
         this.loadItems();
         this.currentTab = 'SUGGESTIONS';
       },
@@ -166,13 +168,21 @@ export class ShoppingItemListComponent implements OnInit {
   }
 
   voteForSuggestion(suggestion: ShoppingItemSuggestionDto): void {
+    if (this.isSuggestionActionPending(suggestion.id)) {
+      return;
+    }
+
     this.actionError = null;
+    this.suggestionActionIds.add(suggestion.id);
+
     this.shoppingItemService.voteForSuggestion(suggestion.id).subscribe({
       next: () => {
+        this.suggestionActionIds.delete(suggestion.id);
         this.showSuccess('Vote added.');
         this.loadItems();
       },
       error: (err) => {
+        this.suggestionActionIds.delete(suggestion.id);
         console.error('Error voting for suggestion', err);
         this.actionError = this.extractError(err, 'Failed to vote for suggestion.');
       }
@@ -180,17 +190,104 @@ export class ShoppingItemListComponent implements OnInit {
   }
 
   removeVoteFromSuggestion(suggestion: ShoppingItemSuggestionDto): void {
+    if (this.isSuggestionActionPending(suggestion.id)) {
+      return;
+    }
+
     this.actionError = null;
+    this.suggestionActionIds.add(suggestion.id);
+
     this.shoppingItemService.removeVoteFromSuggestion(suggestion.id).subscribe({
       next: () => {
+        this.suggestionActionIds.delete(suggestion.id);
         this.showSuccess('Vote removed.');
         this.loadItems();
       },
       error: (err) => {
+        this.suggestionActionIds.delete(suggestion.id);
         console.error('Error removing suggestion vote', err);
         this.actionError = this.extractError(err, 'Failed to remove vote.');
       }
     });
+  }
+
+  promoteSuggestion(suggestion: ShoppingItemSuggestionDto): void {
+    if (this.isSuggestionActionPending(suggestion.id)) {
+      return;
+    }
+
+    const confirmed = confirm(
+      `Add "${suggestion.name}" to the shared household shopping list?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.actionError = null;
+    this.suggestionActionIds.add(suggestion.id);
+
+    this.shoppingItemService.promoteSuggestion(suggestion.id).subscribe({
+      next: () => {
+        this.suggestionActionIds.delete(suggestion.id);
+        this.showSuccess('Suggestion added to the household shopping list.');
+        this.loadItems();
+      },
+      error: (err) => {
+        this.suggestionActionIds.delete(suggestion.id);
+        console.error('Error promoting shopping suggestion', err);
+        this.actionError = this.extractError(
+          err,
+          'Failed to add the suggestion to the shopping list.'
+        );
+      }
+    });
+  }
+
+  deleteSuggestion(suggestion: ShoppingItemSuggestionDto): void {
+    if (this.isSuggestionActionPending(suggestion.id)) {
+      return;
+    }
+
+    const confirmed = confirm(
+      `Are you sure you want to delete the suggestion "${suggestion.name}"?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.actionError = null;
+    this.suggestionActionIds.add(suggestion.id);
+
+    this.shoppingItemService.deleteSuggestion(suggestion.id).subscribe({
+      next: () => {
+        this.suggestionActionIds.delete(suggestion.id);
+        this.showSuccess('Suggestion deleted.');
+        this.loadItems();
+      },
+      error: (err) => {
+        this.suggestionActionIds.delete(suggestion.id);
+        console.error('Error deleting shopping suggestion', err);
+        this.actionError = this.extractError(
+          err,
+          'Failed to delete the suggestion.'
+        );
+      }
+    });
+  }
+
+  isSuggestionActionPending(id: number): boolean {
+    return this.suggestionActionIds.has(id);
+  }
+
+  isPopularSuggestion(suggestion: ShoppingItemSuggestionDto): boolean {
+    return suggestion.voteCount >= 2;
+  }
+
+  voterDisplayName(voter: ShoppingItemSuggestionDto['voters'][number]): string {
+    const fullName = `${voter.firstName ?? ''} ${voter.lastName ?? ''}`.trim();
+    return fullName || voter.email;
   }
 
   private updateStatus(item: ShoppingItemDto, status: ShoppingItemStatus, label: string, successMsg: string) {

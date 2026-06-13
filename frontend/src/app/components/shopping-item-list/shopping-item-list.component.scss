@@ -389,3 +389,55 @@ $text-secondary: #5F6B5F;
   color: $text-secondary;
   padding: 2px 0;
 }
+
+
+.suggestions-section {
+  border-color: rgba(121, 174, 111, 0.24);
+}
+
+.suggestion-form {
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(31, 42, 31, 0.06);
+}
+
+.suggestion-item {
+  align-items: flex-start;
+  border-left: 3px solid rgba(121, 174, 111, 0.7);
+  padding-left: 12px;
+}
+
+.suggestion-voters {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: $text-secondary;
+}
+
+.suggestion-popular-badge {
+  background-color: rgba(197, 145, 38, 0.12) !important;
+  color: #8a6214 !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.suggestion-actions {
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.suggestion-promote-button {
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.action-btn:disabled,
+.suggestion-promote-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
