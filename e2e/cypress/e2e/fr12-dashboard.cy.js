@@ -22,7 +22,10 @@ function registerViaApi(user) {
   return cy.request({
     method: 'POST',
     url: `${apiUrl}/users`,
-    body: user
+    body: {
+      ...user,
+      termsAccepted: true
+    }
   }).then((response) => {
     expect(response.status).to.be.oneOf([200, 201]);
     return String(response.body);
@@ -205,7 +208,8 @@ describe('FR-12 Backend-Backed Dashboard E2E', () => {
       })
         .then(() => createShoppingItem(ownerToken, {
           name: shoppingName,
-          quantity: '3 kg',
+          quantityAmount: 3,
+          quantityUnit: 'KILOGRAM',
           notes: 'FR-12 dashboard shopping item',
           visibility: 'SHARED'
         }))

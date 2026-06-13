@@ -57,7 +57,8 @@ describe('AuthService', () => {
       email: 'anna@example.com',
       password: 'Password123!',
       firstName: 'Anna',
-      lastName: 'Berger'
+      lastName: 'Berger',
+      termsAccepted: true
     };
 
     service.registerUser(userRegistration).subscribe(response => {
@@ -72,6 +73,118 @@ describe('AuthService', () => {
     request.flush('Bearer register-token');
 
     expect(localStorage.getItem('authToken')).toBe('register-token');
+  });
+
+  it('should get the current user profile', () => {
+    const profile = {
+      id: 5,
+      email: 'anna@example.com',
+      firstName: 'Anna',
+      lastName: 'Berger',
+      role: 'USER',
+      householdId: 7,
+      householdName: 'WG Test',
+      roommateId: 9
+    };
+
+    service.getCurrentUserProfile().subscribe(response => {
+      expect(response).toEqual(profile);
+    });
+
+    const request = httpTestingController.expectOne(`${backendUri}/users/me`);
+    expect(request.request.method).toBe('GET');
+
+    request.flush(profile);
+  });
+
+  it('should patch the current user profile', () => {
+    const update = { email: 'anna.updated@example.com', firstName: 'Anna', lastName: 'Updated' };
+    const profile = {
+      id: 5,
+      email: 'anna@example.com',
+      firstName: 'Anna',
+      lastName: 'Updated',
+      role: 'USER',
+      householdId: null,
+      householdName: null,
+      roommateId: null
+    };
+
+    service.updateCurrentUserProfile(update).subscribe(response => {
+      expect(response).toEqual(profile);
+    });
+
+    const request = httpTestingController.expectOne(`${backendUri}/users/me`);
+    expect(request.request.method).toBe('PATCH');
+    expect(request.request.body).toEqual(update);
+
+    request.flush(profile);
+  });
+
+  it('should delete the current household membership', () => {
+    const profile = {
+      id: 5,
+      email: 'anna@example.com',
+      firstName: 'Anna',
+      lastName: 'Berger',
+      role: 'USER',
+      householdId: null,
+      householdName: null,
+      roommateId: null
+    };
+
+    service.leaveCurrentHousehold().subscribe(response => {
+      expect(response).toEqual(profile);
+    });
+
+    const request = httpTestingController.expectOne(`${backendUri}/users/me/household`);
+    expect(request.request.method).toBe('DELETE');
+
+    request.flush(profile);
+  });
+
+  it('should get my data export', () => {
+    const exportData = {
+      generatedAt: '2026-06-05T12:00:00Z',
+      account: {
+        id: 5,
+        email: 'anna@example.com',
+        firstName: 'Anna',
+        lastName: 'Berger',
+        role: 'USER',
+        termsAcceptedAt: null,
+        termsVersion: null,
+        privacyAcknowledgedAt: null,
+        privacyVersion: null
+      },
+      householdMembership: null,
+      tasks: [],
+      cleaningSchedules: [],
+      expenses: [],
+      payments: [],
+      shoppingItems: [],
+      history: {}
+    };
+
+    service.getMyDataExport().subscribe(response => {
+      expect(response).toEqual(exportData);
+    });
+
+    const request = httpTestingController.expectOne(`${backendUri}/users/me/export`);
+    expect(request.request.method).toBe('GET');
+
+    request.flush(exportData);
+  });
+
+  it('should delete the current user profile for anonymization', () => {
+    service.anonymizeCurrentUser().subscribe(response => {
+      expect(response).toBeNull();
+    });
+
+    const request = httpTestingController.expectOne(`${backendUri}/users/me`);
+    expect(request.request.method).toBe('DELETE');
+
+    request.flush(null);
   });
 
   it('should remove auth token on logout', () => {

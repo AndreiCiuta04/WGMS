@@ -1,5 +1,8 @@
 import { Component } from '@angular/core';
+import { NgbOffcanvas } from '@ng-bootstrap/ng-bootstrap';
 import { AuthService } from '../../services/auth.service';
+import { NAV_ITEMS } from '../../global/nav-items';
+import { MobileNavMenuComponent } from '../mobile-nav-menu/mobile-nav-menu.component';
 
 @Component({
   selector: 'app-bottom-tab-bar',
@@ -9,5 +12,14 @@ import { AuthService } from '../../services/auth.service';
 })
 export class BottomTabBarComponent {
 
-  constructor(public authService: AuthService) { }
+  primaryItems = NAV_ITEMS.filter(item => item.primaryMobile);
+
+  constructor(public authService: AuthService, private offcanvas: NgbOffcanvas) { }
+
+  openMore(): void {
+    this.offcanvas.open(MobileNavMenuComponent, {
+      position: 'bottom',
+      panelClass: 'mobile-nav-sheet-panel'
+    });
+  }
 }

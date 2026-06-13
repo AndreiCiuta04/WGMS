@@ -40,6 +40,7 @@ describe('UC-01 New User Creates WG and Invites Roommate E2E', () => {
       cy.get('input[formcontrolname="lastName"]').clear().type(roommate.lastName);
       cy.get('input[formcontrolname="email"]').should('have.value', roommate.email);
       cy.get('input[formcontrolname="password"]').clear().type(roommate.password);
+      cy.get('input[formcontrolname="termsAccepted"]').check();
       cy.contains('button', 'Register & Join WG').click();
       cy.contains('You have successfully joined the household!').should('be.visible');
       cy.location('hash', { timeout: 3000 }).should('eq', '#/');

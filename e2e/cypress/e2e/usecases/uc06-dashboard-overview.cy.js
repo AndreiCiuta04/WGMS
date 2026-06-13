@@ -22,7 +22,10 @@ function registerViaApi(user) {
   return cy.request({
     method: 'POST',
     url: `${apiUrl}/users`,
-    body: user
+    body: {
+      ...user,
+      termsAccepted: true
+    }
   }).then((response) => {
     expect(response.status).to.be.oneOf([200, 201]);
     return String(response.body);
@@ -197,7 +200,8 @@ describe('UC-06 Dashboard Overview After Household Activity E2E', () => {
       })
         .then(() => createShoppingItem(ownerToken, {
           name: shoppingName,
-          quantity: '2 l',
+          quantityAmount: 2,
+          quantityUnit: 'LITER',
           notes: 'UC-06 dashboard shopping item',
           visibility: 'SHARED'
         }))

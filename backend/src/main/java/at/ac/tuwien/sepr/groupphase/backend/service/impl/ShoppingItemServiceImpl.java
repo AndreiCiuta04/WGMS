@@ -12,6 +12,7 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionV
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.mapper.ShoppingItemMapper;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
+import at.ac.tuwien.sepr.groupphase.backend.entity.QuantityUnit;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItem;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItemStatus;
@@ -31,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.invoke.MethodHandles;
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ArrayList;
@@ -71,7 +73,9 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
 
         ShoppingItem item = new ShoppingItem();
         item.setName(dto.name());
-        item.setQuantity(dto.quantity());
+        item.setQuantityCount(dto.quantityCount());
+        item.setQuantityAmount(dto.quantityAmount());
+        item.setQuantityUnit(dto.quantityUnit());
         item.setNotes(dto.notes());
         item.setStatus(ShoppingItemStatus.NEEDED);
         item.setVisibility(dto.visibility());
@@ -128,7 +132,9 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
             dto.visibility(), dto.targetUserEmail(), currentUser, item.getHousehold(), item.getTargetUser());
 
         item.setName(dto.name());
-        item.setQuantity(dto.quantity());
+        item.setQuantityCount(dto.quantityCount());
+        item.setQuantityAmount(dto.quantityAmount());
+        item.setQuantityUnit(dto.quantityUnit());
         item.setNotes(dto.notes());
         item.setVisibility(dto.visibility());
         item.setTargetUser(target);
@@ -172,7 +178,11 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
 
         LinkedHashMap<AggregationKey, List<ShoppingItem>> groupedItems = sharedNeededItems.stream()
             .collect(java.util.stream.Collectors.groupingBy(
-                item -> new AggregationKey(normalize(item.getName()), normalize(item.getQuantity())),
+                item -> new AggregationKey(
+                    normalize(item.getName()),
+                    item.getQuantityCount(),
+                    normalizeAmount(item.getQuantityAmount()),
+                    item.getQuantityUnit()),
                 LinkedHashMap::new,
                 java.util.stream.Collectors.toList()
             ));
@@ -462,7 +472,9 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
 
         return new AggregatedShoppingItemDto(
             cleanDisplayValue(representative.getName()),
-            cleanDisplayValue(representative.getQuantity()),
+            representative.getQuantityCount(),
+            representative.getQuantityAmount(),
+            representative.getQuantityUnit(),
             items.size(),
             sourceItems
         );
@@ -480,7 +492,9 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         return new AggregatedShoppingItemSourceDto(
             item.getId(),
             item.getName(),
-            item.getQuantity(),
+            item.getQuantityCount(),
+            item.getQuantityAmount(),
+            item.getQuantityUnit(),
             item.getNotes(),
             item.getCreatedBy().getId(),
             item.getCreatedBy().getEmail(),
@@ -489,15 +503,6 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
             item.getCreatedAt()
         );
     }
-
-    private String normalize(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
-    }
-
-    private record AggregationKey(String normalizedName, String normalizedQuantity) {}
 
     private ShoppingItem loadAndAuthorizeSuggestion(Long id, ApplicationUser currentUser) {
         Roommate roommate = requireActiveRoommate(currentUser);
@@ -564,4 +569,20 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
             item.getUpdatedAt()
         );
     }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+    }
+
+
+
+    /** Strips trailing zeros so amounts like 3 and 3.0 aggregate as equal. */
+    private BigDecimal normalizeAmount(BigDecimal value) {
+        return value == null ? null : value.stripTrailingZeros();
+    }
+
+    private record AggregationKey(String normalizedName, Integer count, BigDecimal amount, QuantityUnit unit) {}
 }

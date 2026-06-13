@@ -133,7 +133,8 @@ describe('InvitationAcceptComponent', () => {
       firstName: 'Anna',
       lastName: 'Berger',
       email: 'friend@example.com',
-      password: 'Password123!'
+      password: 'Password123!',
+      termsAccepted: true
     });
 
     component.registerAndAccept();
@@ -142,7 +143,8 @@ describe('InvitationAcceptComponent', () => {
       firstName: 'Anna',
       lastName: 'Berger',
       email: 'friend@example.com',
-      password: 'Password123!'
+      password: 'Password123!',
+      termsAccepted: true
     });
     expect(invitationService.acceptInvitation).toHaveBeenCalledOnceWith('invite-token-123');
   });
@@ -153,7 +155,8 @@ describe('InvitationAcceptComponent', () => {
       firstName: '',
       lastName: 'Berger',
       email: 'friend@example.com',
-      password: 'Password123!'
+      password: 'Password123!',
+      termsAccepted: true
     });
 
     component.registerAndAccept();

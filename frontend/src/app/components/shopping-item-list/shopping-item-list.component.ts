@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { ShoppingItemService } from '../../services/shopping-item.service';
 import { AggregatedShoppingItemDto, ShoppingItemDto, ShoppingItemStatus, ShoppingItemSuggestionDto, ShoppingItemVisibility } from '../../dtos/shopping-item';
+import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 
 @Component({
   selector: 'app-shopping-item-list',
@@ -35,7 +36,10 @@ export class ShoppingItemListComponent implements OnInit {
   ShoppingItemStatus = ShoppingItemStatus;
   ShoppingItemVisibility = ShoppingItemVisibility;
 
-  constructor(private shoppingItemService: ShoppingItemService) { }
+  constructor(
+    private shoppingItemService: ShoppingItemService,
+    private confirmDialog: ConfirmDialogService
+  ) { }
 
   ngOnInit(): void {
     this.loadItems();
@@ -117,7 +121,15 @@ export class ShoppingItemListComponent implements OnInit {
   }
 
   deleteItem(item: ShoppingItemDto) {
-    if (confirm('Are you sure you want to delete this shopping item?')) {
+    this.confirmDialog.confirm({
+      title: 'Delete item?',
+      message: `"${item.name}" will be permanently removed from the shopping list.`,
+      confirmLabel: 'Delete',
+      danger: true
+    }).then(confirmed => {
+      if (!confirmed) {
+        return;
+      }
       this.actionError = null;
       this.shoppingItemService.delete(item.id).subscribe({
         next: () => {
@@ -129,7 +141,7 @@ export class ShoppingItemListComponent implements OnInit {
           this.actionError = this.extractError(err, 'Failed to delete the shopping item.');
         }
       });
-    }
+    });
   }
 
   createSuggestion(): void {

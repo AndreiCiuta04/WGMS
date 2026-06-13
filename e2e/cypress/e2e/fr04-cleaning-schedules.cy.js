@@ -28,8 +28,7 @@ function registerUser(user) {
       email: user.email,
       password: user.password,
       firstName: user.firstName,
-      lastName: user.lastName
-    }
+      lastName: user.lastName, termsAccepted: true }
   });
 }
 
@@ -257,9 +256,9 @@ describe('FR-04 Cleaning Schedules E2E', () => {
       cy.contains('Paused').should('not.exist');
     });
 
-    cy.on('window:confirm', () => true);
     cy.intercept('DELETE', '**/api/v1/cleaning-schedules/*').as('deleteScheduleRequest');
     cy.contains('.manage-item', updatedTitle).find('button[title="Delete"]').click();
+    cy.confirmDialog();
     cy.wait('@deleteScheduleRequest').its('response.statusCode').should('eq', 204);
     cy.contains(updatedTitle).should('not.exist');
 
@@ -274,6 +273,7 @@ describe('FR-04 Cleaning Schedules E2E', () => {
     cy.visit('/#/cleaning-schedules');
     cy.contains('.manage-header', 'Manage Schedules').click();
     cy.contains('.manage-item', dueTitle).find('button[title="Delete"]').click();
+    cy.confirmDialog();
     cy.wait('@deleteScheduleRequest').its('response.statusCode').should('eq', 409);
     cy.contains(/open tasks|complete or cancel|generated tasks|Cannot delete|Pause it|Request conflicts|conflict/i).should('be.visible');
   });

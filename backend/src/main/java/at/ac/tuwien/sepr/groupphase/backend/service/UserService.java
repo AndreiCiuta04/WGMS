@@ -1,6 +1,8 @@
 package at.ac.tuwien.sepr.groupphase.backend.service;
 
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserLoginDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserProfileDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserProfileUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -28,6 +30,38 @@ public interface UserService extends UserDetailsService {
      * @return a application user
      */
     ApplicationUser findApplicationUserByEmail(String email);
+
+    /**
+     * Get safe profile/account data for the authenticated user.
+     *
+     * @param email email from the authenticated principal
+     * @return profile data safe to return to the user
+     */
+    UserProfileDto getCurrentUserProfile(String email);
+
+    /**
+     * Correct editable profile fields for the authenticated user.
+     *
+     * @param email email from the authenticated principal
+     * @param userProfileUpdateDto new editable profile data
+     * @return updated safe profile data
+     */
+    UserProfileDto updateCurrentUserProfile(String email, UserProfileUpdateDto userProfileUpdateDto);
+
+    /**
+     * Anonymize the authenticated user's account while preserving historical domain records.
+     *
+     * @param email email from the authenticated principal
+     */
+    void anonymizeCurrentUser(String email);
+
+    /**
+     * Leave the authenticated user's current active household membership.
+     *
+     * @param email email from the authenticated principal
+     * @return updated safe profile data
+     */
+    UserProfileDto leaveCurrentHousehold(String email);
 
     /**
      * Log in a user.

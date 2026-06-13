@@ -9,7 +9,7 @@ function registerUser(email, firstName, lastName) {
   return cy.request({
     method: 'POST',
     url: `${apiUrl}/users`,
-    body: { email, password, firstName, lastName },
+    body: { email, password, firstName, lastName, termsAccepted: true },
   }).then((response) => String(response.body));
 }
 
@@ -132,7 +132,7 @@ describe('FR-05 Shared Expenses E2E', () => {
         .click();
       cy.contains('Delete expense?').should('be.visible');
       cy.intercept('DELETE', '**/api/v1/expenses/*').as('deleteExpense');
-      cy.contains('.delete-dialog button', 'OK').click();
+      cy.confirmDialog();
       cy.wait('@deleteExpense').its('response.statusCode').should('eq', 204);
       cy.contains('Expense deleted.').should('be.visible');
       cy.contains('QA Cypress Expense Updated').should('not.exist');

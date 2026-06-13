@@ -37,6 +37,7 @@ describe('FR-08 Targeted Shopping Visibility E2E', () => {
       cy.get('input[formcontrolname="firstName"]').clear().type(buyer.firstName);
       cy.get('input[formcontrolname="lastName"]').clear().type(buyer.lastName);
       cy.get('input[formcontrolname="password"]').clear().type(buyer.password);
+      cy.get('input[formcontrolname="termsAccepted"]').check();
       cy.contains('button', 'Register & Join WG').click();
       cy.contains('You have successfully joined the household!').should('be.visible');
       cy.location('hash', { timeout: 3000 }).should('eq', '#/');
@@ -46,7 +47,7 @@ describe('FR-08 Targeted Shopping Visibility E2E', () => {
       cy.visit('/#/shopping-items/create');
       cy.contains('h2', 'Add Shopping Item').should('be.visible');
       cy.get('#name').type(itemName);
-      cy.get('#quantity').type('1 bag');
+      cy.fillShoppingQuantity({ amount: 1, unit: 'PIECE' });
       cy.get('#visibility').select('TARGETED');
       cy.get('#targetUserEmail')
         .find(`option[value="${buyer.email}"]`)

@@ -81,8 +81,21 @@
             }
           </div>
 
+          <div class="mb-4 form-check">
+            <input type="checkbox" formControlName="termsAccepted" class="form-check-input" id="termsAccepted" data-cy="registration-terms-checkbox">
+            <label for="termsAccepted" class="form-check-label caption">
+              I accept the <a routerLink="/terms" (click)="saveDraft()" data-cy="registration-terms-link">Terms and Conditions</a> and acknowledge the
+              <a routerLink="/privacy" (click)="saveDraft()" data-cy="registration-privacy-link">Privacy/Data Usage information</a>.
+            </label>
+            @if (submitted && registerForm.controls.termsAccepted.errors) {
+              <div class="error mt-1">
+                <small class="form-text text-danger" data-cy="registration-terms-error">Terms and privacy acknowledgement must be accepted.</small>
+              </div>
+            }
+          </div>
+
           <div class="text-center">
-            <button type="submit" class="btn btn-primary px-5 py-3 mt-2">Register</button>
+            <button type="submit" class="btn btn-primary px-5 py-3 mt-2" [disabled]="registerForm.invalid" data-cy="registration-submit">Register</button>
           </div>
         </form>
 

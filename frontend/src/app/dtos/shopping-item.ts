@@ -10,9 +10,72 @@ export enum ShoppingItemVisibility {
   SHARED = 'SHARED'
 }
 
+export enum QuantityUnit {
+  MILLILITER = 'MILLILITER',
+  LITER = 'LITER',
+  GRAM = 'GRAM',
+  KILOGRAM = 'KILOGRAM',
+  PIECE = 'PIECE',
+  PACK = 'PACK'
+}
+
+/** Short display symbol for each unit, e.g. LITER -> "L". */
+export const QUANTITY_UNIT_SYMBOL: Record<QuantityUnit, string> = {
+  [QuantityUnit.MILLILITER]: 'ml',
+  [QuantityUnit.LITER]: 'L',
+  [QuantityUnit.GRAM]: 'g',
+  [QuantityUnit.KILOGRAM]: 'kg',
+  [QuantityUnit.PIECE]: 'pcs',
+  [QuantityUnit.PACK]: 'pack'
+};
+
+/** Dropdown options (value + label) for the unit picker. */
+export const QUANTITY_UNIT_OPTIONS: { value: QuantityUnit; label: string }[] = [
+  { value: QuantityUnit.PIECE, label: 'pcs' },
+  { value: QuantityUnit.PACK, label: 'pack' },
+  { value: QuantityUnit.GRAM, label: 'g' },
+  { value: QuantityUnit.KILOGRAM, label: 'kg' },
+  { value: QuantityUnit.MILLILITER, label: 'ml' },
+  { value: QuantityUnit.LITER, label: 'L' }
+];
+
+/** The three structured quantity fields shared by every shopping-item shape. */
+export interface StructuredQuantity {
+  quantityCount?: number | null;
+  quantityAmount?: number | null;
+  quantityUnit?: QuantityUnit | string | null;
+}
+
+/**
+ * Renders a structured quantity as a single human string:
+ * count + amount + unit -> "5 × 3 L", amount + unit -> "3 L",
+ * count only -> "5×", nothing -> "".
+ */
+export function formatQuantity(item: StructuredQuantity | null | undefined): string {
+  if (!item) {
+    return '';
+  }
+  const { quantityCount, quantityAmount, quantityUnit } = item;
+  const symbol = quantityUnit ? (QUANTITY_UNIT_SYMBOL[quantityUnit as QuantityUnit] ?? '') : '';
+
+  let size = '';
+  if (quantityAmount != null) {
+    size = symbol ? `${quantityAmount} ${symbol}` : `${quantityAmount}`;
+  } else if (symbol) {
+    size = symbol;
+  }
+
+  if (quantityCount != null) {
+    return size ? `${quantityCount} × ${size}` : `${quantityCount}×`;
+  }
+  return size;
+}
+
 export interface ShoppingItemCreateDto {
   name: string;
-  quantity?: string | null;
+  quantityCount?: number | null;
+  quantityAmount?: number | null;
+  quantityUnit?: QuantityUnit | null;
   notes?: string | null;
   visibility: ShoppingItemVisibility;
   targetUserEmail?: string | null;
@@ -20,7 +83,9 @@ export interface ShoppingItemCreateDto {
 
 export interface ShoppingItemUpdateDto {
   name: string;
-  quantity?: string | null;
+  quantityCount?: number | null;
+  quantityAmount?: number | null;
+  quantityUnit?: QuantityUnit | null;
   notes?: string | null;
   visibility: ShoppingItemVisibility;
   targetUserEmail?: string | null;
@@ -33,7 +98,9 @@ export interface ShoppingItemStatusUpdateDto {
 export interface ShoppingItemDto {
   id: number;
   name: string;
-  quantity?: string | null;
+  quantityCount?: number | null;
+  quantityAmount?: number | null;
+  quantityUnit?: QuantityUnit | null;
   notes?: string | null;
   status: ShoppingItemStatus;
   visibility: ShoppingItemVisibility;
@@ -53,7 +120,9 @@ export interface ShoppingItemDto {
 export interface AggregatedShoppingItemSourceDto {
   id: number;
   name: string;
-  quantity?: string | null;
+  quantityCount?: number | null;
+  quantityAmount?: number | null;
+  quantityUnit?: QuantityUnit | null;
   notes?: string | null;
   createdById: number;
   createdByEmail: string;
@@ -64,7 +133,9 @@ export interface AggregatedShoppingItemSourceDto {
 
 export interface AggregatedShoppingItemDto {
   name: string;
-  quantity?: string | null;
+  quantityCount?: number | null;
+  quantityAmount?: number | null;
+  quantityUnit?: QuantityUnit | null;
   itemCount: number;
   sourceItems: AggregatedShoppingItemSourceDto[];
 }

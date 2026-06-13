@@ -49,6 +49,7 @@ describe('FR-03 Task Creation and Assignment E2E', () => {
       cy.get('input[formcontrolname="firstName"]').clear().type(roommate.firstName);
       cy.get('input[formcontrolname="lastName"]').clear().type(roommate.lastName);
       cy.get('input[formcontrolname="password"]').clear().type(roommate.password);
+      cy.get('input[formcontrolname="termsAccepted"]').check();
       cy.contains('button', 'Register & Join WG').click();
       cy.contains('You have successfully joined the household!').should('be.visible');
       cy.location('hash', { timeout: 3000 }).should('eq', '#/');
@@ -69,7 +70,7 @@ describe('FR-03 Task Creation and Assignment E2E', () => {
       cy.intercept('PATCH', '**/api/v1/tasks/*/status').as('completeTask');
       cy.contains('.wgms-card', task.title).contains('button', 'Mark as Done').click();
       cy.wait('@completeTask').its('response.statusCode').should('eq', 200);
-      cy.contains('.wgms-card', task.title).contains('DONE').should('be.visible');
+      cy.contains('.wgms-card', task.title).contains('Done').should('be.visible');
     });
   });
 

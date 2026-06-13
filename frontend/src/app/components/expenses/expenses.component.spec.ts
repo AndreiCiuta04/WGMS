@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { of, throwError } from 'rxjs';
@@ -7,6 +7,7 @@ import { ExpensesComponent } from './expenses.component';
 import { ExpenseService } from '../../services/expense.service';
 import { HouseholdService } from '../../services/household.service';
 import { AuthService } from '../../services/auth.service';
+import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 import { BalanceDto, ExpenseDto, ExpenseSplitCreateDto } from '../../dtos/expense';
 import { Household } from '../../dtos/household';
 import { Roommate } from '../../dtos/roommate';
@@ -17,6 +18,7 @@ describe('ExpensesComponent', () => {
   let expenseService: jasmine.SpyObj<ExpenseService>;
   let householdService: jasmine.SpyObj<HouseholdService>;
   let authService: jasmine.SpyObj<AuthService>;
+  let confirmDialog: jasmine.SpyObj<ConfirmDialogService>;
 
   beforeEach(async () => {
     expenseService = jasmine.createSpyObj<ExpenseService>('ExpenseService', [
@@ -30,6 +32,8 @@ describe('ExpensesComponent', () => {
     ]);
     householdService = jasmine.createSpyObj<HouseholdService>('HouseholdService', ['getMyHousehold', 'getMembers']);
     authService = jasmine.createSpyObj<AuthService>('AuthService', ['getUserEmail']);
+    confirmDialog = jasmine.createSpyObj<ConfirmDialogService>('ConfirmDialogService', ['confirm']);
+    confirmDialog.confirm.and.returnValue(Promise.resolve(true));
 
     householdService.getMyHousehold.and.returnValue(of(household()));
     householdService.getMembers.and.returnValue(of(roommates()));
@@ -50,7 +54,8 @@ describe('ExpensesComponent', () => {
       providers: [
         { provide: ExpenseService, useValue: expenseService },
         { provide: HouseholdService, useValue: householdService },
-        { provide: AuthService, useValue: authService }
+        { provide: AuthService, useValue: authService },
+        { provide: ConfirmDialogService, useValue: confirmDialog }
       ],
       schemas: [NO_ERRORS_SCHEMA]
     }).compileComponents();
@@ -258,40 +263,40 @@ describe('ExpensesComponent', () => {
     expect(expenseService.calculateBalances).toHaveBeenCalledTimes(1);
   });
 
-  it('should set pending delete and cancel delete', () => {
+  it('should not delete when the confirmation dialog is cancelled', fakeAsync(() => {
     fixture.detectChanges();
+    confirmDialog.confirm.and.returnValue(Promise.resolve(false));
 
     component.deleteExpense(expense());
-    expect(component.expensePendingDelete?.id).toBe(1);
+    tick();
 
-    component.cancelDelete();
-    expect(component.expensePendingDelete).toBeNull();
-  });
+    expect(confirmDialog.confirm).toHaveBeenCalled();
+    expect(expenseService.delete).not.toHaveBeenCalled();
+  }));
 
-  it('should delete pending expense and refresh expenses and balances', () => {
+  it('should delete the expense and refresh expenses and balances when confirmed', fakeAsync(() => {
     fixture.detectChanges();
-    component.deleteExpense(expense());
     expenseService.findAll.calls.reset();
     expenseService.calculateBalances.calls.reset();
 
-    component.confirmDelete();
+    component.deleteExpense(expense());
+    tick();
 
     expect(expenseService.delete).toHaveBeenCalledOnceWith(1);
     expect(component.successMessage).toBe('Expense deleted.');
-    expect(component.expensePendingDelete).toBeNull();
     expect(expenseService.findAll).toHaveBeenCalledTimes(1);
     expect(expenseService.calculateBalances).toHaveBeenCalledTimes(1);
-  });
+  }));
 
-  it('should show readable delete error', () => {
+  it('should show readable delete error', fakeAsync(() => {
     fixture.detectChanges();
     expenseService.delete.and.returnValue(throwError(() => ({ error: 'Delete forbidden.' })));
-    component.deleteExpense(expense());
 
-    component.confirmDelete();
+    component.deleteExpense(expense());
+    tick();
 
     expect(component.errorMessage).toBe('Delete forbidden.');
-  });
+  }));
 
   it('should handle no-household load error gracefully', () => {
     householdService.getMyHousehold.and.returnValue(throwError(() => ({ status: 403 })));

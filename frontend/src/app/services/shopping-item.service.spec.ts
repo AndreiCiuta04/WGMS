@@ -9,7 +9,8 @@ import {
   ShoppingItemSuggestionCreateDto,
   ShoppingItemSuggestionDto,
   ShoppingItemUpdateDto,
-  ShoppingItemVisibility
+  ShoppingItemVisibility,
+  QuantityUnit
 } from '../dtos/shopping-item';
 import { Globals } from '../global/globals';
 
@@ -19,7 +20,7 @@ describe('ShoppingItemService', () => {
   let globals: Globals;
 
   const sampleItem: ShoppingItemDto = {
-    id: 1, name: 'Milk', quantity: '2L', notes: null,
+    id: 1, name: 'Milk', quantityCount: null, quantityAmount: 2, quantityUnit: QuantityUnit.LITER, notes: null,
     status: ShoppingItemStatus.NEEDED, visibility: ShoppingItemVisibility.PERSONAL,
     householdId: 10, createdById: 100,
     createdByEmail: 'a@test.com', createdByFirstName: 'A', createdByLastName: 'B',
@@ -94,12 +95,12 @@ describe('ShoppingItemService', () => {
   it('findAggregatedHouseholdShoppingList() should issue GET to /shopping-items/aggregated without identity parameters', () => {
     const aggregatedItems = [{
       name: 'Milk',
-      quantity: '2L',
+      quantityCount: null, quantityAmount: 2, quantityUnit: QuantityUnit.LITER,
       itemCount: 2,
       sourceItems: [{
         id: 1,
         name: 'Milk',
-        quantity: '2L',
+        quantityCount: null, quantityAmount: 2, quantityUnit: QuantityUnit.LITER,
         notes: null,
         createdById: 100,
         createdByEmail: 'a@test.com',
@@ -149,7 +150,7 @@ describe('ShoppingItemService', () => {
 
   it('create() should issue POST with the dto body', () => {
     const dto: ShoppingItemCreateDto = {
-      name: 'Bread', quantity: '1', notes: undefined,
+      name: 'Bread', quantityAmount: 1, notes: undefined,
       visibility: ShoppingItemVisibility.PERSONAL, targetUserEmail: undefined
     };
     service.create(dto).subscribe(item => expect(item.name).toBe('Milk'));
@@ -175,7 +176,7 @@ describe('ShoppingItemService', () => {
 
   it('update() should issue PUT to /shopping-items/{id}', () => {
     const dto: ShoppingItemUpdateDto = {
-      name: 'Milk 2L', quantity: '2L', notes: 'whole',
+      name: 'Milk 2L', quantityAmount: 2, quantityUnit: QuantityUnit.LITER, notes: 'whole',
       visibility: ShoppingItemVisibility.SHARED, targetUserEmail: undefined
     };
     service.update(1, dto).subscribe();

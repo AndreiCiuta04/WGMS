@@ -21,12 +21,22 @@ import {CleaningScheduleCreateComponent} from './components/cleaning-schedule-cr
 import {CleaningScheduleEditComponent} from './components/cleaning-schedule-edit/cleaning-schedule-edit.component';
 import {HistoryComponent} from './components/history/history.component';
 import {PaymentStatusComponent} from './components/payment-status/payment-status.component';
+import {ProfileComponent} from './components/profile/profile.component';
+import {ProfileEditComponent} from './components/profile-edit/profile-edit.component';
+import {PrivacyComponent} from './components/privacy/privacy.component';
+import {TermsComponent} from './components/terms/terms.component';
+import {LegalComponent} from './components/legal/legal.component';
 
 const routes: Routes = [
   {path: '', component: HomeComponent},
   {path: 'login', component: LoginComponent},
   {path: 'register', component: RegisterComponent},
+  {path: 'privacy', component: PrivacyComponent},
+  {path: 'terms', component: TermsComponent},
+  {path: 'legal', component: LegalComponent},
   {path: 'message', canActivate: mapToCanActivate([AuthGuard]), component: MessageComponent},
+  {path: 'profile', component: ProfileComponent, canActivate: mapToCanActivate([AuthGuard])},
+  {path: 'profile/edit', component: ProfileEditComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'household/create', component: HouseholdCreateComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'household/members', component: HouseholdMembersComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'household/invitations', component: HouseholdInvitationsComponent, canActivate: mapToCanActivate([AuthGuard])},
@@ -37,7 +47,6 @@ const routes: Routes = [
   {path: 'expenses', component: ExpensesComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'payment-status', component: PaymentStatusComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'history', component: HistoryComponent, canActivate: mapToCanActivate([AuthGuard])},
-  {path: 'payment-status', component: PaymentStatusComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'shopping-items', component: ShoppingItemListComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'shopping-items/create', component: ShoppingItemCreateComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'shopping-items/:id/edit', component: ShoppingItemEditComponent, canActivate: mapToCanActivate([AuthGuard])},

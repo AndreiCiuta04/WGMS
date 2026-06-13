@@ -17,6 +17,7 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.UniqueConstraint;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import java.util.HashSet;
@@ -38,8 +39,18 @@ public class ShoppingItem {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(length = 50)
-    private String quantity;
+    /**
+     * Structured quantity: how many of {@link #quantityAmount} {@link #quantityUnit} (e.g. 5 × 3 L). All optional.
+     */
+    @Column(name = "quantity_count")
+    private Integer quantityCount;
+
+    @Column(name = "quantity_amount", precision = 10, scale = 3)
+    private BigDecimal quantityAmount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "quantity_unit", length = 20)
+    private QuantityUnit quantityUnit;
 
     @Column(length = 2000)
     private String notes;
@@ -130,12 +141,28 @@ public class ShoppingItem {
         this.name = name;
     }
 
-    public String getQuantity() {
-        return quantity;
+    public Integer getQuantityCount() {
+        return quantityCount;
     }
 
-    public void setQuantity(String quantity) {
-        this.quantity = quantity;
+    public void setQuantityCount(Integer quantityCount) {
+        this.quantityCount = quantityCount;
+    }
+
+    public BigDecimal getQuantityAmount() {
+        return quantityAmount;
+    }
+
+    public void setQuantityAmount(BigDecimal quantityAmount) {
+        this.quantityAmount = quantityAmount;
+    }
+
+    public QuantityUnit getQuantityUnit() {
+        return quantityUnit;
+    }
+
+    public void setQuantityUnit(QuantityUnit quantityUnit) {
+        this.quantityUnit = quantityUnit;
     }
 
     public String getNotes() {

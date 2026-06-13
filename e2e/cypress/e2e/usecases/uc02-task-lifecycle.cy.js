@@ -45,6 +45,7 @@ describe('UC-02 Household Task Lifecycle E2E', () => {
       cy.get('input[formcontrolname="firstName"]').clear().type(assignee.firstName);
       cy.get('input[formcontrolname="lastName"]').clear().type(assignee.lastName);
       cy.get('input[formcontrolname="password"]').clear().type(assignee.password);
+      cy.get('input[formcontrolname="termsAccepted"]').check();
       cy.contains('button', 'Register & Join WG').click();
       cy.contains('You have successfully joined the household!').should('be.visible');
       cy.location('hash', { timeout: 3000 }).should('eq', '#/');
@@ -59,12 +60,12 @@ describe('UC-02 Household Task Lifecycle E2E', () => {
       cy.contains('.nav-link.active', 'My Tasks').should('be.visible');
       cy.contains('.wgms-card', task.title).should('be.visible');
       cy.contains('.wgms-card', task.title).contains('button', 'Mark as Done').click();
-      cy.contains('.wgms-card', task.title).contains('DONE').should('be.visible');
+      cy.contains('.wgms-card', task.title).contains('Done').should('be.visible');
 
       cy.logoutUser();
       cy.loginUser(owner.email, owner.password);
       cy.visit('/#/tasks');
-      cy.contains('.wgms-card', task.title).contains('DONE').should('be.visible');
+      cy.contains('.wgms-card', task.title).contains('Done').should('be.visible');
 
       cy.visit('/#/history');
       cy.contains('h2', 'History').should('be.visible');

@@ -9,6 +9,7 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionD
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
+import at.ac.tuwien.sepr.groupphase.backend.entity.QuantityUnit;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItem;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItemStatus;
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -94,7 +96,9 @@ public class ShoppingItemServiceTest {
             return new ShoppingItemDto(
                 item.getId(),
                 item.getName(),
-                item.getQuantity(),
+                item.getQuantityCount(),
+                item.getQuantityAmount(),
+                item.getQuantityUnit(),
                 item.getNotes(),
                 item.getStatus(),
                 item.getVisibility(),
@@ -118,7 +122,9 @@ public class ShoppingItemServiceTest {
             return items.stream().map(item -> new ShoppingItemDto(
                 item.getId(),
                 item.getName(),
-                item.getQuantity(),
+                item.getQuantityCount(),
+                item.getQuantityAmount(),
+                item.getQuantityUnit(),
                 item.getNotes(),
                 item.getStatus(),
                 item.getVisibility(),
@@ -147,7 +153,7 @@ public class ShoppingItemServiceTest {
         });
 
         ShoppingItemCreateDto dto = new ShoppingItemCreateDto(
-            "Milk", "2L", "Whole milk", ShoppingItemVisibility.PERSONAL, null);
+            "Milk", null, new BigDecimal("2"), QuantityUnit.LITER, "Whole milk", ShoppingItemVisibility.PERSONAL, null);
 
         ShoppingItemDto result = shoppingItemService.create(dto, user);
 
@@ -164,7 +170,7 @@ public class ShoppingItemServiceTest {
     public void givenUserWithoutHousehold_whenCreate_thenForbidden() {
         when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.empty());
         ShoppingItemCreateDto dto = new ShoppingItemCreateDto(
-            "Milk", null, null, ShoppingItemVisibility.PERSONAL, null);
+            "Milk", null, null, null, null, ShoppingItemVisibility.PERSONAL, null);
         assertThrows(ForbiddenException.class, () -> shoppingItemService.create(dto, user));
     }
 
@@ -180,7 +186,7 @@ public class ShoppingItemServiceTest {
         });
 
         ShoppingItemCreateDto dto = new ShoppingItemCreateDto(
-            "Milk", "2L", null, ShoppingItemVisibility.TARGETED, "other@test.com");
+            "Milk", null, new BigDecimal("2"), QuantityUnit.LITER, null, ShoppingItemVisibility.TARGETED, "other@test.com");
 
         ShoppingItemDto result = shoppingItemService.create(dto, user);
 
@@ -193,7 +199,7 @@ public class ShoppingItemServiceTest {
     public void givenTargetedWithoutTarget_whenCreate_thenValidationException() {
         when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
         ShoppingItemCreateDto dto = new ShoppingItemCreateDto(
-            "Milk", null, null, ShoppingItemVisibility.TARGETED, null);
+            "Milk", null, null, null, null, ShoppingItemVisibility.TARGETED, null);
         assertThrows(ValidationException.class, () -> shoppingItemService.create(dto, user));
     }
 
@@ -201,7 +207,7 @@ public class ShoppingItemServiceTest {
     public void givenSelfTarget_whenCreate_thenConflict() {
         when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
         ShoppingItemCreateDto dto = new ShoppingItemCreateDto(
-            "Milk", null, null, ShoppingItemVisibility.TARGETED, "user@test.com");
+            "Milk", null, null, null, null, ShoppingItemVisibility.TARGETED, "user@test.com");
         assertThrows(ConflictException.class, () -> shoppingItemService.create(dto, user));
     }
 
@@ -211,7 +217,7 @@ public class ShoppingItemServiceTest {
         when(userService.findApplicationUserByEmail("other@test.com")).thenReturn(otherUser);
         when(roommateRepository.existsByUserIdAndHouseholdIdAndActiveTrue(2L, 10L)).thenReturn(false);
         ShoppingItemCreateDto dto = new ShoppingItemCreateDto(
-            "Milk", null, null, ShoppingItemVisibility.TARGETED, "other@test.com");
+            "Milk", null, null, null, null, ShoppingItemVisibility.TARGETED, "other@test.com");
         assertThrows(ConflictException.class, () -> shoppingItemService.create(dto, user));
     }
 
@@ -301,18 +307,22 @@ public class ShoppingItemServiceTest {
     }
 
     @Test
-    public void givenSharedNeededItems_whenFindAggregatedHouseholdShoppingList_thenGroupsByNormalizedNameAndQuantity() {
+    public void givenSharedNeededItems_whenFindAggregatedHouseholdShoppingList_thenGroupsByNormalizedNameAndStructuredQuantity() {
         ShoppingItem milkA = sampleItem(1L, ShoppingItemVisibility.SHARED);
         milkA.setName("Milk");
-        milkA.setQuantity("2L");
+        milkA.setQuantityAmount(new BigDecimal("2"));
+        milkA.setQuantityUnit(QuantityUnit.LITER);
 
+        // Same quantity typed as 2.0 with a name that differs only in case/whitespace — must still merge.
         ShoppingItem milkB = sampleItem(2L, ShoppingItemVisibility.SHARED);
         milkB.setName(" milk ");
-        milkB.setQuantity(" 2L ");
+        milkB.setQuantityAmount(new BigDecimal("2.0"));
+        milkB.setQuantityUnit(QuantityUnit.LITER);
 
         ShoppingItem bread = sampleItem(3L, ShoppingItemVisibility.SHARED);
         bread.setName("Bread");
-        bread.setQuantity("1 pack");
+        bread.setQuantityAmount(new BigDecimal("1"));
+        bread.setQuantityUnit(QuantityUnit.PACK);
 
         when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
         when(shoppingItemRepository.findAllByHouseholdIdAndVisibilityAndStatusAndSuggestedFalseOrderByCreatedAtDesc(
@@ -742,7 +752,8 @@ public class ShoppingItemServiceTest {
         ShoppingItem item = new ShoppingItem();
         item.setId(id);
         item.setName("Milk");
-        item.setQuantity("2L");
+        item.setQuantityAmount(new BigDecimal("2"));
+        item.setQuantityUnit(QuantityUnit.LITER);
         item.setStatus(ShoppingItemStatus.NEEDED);
         item.setVisibility(visibility);
         item.setHousehold(household);
