@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { ExpenseService } from '../../services/expense.service';
@@ -6,6 +6,7 @@ import { HouseholdService } from '../../services/household.service';
 import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 import { BalanceDto, ExpenseCreateDto, ExpenseDto, ExpenseSplitCreateDto } from '../../dtos/expense';
 import { Roommate } from '../../dtos/roommate';
+import { ReceiptOcrService } from '../../services/receipt-ocr.service';
 
 interface SplitRow {
   roommate: Roommate;
@@ -19,9 +20,10 @@ interface SplitRow {
   styleUrls: ['./expenses.component.scss'],
   standalone: false
 })
-export class ExpensesComponent implements OnInit {
+export class ExpensesComponent implements OnInit, OnDestroy {
 
   expenseForm: FormGroup;
+  billForm: FormGroup;
   expenses: ExpenseDto[] = [];
   balances: BalanceDto[] = [];
   roommates: Roommate[] = [];
@@ -29,7 +31,15 @@ export class ExpensesComponent implements OnInit {
   currentRoommate: Roommate | null = null;
   editingExpense: ExpenseDto | null = null;
   submitted = false;
+  billSubmitted = false;
+  @ViewChild('receiptVideo') receiptVideoRef!: ElementRef<HTMLVideoElement>;
+
   isSaving = false;
+  isPreviewingBill = false;
+  isScanningReceipt = false;
+  isCameraActive = false;
+  billCalculatorOpen = false;
+  videoStream: MediaStream | null = null;
   errorMessage = '';
   successMessage = '';
 
@@ -38,9 +48,15 @@ export class ExpensesComponent implements OnInit {
     private expenseService: ExpenseService,
     private householdService: HouseholdService,
     private authService: AuthService,
+    private receiptOcrService: ReceiptOcrService,
     private confirmDialog: ConfirmDialogService
   ) {
     this.expenseForm = this.formBuilder.group({
+      description: ['', [Validators.required, Validators.maxLength(500)]],
+      totalAmount: ['', [Validators.required]],
+      date: [this.today(), [Validators.required]]
+    });
+    this.billForm = this.formBuilder.group({
       description: ['', [Validators.required, Validators.maxLength(500)]],
       totalAmount: ['', [Validators.required]],
       date: [this.today(), [Validators.required]]
@@ -101,6 +117,142 @@ export class ExpensesComponent implements OnInit {
       next: splits => this.applyCalculatedSplits(splits),
       error: err => this.errorMessage = this.extractErrorMessage(err, 'Could not calculate equal split.')
     });
+  }
+
+  toggleBillCalculator(): void {
+    this.clearMessages();
+    if (this.billCalculatorOpen) {
+      this.closeBillCalculator();
+      return;
+    }
+    this.billCalculatorOpen = true;
+    if (!this.billForm.get('date')?.value) {
+      this.billForm.patchValue({ date: this.today() });
+    }
+  }
+
+  private closeBillCalculator(): void {
+    this.stopCamera();
+    this.billCalculatorOpen = false;
+  }
+
+  previewBillExpense(): void {
+    if (this.isPreviewingBill || this.editingExpense) {
+      return;
+    }
+
+    this.billSubmitted = true;
+    this.clearMessages();
+
+    const totalAmount = this.parseAmount(this.billForm.get('totalAmount')?.value);
+    const participantRoommateIds = this.selectedRows().map(row => row.roommate.id);
+
+    if (this.billForm.invalid || totalAmount === null || totalAmount <= 0 || participantRoommateIds.length === 0) {
+      this.errorMessage = 'Enter bill data and select at least one participant.';
+      return;
+    }
+
+    this.isPreviewingBill = true;
+    this.expenseService.previewBillExpense({
+      description: this.billForm.get('description')?.value,
+      totalAmount,
+      date: this.billForm.get('date')?.value,
+      participantRoommateIds
+    }).subscribe({
+      next: preview => {
+        this.expenseForm.patchValue({
+          description: preview.description,
+          totalAmount: this.formatAmount(preview.totalAmount),
+          date: preview.date
+        });
+        this.applyCalculatedSplits(preview.splits);
+        this.successMessage = 'Bill data ready for review.';
+        this.closeBillCalculator();
+        this.submitted = false;
+      },
+      error: err => {
+        this.errorMessage = this.extractErrorMessage(err, 'Could not prepare bill data.');
+        this.isPreviewingBill = false;
+      },
+      complete: () => this.isPreviewingBill = false
+    });
+  }
+
+  async startCamera(): Promise<void> {
+    this.clearMessages();
+    try {
+      this.videoStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } }
+      });
+      this.isCameraActive = true;
+      setTimeout(() => {
+        const video = this.receiptVideoRef?.nativeElement;
+        if (video) {
+          video.srcObject = this.videoStream;
+        }
+      }, 0);
+    } catch {
+      this.errorMessage = 'Camera not accessible. Allow camera permission in browser.';
+    }
+  }
+
+  stopCamera(): void {
+    this.videoStream?.getTracks().forEach(t => t.stop());
+    this.videoStream = null;
+    this.isCameraActive = false;
+  }
+
+  captureAndScan(): void {
+    const video = this.receiptVideoRef?.nativeElement;
+    if (!video) {
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      this.errorMessage = 'Could not capture the camera frame. Enter the bill data manually.';
+      return;
+    }
+    context.drawImage(video, 0, 0);
+
+    this.stopCamera();
+    this.isScanningReceipt = true;
+    this.clearMessages();
+
+    this.receiptOcrService.scanCanvas(canvas)
+      .then(draft => {
+        this.billForm.patchValue({
+          description: draft.description,
+          totalAmount: draft.totalAmount !== null ? this.formatAmount(draft.totalAmount) : '',
+          date: draft.date
+        });
+        this.successMessage = draft.totalAmount !== null
+          ? 'Receipt scanned. Review the extracted bill data.'
+          : 'Receipt scanned, but no amount was found. Enter the bill total manually.';
+      })
+      .catch(() => {
+        this.errorMessage = 'Could not scan the receipt. Enter the bill data manually.';
+      })
+      .finally(() => {
+        this.isScanningReceipt = false;
+      });
+  }
+
+  resetBillCalculator(): void {
+    this.billSubmitted = false;
+    this.stopCamera();
+    this.billForm.reset({
+      description: '',
+      totalAmount: '',
+      date: this.today()
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.stopCamera();
   }
 
   submit(): void {
@@ -212,6 +364,7 @@ export class ExpensesComponent implements OnInit {
       selected: this.currentRoommate?.id === roommate.id,
       amountOwed: null
     }));
+    this.resetBillCalculator();
   }
 
   updateSplitSelection(row: SplitRow, selected: boolean): void {
@@ -228,6 +381,13 @@ export class ExpensesComponent implements OnInit {
     const amount = this.parseAmount(this.expenseForm.get('totalAmount')?.value);
     if (amount !== null) {
       this.expenseForm.patchValue({totalAmount: this.formatAmount(amount)});
+    }
+  }
+
+  normalizeBillAmount(): void {
+    const amount = this.parseAmount(this.billForm.get('totalAmount')?.value);
+    if (amount !== null) {
+      this.billForm.patchValue({totalAmount: this.formatAmount(amount)});
     }
   }
 

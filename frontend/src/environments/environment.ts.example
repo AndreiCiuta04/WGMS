@@ -1,0 +1,4 @@
+export const environment = {
+  production: false,
+  googleVisionApiKey: "YOUR_GOOGLE_VISION_API_KEY"
+};

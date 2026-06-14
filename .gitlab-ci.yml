@@ -24,6 +24,12 @@ test-frontend:
   image: node:24
   script:
     - cd frontend
+    # FR-14 needs src/environments/environment.ts at build time, but it is gitignored
+    # (it can hold the Google Vision key). Generate it from the tracked example and inject
+    # the key from the protected GOOGLE_VISION_API_KEY CI/CD variable when it is set.
+    - cp src/environments/environment.ts.example src/environments/environment.ts
+    - 'if [ -n "${GOOGLE_VISION_API_KEY:-}" ]; then sed -i "s|YOUR_GOOGLE_VISION_API_KEY|${GOOGLE_VISION_API_KEY}|" src/environments/environment.ts; fi'
+    - "sed 's/production: false/production: true/' src/environments/environment.ts > src/environments/environment.prod.ts"
     - npm ci --legacy-peer-deps
     - npm run lint
     - npm run build
@@ -48,6 +54,10 @@ e2e-test:
       --spring.jpa.hibernate.ddl-auto=create
       --logging.file.name=./log/e2e-backend.log &
     - cd ../frontend
+    # Same env-file generation as test-frontend; the dev server (npm start) imports environment.ts.
+    # The FR-14 Cypress spec stubs the Vision API, so the placeholder key is sufficient here.
+    - cp src/environments/environment.ts.example src/environments/environment.ts
+    - 'if [ -n "${GOOGLE_VISION_API_KEY:-}" ]; then sed -i "s|YOUR_GOOGLE_VISION_API_KEY|${GOOGLE_VISION_API_KEY}|" src/environments/environment.ts; fi'
     - npm ci --legacy-peer-deps
     - npm start -- --host 0.0.0.0 --port 4200 &
     - |

@@ -109,15 +109,16 @@ main_menu() {
   echo " 12) FR-12 Dashboard"
   echo " 13) FR-13 History"
   echo " 14) FR-11 Notifications"
+  echo " 15) FR-14 Bill Scanner"
   echo ""
-  echo " 15) All use-case specs"
-  echo " 16) UC-01 Onboarding + Household Invite"
-  echo " 17) UC-02 Task Lifecycle"
-  echo " 18) UC-03 Cleaning Schedule to Task"
-  echo " 19) UC-04 Shopping Collaboration"
-  echo " 20) UC-05 Expense Tracking + Payment Status + History"
-  echo " 21) UC-06 Dashboard Overview"
-  echo " 22) UC-07 Navigation Smoke"
+  echo " 16) All use-case specs"
+  echo " 17) UC-01 Onboarding + Household Invite"
+  echo " 18) UC-02 Task Lifecycle"
+  echo " 19) UC-03 Cleaning Schedule to Task"
+  echo " 20) UC-04 Shopping Collaboration"
+  echo " 21) UC-05 Expense Tracking + Payment Status + History"
+  echo " 22) UC-06 Dashboard Overview"
+  echo " 23) UC-07 Navigation Smoke"
   echo ""
   echo "  q) Quit"
   echo ""
@@ -182,34 +183,38 @@ main_menu() {
       ;;
 
     15)
-      run_selected "All use-case specs" "cypress/e2e/usecases/*.cy.js"
+      run_selected "FR-14 Bill Scanner" "cypress/e2e/fr14-bill-scanner.cy.js"
       ;;
 
     16)
-      run_selected "UC-01 Onboarding + Household Invite" "cypress/e2e/usecases/uc01-onboarding-household.cy.js"
+      run_selected "All use-case specs" "cypress/e2e/usecases/*.cy.js"
       ;;
 
     17)
-      run_selected "UC-02 Task Lifecycle" "cypress/e2e/usecases/uc02-task-lifecycle.cy.js"
+      run_selected "UC-01 Onboarding + Household Invite" "cypress/e2e/usecases/uc01-onboarding-household.cy.js"
       ;;
 
     18)
-      run_selected "UC-03 Cleaning Schedule to Task" "cypress/e2e/usecases/uc03-cleaning-schedule-to-task.cy.js"
+      run_selected "UC-02 Task Lifecycle" "cypress/e2e/usecases/uc02-task-lifecycle.cy.js"
       ;;
 
     19)
-      run_selected "UC-04 Shopping Collaboration" "cypress/e2e/usecases/uc04-shopping-collaboration.cy.js"
+      run_selected "UC-03 Cleaning Schedule to Task" "cypress/e2e/usecases/uc03-cleaning-schedule-to-task.cy.js"
       ;;
 
     20)
-      run_selected "UC-05 Expense Tracking + Payment Status + History" "cypress/e2e/usecases/uc05-expense-history.cy.js"
+      run_selected "UC-04 Shopping Collaboration" "cypress/e2e/usecases/uc04-shopping-collaboration.cy.js"
       ;;
 
     21)
-      run_selected "UC-06 Dashboard Overview" "cypress/e2e/usecases/uc06-dashboard-overview.cy.js"
+      run_selected "UC-05 Expense Tracking + Payment Status + History" "cypress/e2e/usecases/uc05-expense-history.cy.js"
       ;;
 
     22)
+      run_selected "UC-06 Dashboard Overview" "cypress/e2e/usecases/uc06-dashboard-overview.cy.js"
+      ;;
+
+    23)
       run_selected "UC-07 Navigation Smoke" "cypress/e2e/usecases/uc07-navigation-smoke.cy.js"
       ;;
 
