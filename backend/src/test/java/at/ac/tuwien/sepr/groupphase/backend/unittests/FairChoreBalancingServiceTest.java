@@ -22,8 +22,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static at.ac.tuwien.sepr.groupphase.backend.basetest.TestData.MAIN_TENANT_EMAIL;
 import static at.ac.tuwien.sepr.groupphase.backend.basetest.TestData.ROOMMATE_EMAIL;
@@ -34,10 +36,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class FairChoreBalancingServiceTest {
+
+    private static final String BUCKET_A = "NO_OVERDUE_AVAILABLE";
+    private static final String BUCKET_B = "NO_OVERDUE_OVERLOADED";
+    private static final String BUCKET_C = "HAS_OVERDUE";
 
     @Mock
     private UserService userService;
@@ -76,14 +84,16 @@ public class FairChoreBalancingServiceTest {
     }
 
     @Test
-    public void givenNoHistory_whenRecommend_thenAllActiveRoommatesAreCandidatesAndDefaultHistoryDaysIsThirty() {
+    public void givenNoHistory_whenRecommend_thenAllActiveRoommatesAreBucketATiedCandidates() {
         givenCurrentHouseholdTasks(List.of());
 
         FairChoreRecommendationDto recommendation = service.recommendAssignee(MAIN_TENANT_EMAIL, null, "Vacuum", LocalDate.now(), null);
 
         assertAll(
             () -> assertEquals(30, recommendation.historyDays()),
+            () -> assertEquals("HISTORY_BUCKET_SCORE_SEEDED_TIE", recommendation.algorithm()),
             () -> assertEquals(3, recommendation.stats().size()),
+            () -> assertTrue(recommendation.stats().stream().allMatch(stats -> BUCKET_A.equals(stats.fairnessBucket()))),
             () -> assertTrue(recommendation.stats().stream().allMatch(FairChoreRoommateStatsDto::candidate)),
             () -> assertTrue(recommendation.stats().stream().anyMatch(FairChoreRoommateStatsDto::recommended)),
             () -> assertEquals(0.0d, stat(recommendation, MAIN_TENANT_EMAIL).fairnessScore())
@@ -91,13 +101,13 @@ public class FairChoreBalancingServiceTest {
     }
 
     @Test
-    public void givenCompletedOpenAndOverdueTasks_whenRecommend_thenScoresUseWeightsAndOverdueIsNotOpen() {
+    public void givenCompletedOpenAndOverdueTasks_whenRecommend_thenScoresUseExpectedWeightsAndOverdueIsNotOpen() {
         givenCurrentHouseholdTasks(List.of(
             task(household, mainTenant, TaskStatus.DONE, LocalDate.now().minusDays(1), LocalDateTime.now().minusDays(1)),
             task(household, mainTenant, TaskStatus.OPEN, LocalDate.now().plusDays(1), LocalDateTime.now()),
             task(household, roommate, TaskStatus.IN_PROGRESS, LocalDate.now().minusDays(1), LocalDateTime.now()),
             task(household, roommate, TaskStatus.OPEN, LocalDate.now().plusDays(2), LocalDateTime.now()),
-            task(otherHousehold, inactiveUser, TaskStatus.DONE, LocalDate.now().minusDays(1), LocalDateTime.now())
+            task(otherHousehold, mainTenant, TaskStatus.DONE, LocalDate.now().minusDays(1), LocalDateTime.now())
         ));
 
         FairChoreRecommendationDto recommendation = service.recommendAssignee(MAIN_TENANT_EMAIL, 30, "Kitchen", LocalDate.now().plusDays(2), null);
@@ -110,12 +120,15 @@ public class FairChoreBalancingServiceTest {
             () -> assertEquals(1, mainStats.completedTasks()),
             () -> assertEquals(1, mainStats.openTasks()),
             () -> assertEquals(0, mainStats.overdueTasks()),
-            () -> assertEquals(1.5d, mainStats.fairnessScore()),
+            () -> assertEquals(BUCKET_A, mainStats.fairnessBucket()),
+            () -> assertEquals(1.75d, mainStats.fairnessScore()),
             () -> assertEquals(0, roommateStats.completedTasks()),
             () -> assertEquals(1, roommateStats.openTasks()),
             () -> assertEquals(1, roommateStats.overdueTasks()),
-            () -> assertEquals(1.5d, roommateStats.fairnessScore()),
+            () -> assertEquals(BUCKET_C, roommateStats.fairnessBucket()),
+            () -> assertEquals(2.75d, roommateStats.fairnessScore()),
             () -> assertEquals(0.0d, secondStats.fairnessScore()),
+            () -> assertEquals(BUCKET_A, secondStats.fairnessBucket()),
             () -> assertTrue(secondStats.candidate()),
             () -> assertFalse(mainStats.candidate()),
             () -> assertFalse(roommateStats.candidate())
@@ -134,54 +147,169 @@ public class FairChoreBalancingServiceTest {
         assertAll(
             () -> assertEquals(0, stat(recommendation, MAIN_TENANT_EMAIL).completedTasks()),
             () -> assertEquals(1, stat(recommendation, ROOMMATE_EMAIL).openTasks()),
-            () -> assertEquals(0.5d, stat(recommendation, ROOMMATE_EMAIL).fairnessScore())
+            () -> assertEquals(0.75d, stat(recommendation, ROOMMATE_EMAIL).fairnessScore()),
+            () -> assertEquals(BUCKET_A, stat(recommendation, ROOMMATE_EMAIL).fairnessBucket())
         );
     }
 
     @Test
-    public void givenInactiveAndAnonymizedRoommates_whenRecommend_thenTheyAreIgnored() {
+    public void givenBucketAAndBucketBRoommates_whenRecommend_thenBucketAIsPreferredEvenWithHigherScore() {
+        List<Task> tasks = new ArrayList<>();
+        tasks.addAll(doneTasks(mainTenant, 5));
+        tasks.addAll(openTasks(roommate, 3));
+        tasks.addAll(openTasks(secondRoommate, 4));
+        givenCurrentHouseholdTasks(tasks);
+
+        FairChoreRecommendationDto recommendation = service.recommendAssignee(MAIN_TENANT_EMAIL, 30, "Bucket A", LocalDate.now(), null);
+
+        assertAll(
+            () -> assertEquals(BUCKET_A, stat(recommendation, MAIN_TENANT_EMAIL).fairnessBucket()),
+            () -> assertEquals(5.0d, stat(recommendation, MAIN_TENANT_EMAIL).fairnessScore()),
+            () -> assertEquals(BUCKET_B, stat(recommendation, ROOMMATE_EMAIL).fairnessBucket()),
+            () -> assertEquals(2.25d, stat(recommendation, ROOMMATE_EMAIL).fairnessScore()),
+            () -> assertTrue(stat(recommendation, MAIN_TENANT_EMAIL).candidate()),
+            () -> assertTrue(stat(recommendation, MAIN_TENANT_EMAIL).recommended()),
+            () -> assertFalse(stat(recommendation, ROOMMATE_EMAIL).candidate()),
+            () -> assertFalse(stat(recommendation, SECOND_ROOMMATE_EMAIL).candidate())
+        );
+    }
+
+    @Test
+    public void givenBucketBAndBucketCRoommates_whenRecommend_thenBucketBIsPreferredEvenIfBucketCHasLowerScore() {
+        List<Task> tasks = new ArrayList<>();
+        tasks.addAll(openTasks(mainTenant, 3));
+        tasks.add(task(household, roommate, TaskStatus.OPEN, LocalDate.now().minusDays(1), LocalDateTime.now()));
+        tasks.addAll(openTasks(secondRoommate, 4));
+        givenCurrentHouseholdTasks(tasks);
+
+        FairChoreRecommendationDto recommendation = service.recommendAssignee(MAIN_TENANT_EMAIL, 30, "Bucket B", LocalDate.now(), null);
+
+        assertAll(
+            () -> assertEquals(BUCKET_B, stat(recommendation, MAIN_TENANT_EMAIL).fairnessBucket()),
+            () -> assertEquals(2.25d, stat(recommendation, MAIN_TENANT_EMAIL).fairnessScore()),
+            () -> assertEquals(BUCKET_C, stat(recommendation, ROOMMATE_EMAIL).fairnessBucket()),
+            () -> assertEquals(2.0d, stat(recommendation, ROOMMATE_EMAIL).fairnessScore()),
+            () -> assertEquals(BUCKET_B, stat(recommendation, SECOND_ROOMMATE_EMAIL).fairnessBucket()),
+            () -> assertTrue(stat(recommendation, MAIN_TENANT_EMAIL).candidate()),
+            () -> assertTrue(stat(recommendation, MAIN_TENANT_EMAIL).recommended()),
+            () -> assertFalse(stat(recommendation, ROOMMATE_EMAIL).candidate()),
+            () -> assertFalse(stat(recommendation, SECOND_ROOMMATE_EMAIL).candidate())
+        );
+    }
+
+    @Test
+    public void givenExactTie_whenRecommend_thenOnlyMinimumScoreTieGroupIsCandidateAndSameSeedIsStable() {
+        givenCurrentHouseholdTasks(openTasks(secondRoommate, 1));
+
+        FairChoreRecommendationDto first = service.recommendAssignee(MAIN_TENANT_EMAIL, 30, "Tie", LocalDate.now().plusDays(2), null);
+        FairChoreRecommendationDto second = service.recommendAssignee(MAIN_TENANT_EMAIL, 30, "Tie", LocalDate.now().plusDays(2), null);
+
+        Set<String> tiedCandidates = Set.of(MAIN_TENANT_EMAIL, ROOMMATE_EMAIL);
+        FairChoreRoommateStatsDto recommended = first.stats().stream()
+            .filter(FairChoreRoommateStatsDto::recommended)
+            .findFirst()
+            .orElseThrow();
+
+        assertAll(
+            () -> assertEquals(first.recommendedUserId(), second.recommendedUserId()),
+            () -> assertTrue(tiedCandidates.contains(recommended.email())),
+            () -> assertTrue(stat(first, MAIN_TENANT_EMAIL).candidate()),
+            () -> assertTrue(stat(first, ROOMMATE_EMAIL).candidate()),
+            () -> assertFalse(stat(first, SECOND_ROOMMATE_EMAIL).candidate()),
+            () -> assertEquals(0.75d, stat(first, SECOND_ROOMMATE_EMAIL).fairnessScore())
+        );
+    }
+
+    @Test
+    public void givenDifferentSeedContextForExactTie_whenRecommend_thenRecommendationNeverLeavesTieGroup() {
+        givenCurrentHouseholdTasks(openTasks(secondRoommate, 1));
+
+        FairChoreRecommendationDto first = service.recommendAssignee(MAIN_TENANT_EMAIL, 30, "Tie A", LocalDate.now().plusDays(2), null);
+        FairChoreRecommendationDto second = service.recommendAssignee(MAIN_TENANT_EMAIL, 30, "Tie B", LocalDate.now().plusDays(2), null);
+
+        Set<String> tiedCandidates = Set.of(MAIN_TENANT_EMAIL, ROOMMATE_EMAIL);
+
+        assertAll(
+            () -> assertTrue(tiedCandidates.contains(first.recommendedEmail())),
+            () -> assertTrue(tiedCandidates.contains(second.recommendedEmail())),
+            () -> assertFalse(stat(first, SECOND_ROOMMATE_EMAIL).candidate()),
+            () -> assertFalse(stat(second, SECOND_ROOMMATE_EMAIL).candidate())
+        );
+    }
+
+    @Test
+    public void givenExactTie_whenSeedContextChanges_thenDifferentTiedRoommatesCanBeSelected() {
+        givenCurrentHouseholdTasks(openTasks(secondRoommate, 1));
+
+        Set<String> tiedCandidates = Set.of(MAIN_TENANT_EMAIL, ROOMMATE_EMAIL);
+        Set<String> recommendations = new java.util.HashSet<>();
+        for (int i = 0; i < 40; i++) {
+            FairChoreRecommendationDto recommendation = service.recommendAssignee(
+                MAIN_TENANT_EMAIL,
+                30,
+                "Seed context " + i,
+                LocalDate.now().plusDays(2),
+                null
+            );
+            recommendations.add(recommendation.recommendedEmail());
+        }
+
+        assertAll(
+            () -> assertTrue(tiedCandidates.containsAll(recommendations)),
+            () -> assertEquals(2, recommendations.size())
+        );
+    }
+
+    @Test
+    public void givenNonTiedLowestScore_whenRecommend_thenRandomnessDoesNotAffectSelection() {
+        List<Task> tasks = new ArrayList<>();
+        tasks.addAll(openTasks(roommate, 1));
+        tasks.addAll(doneTasks(secondRoommate, 1));
+        givenCurrentHouseholdTasks(tasks);
+
+        FairChoreRecommendationDto recommendation = service.recommendAssignee(MAIN_TENANT_EMAIL, 30, "Non tie", LocalDate.now(), null);
+
+        assertAll(
+            () -> assertTrue(stat(recommendation, MAIN_TENANT_EMAIL).candidate()),
+            () -> assertTrue(stat(recommendation, MAIN_TENANT_EMAIL).recommended()),
+            () -> assertFalse(stat(recommendation, ROOMMATE_EMAIL).candidate()),
+            () -> assertFalse(stat(recommendation, SECOND_ROOMMATE_EMAIL).candidate()),
+            () -> assertEquals(MAIN_TENANT_EMAIL, recommendation.recommendedEmail())
+        );
+    }
+
+    @Test
+    public void givenInactiveAnonymizedAndOtherHouseholdRoommates_whenRecommend_thenTheyAreIgnored() {
         ApplicationUser anonymized = user(5L, "anon@test.com", "Anon", "User");
         anonymized.setAnonymized(true);
         Roommate inactiveMembership = membership(4L, inactiveUser, household, false);
         Roommate anonymizedMembership = membership(5L, anonymized, household, true);
+        Roommate otherHouseholdMembership = membership(6L, inactiveUser, otherHousehold, true);
 
-        when(userService.findApplicationUserByEmail(MAIN_TENANT_EMAIL)).thenReturn(mainTenant);
-        when(roommateRepository.findByUserIdAndActiveTrue(mainTenant.getId())).thenReturn(Optional.of(mainTenantMembership));
-        when(roommateRepository.findAllByHousehold_IdAndActiveTrue(household.getId()))
-            .thenReturn(List.of(mainTenantMembership, roommateMembership, secondRoommateMembership, anonymizedMembership));
-        when(taskRepository.findAllByHousehold_Id(household.getId()))
-            .thenReturn(List.of(task(household, inactiveUser, TaskStatus.OPEN, LocalDate.now(), LocalDateTime.now())));
+        givenCurrentHouseholdData(
+            List.of(mainTenantMembership, roommateMembership, secondRoommateMembership, anonymizedMembership, otherHouseholdMembership),
+            List.of(task(household, inactiveUser, TaskStatus.OPEN, LocalDate.now(), LocalDateTime.now()))
+        );
 
         FairChoreRecommendationDto recommendation = service.recommendAssignee(MAIN_TENANT_EMAIL, 30, "Windows", LocalDate.now(), null);
 
         assertAll(
             () -> assertEquals(3, recommendation.stats().size()),
             () -> assertFalse(recommendation.stats().stream().anyMatch(stats -> "anon@test.com".equals(stats.email()))),
+            () -> assertFalse(recommendation.stats().stream().anyMatch(stats -> "inactive@test.com".equals(stats.email()))),
             () -> assertFalse(inactiveMembership.isActive())
         );
     }
 
     @Test
-    public void givenSameContext_whenRecommendTwice_thenRecommendationIsStable() {
-        givenCurrentHouseholdTasks(List.of());
+    public void givenOtherHouseholdTaskAssignedToCurrentUser_whenRecommend_thenTaskDoesNotAffectScore() {
+        givenCurrentHouseholdTasks(List.of(
+            task(otherHousehold, mainTenant, TaskStatus.DONE, LocalDate.now().minusDays(1), LocalDateTime.now())
+        ));
 
-        FairChoreRecommendationDto first = service.recommendAssignee(MAIN_TENANT_EMAIL, 30, "Kitchen", LocalDate.now().plusDays(2), null);
-        FairChoreRecommendationDto second = service.recommendAssignee(MAIN_TENANT_EMAIL, 30, "Kitchen", LocalDate.now().plusDays(2), null);
+        FairChoreRecommendationDto recommendation = service.recommendAssignee(MAIN_TENANT_EMAIL, 30, "Scoped", LocalDate.now(), null);
 
-        assertEquals(first.recommendedUserId(), second.recommendedUserId());
-    }
-
-    @Test
-    public void givenDifferentContext_whenRecommend_thenRecommendedRoommateStillComesFromCandidatePool() {
-        givenCurrentHouseholdTasks(List.of());
-
-        FairChoreRecommendationDto recommendation = service.recommendAssignee(MAIN_TENANT_EMAIL, 30, "Bathroom", LocalDate.now().plusDays(3), null);
-
-        FairChoreRoommateStatsDto recommended = recommendation.stats().stream()
-            .filter(FairChoreRoommateStatsDto::recommended)
-            .findFirst()
-            .orElseThrow();
-        assertTrue(recommended.candidate());
+        assertEquals(0, stat(recommendation, MAIN_TENANT_EMAIL).completedTasks());
     }
 
     @Test
@@ -190,14 +318,23 @@ public class FairChoreBalancingServiceTest {
         when(roommateRepository.findByUserIdAndActiveTrue(mainTenant.getId())).thenReturn(Optional.of(mainTenantMembership));
 
         assertThrows(ValidationException.class, () -> service.recommendAssignee(MAIN_TENANT_EMAIL, 0, "Kitchen", LocalDate.now(), null));
+        assertThrows(ValidationException.class, () -> service.recommendAssignee(MAIN_TENANT_EMAIL, 366, "Kitchen", LocalDate.now(), null));
     }
 
     private void givenCurrentHouseholdTasks(List<Task> tasks) {
+        givenCurrentHouseholdData(List.of(mainTenantMembership, roommateMembership, secondRoommateMembership), tasks);
+    }
+
+    private void givenCurrentHouseholdData(List<Roommate> memberships, List<Task> tasks) {
         when(userService.findApplicationUserByEmail(MAIN_TENANT_EMAIL)).thenReturn(mainTenant);
         when(roommateRepository.findByUserIdAndActiveTrue(mainTenant.getId())).thenReturn(Optional.of(mainTenantMembership));
-        when(roommateRepository.findAllByHousehold_IdAndActiveTrue(household.getId()))
-            .thenReturn(List.of(mainTenantMembership, roommateMembership, secondRoommateMembership));
-        when(taskRepository.findAllByHousehold_Id(household.getId())).thenReturn(tasks);
+        when(roommateRepository.findAllByHousehold_IdAndActiveTrue(household.getId())).thenReturn(memberships);
+        when(taskRepository.findFairBalancingTasksByHouseholdId(
+            eq(household.getId()),
+            eq(List.of(TaskStatus.OPEN, TaskStatus.IN_PROGRESS)),
+            eq(TaskStatus.DONE),
+            any(LocalDateTime.class)
+        )).thenReturn(tasks);
     }
 
     private FairChoreRoommateStatsDto stat(FairChoreRecommendationDto recommendation, String email) {
@@ -205,6 +342,22 @@ public class FairChoreBalancingServiceTest {
             .filter(stats -> email.equals(stats.email()))
             .findFirst()
             .orElseThrow();
+    }
+
+    private List<Task> doneTasks(ApplicationUser assignedTo, int count) {
+        List<Task> tasks = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            tasks.add(task(household, assignedTo, TaskStatus.DONE, LocalDate.now().minusDays(i + 1), LocalDateTime.now().minusDays(i + 1)));
+        }
+        return tasks;
+    }
+
+    private List<Task> openTasks(ApplicationUser assignedTo, int count) {
+        List<Task> tasks = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            tasks.add(task(household, assignedTo, TaskStatus.OPEN, LocalDate.now().plusDays(i + 1), LocalDateTime.now()));
+        }
+        return tasks;
     }
 
     private ApplicationUser user(Long id, String email, String firstName, String lastName) {

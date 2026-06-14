@@ -61,31 +61,36 @@
             </div>
           </div>
 
-          <div class="fair-chore-suggestion mb-3">
+          <div class="fair-chore-suggestion mb-3" data-cy="fair-chore-suggestion">
             <div class="d-flex justify-content-between align-items-start gap-3">
               <div>
                 <h5 class="mb-1">Fair chore suggestion</h5>
                 @if (recommendationLoading) {
-                  <p class="mb-0 text-muted">Loading suggestion...</p>
+                  <p class="mb-0 text-muted" data-cy="fair-chore-suggestion-loading">Loading suggestion...</p>
                 } @else if (recommendationError) {
-                  <p class="mb-0 text-muted">{{ recommendationError }}</p>
+                  <p class="mb-0 text-muted" data-cy="fair-chore-suggestion-error">{{ recommendationError }}</p>
                 } @else if (recommendation) {
-                  <p class="mb-1">
+                  <p class="mb-1" data-cy="fair-chore-recommendation">
                     <strong>{{ recommendation.recommendedDisplayName }}</strong>
                     <span class="text-muted">({{ recommendation.recommendedEmail }})</span>
                   </p>
-                  <p class="mb-0 text-muted">{{ recommendation.reason }}</p>
+                  <p class="mb-0 text-muted" data-cy="fair-chore-reason">{{ recommendation.reason }}</p>
                 } @else {
-                  <p class="mb-0 text-muted">No suggestion available.</p>
+                  <p class="mb-0 text-muted" data-cy="fair-chore-suggestion-empty">No suggestion available.</p>
                 }
               </div>
               <div class="d-flex gap-2">
-                <button type="button" class="btn btn-outline-secondary btn-sm" (click)="loadFairBalancingRecommendation()">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  data-cy="fair-chore-refresh"
+                  (click)="loadFairBalancingRecommendation()">
                   Refresh
                 </button>
                 <button
                   type="button"
                   class="btn btn-outline-primary btn-sm"
+                  data-cy="fair-chore-use-suggestion"
                   [disabled]="!recommendation?.recommendedEmail"
                   (click)="useSuggestion()">
                   Use suggestion
@@ -95,13 +100,14 @@
 
             @if (recommendation?.stats?.length) {
               <div class="table-responsive mt-3">
-                <table class="table table-sm mb-0">
+                <table class="table table-sm mb-0" data-cy="fair-chore-stats">
                   <thead>
                     <tr>
                       <th>Roommate</th>
                       <th>Done</th>
                       <th>Open</th>
                       <th>Overdue</th>
+                      <th>Bucket</th>
                       <th>Score</th>
                     </tr>
                   </thead>
@@ -117,6 +123,7 @@
                         <td>{{ stat.completedTasks }}</td>
                         <td>{{ stat.openTasks }}</td>
                         <td>{{ stat.overdueTasks }}</td>
+                        <td>{{ stat.fairnessBucket }}</td>
                         <td>{{ stat.fairnessScore }}</td>
                       </tr>
                     }

@@ -31,8 +31,8 @@ import java.util.Random;
 public class FairChoreBalancingServiceImpl implements FairChoreBalancingService {
 
     private static final double COMPLETED_TASK_WEIGHT = 1.0d;
-    private static final double OPEN_TASK_WEIGHT = 0.5d;
-    private static final double OVERDUE_TASK_WEIGHT = 1.0d;
+    private static final double OPEN_TASK_WEIGHT = 0.75d;
+    private static final double OVERDUE_TASK_WEIGHT = 2.0d;
 
     private final UserService userService;
     private final RoommateRepository roommateRepository;
@@ -109,6 +109,7 @@ public class FairChoreBalancingServiceImpl implements FairChoreBalancingService 
     private FairChoreRecommendationDto calculateRecommendation(Household household, int historyDays, String seed) {
         List<Roommate> activeRoommates = roommateRepository.findAllByHousehold_IdAndActiveTrue(household.getId())
             .stream()
+            .filter(roommate -> roommate.getHousehold() != null && Objects.equals(roommate.getHousehold().getId(), household.getId()))
             .filter(roommate -> roommate.getUser() != null && !roommate.getUser().isAnonymized())
             .toList();
 
@@ -118,13 +119,22 @@ public class FairChoreBalancingServiceImpl implements FairChoreBalancingService 
 
         LocalDate today = LocalDate.now();
         LocalDateTime historyStart = today.minusDays(historyDays).atStartOfDay();
-        List<Task> tasks = taskRepository.findAllByHousehold_Id(household.getId());
+        List<Task> tasks = taskRepository.findFairBalancingTasksByHouseholdId(
+            household.getId(),
+            List.of(TaskStatus.OPEN, TaskStatus.IN_PROGRESS),
+            TaskStatus.DONE,
+            historyStart
+        );
 
         List<StatsAccumulator> accumulators = activeRoommates.stream()
             .map(StatsAccumulator::new)
             .toList();
 
         for (Task task : tasks) {
+            if (task.getHousehold() == null || !Objects.equals(task.getHousehold().getId(), household.getId())) {
+                continue;
+            }
+
             if (task.getAssignedTo() == null || task.getAssignedTo().isAnonymized()) {
                 continue;
             }
@@ -154,13 +164,26 @@ public class FairChoreBalancingServiceImpl implements FairChoreBalancingService 
             }
         }
 
+        accumulators.forEach(StatsAccumulator::assignBucket);
+
+        FairnessBucket selectedBucket = List.of(
+                FairnessBucket.NO_OVERDUE_AVAILABLE,
+                FairnessBucket.NO_OVERDUE_OVERLOADED,
+                FairnessBucket.HAS_OVERDUE
+            ).stream()
+            .filter(bucket -> accumulators.stream().anyMatch(stats -> stats.bucket == bucket))
+            .findFirst()
+            .orElseThrow(() -> new ConflictException("Household has no active roommates for fair balancing."));
+
         double minimumScore = accumulators.stream()
+            .filter(stats -> stats.bucket == selectedBucket)
             .mapToDouble(StatsAccumulator::fairnessScore)
             .min()
             .orElse(0.0d);
 
         List<StatsAccumulator> candidates = accumulators.stream()
-            .filter(stats -> stats.fairnessScore() <= minimumScore + FAIRNESS_THRESHOLD)
+            .filter(stats -> stats.bucket == selectedBucket)
+            .filter(stats -> Double.compare(stats.fairnessScore(), minimumScore) == 0)
             .sorted(Comparator.comparing(stats -> stats.roommate.getId()))
             .toList();
 
@@ -181,8 +204,8 @@ public class FairChoreBalancingServiceImpl implements FairChoreBalancingService 
             recommendedUser.getEmail(),
             historyDays,
             ALGORITHM,
-            "Lower scores mean less recent chore burden. The suggestion is selected from roommates within "
-                + FAIRNESS_THRESHOLD + " point of the lowest score using a stable seed.",
+            "Lower scores mean less recent chore burden. The suggestion is selected from the best available bucket ("
+                + selectedBucket.displayName + ") and only exact minimum-score ties use a stable seed.",
             statsDtos
         );
     }
@@ -216,6 +239,7 @@ public class FairChoreBalancingServiceImpl implements FairChoreBalancingService 
             stats.completedTasks,
             stats.openTasks,
             stats.overdueTasks,
+            stats.bucket.apiValue,
             stats.fairnessScore(),
             candidate,
             recommended
@@ -246,6 +270,7 @@ public class FairChoreBalancingServiceImpl implements FairChoreBalancingService 
         private long completedTasks;
         private long openTasks;
         private long overdueTasks;
+        private FairnessBucket bucket;
 
         private StatsAccumulator(Roommate roommate) {
             this.roommate = roommate;
@@ -255,6 +280,30 @@ public class FairChoreBalancingServiceImpl implements FairChoreBalancingService 
             return completedTasks * COMPLETED_TASK_WEIGHT
                 + openTasks * OPEN_TASK_WEIGHT
                 + overdueTasks * OVERDUE_TASK_WEIGHT;
+        }
+
+        private void assignBucket() {
+            if (overdueTasks > 0) {
+                bucket = FairnessBucket.HAS_OVERDUE;
+            } else if (openTasks >= MAX_OPEN_TASKS) {
+                bucket = FairnessBucket.NO_OVERDUE_OVERLOADED;
+            } else {
+                bucket = FairnessBucket.NO_OVERDUE_AVAILABLE;
+            }
+        }
+    }
+
+    private enum FairnessBucket {
+        NO_OVERDUE_AVAILABLE("NO_OVERDUE_AVAILABLE", "no overdue tasks and fewer than " + MAX_OPEN_TASKS + " open tasks"),
+        NO_OVERDUE_OVERLOADED("NO_OVERDUE_OVERLOADED", "no overdue tasks but " + MAX_OPEN_TASKS + " or more open tasks"),
+        HAS_OVERDUE("HAS_OVERDUE", "one or more overdue tasks");
+
+        private final String apiValue;
+        private final String displayName;
+
+        FairnessBucket(String apiValue, String displayName) {
+            this.apiValue = apiValue;
+            this.displayName = displayName;
         }
     }
 }

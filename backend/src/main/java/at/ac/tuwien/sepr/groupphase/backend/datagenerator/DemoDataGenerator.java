@@ -172,6 +172,11 @@ public class DemoDataGenerator implements ApplicationRunner {
     }
 
     private ApplicationUser createUser(String email, String firstName, String lastName, boolean admin, String rawPassword) {
+        ApplicationUser existingUser = userRepository.findUserByEmail(email);
+        if (existingUser != null) {
+            return existingUser;
+        }
+
         ApplicationUser user = new ApplicationUser(
             email,
             passwordEncoder.encode(rawPassword),
@@ -427,25 +432,25 @@ public class DemoDataGenerator implements ApplicationRunner {
 
         // Anna Fair is the logged-in main tenant and is also an active roommate, so she needs some burden
         // to keep the manual demo recommendation focused on Light Worker.
-        // Expected score: 2 * 1.0 + 1 * 0.5 = 2.5.
+        // Expected score: 2 * 1.0 + 1 * 0.75 = 2.75, Bucket A.
         createFr15CompletedTasks(household, users.mainTenant(), users.mainTenant(), "FR-15 Anna completed chore", 2, 5);
         createTask(household, "FR-15 Anna open chore", "Open non-overdue task for the main tenant.",
             today.plusDays(2), TaskStatus.OPEN, users.mainTenant(), users.mainTenant(), null, 2);
 
         // Heavy Worker: 5 completed tasks in the 30-day window and 1 open non-overdue task.
-        // Expected score: 5 * 1.0 + 1 * 0.5 = 5.5.
+        // Expected score: 5 * 1.0 + 1 * 0.75 = 5.75, Bucket A.
         createFr15CompletedTasks(household, users.mainTenant(), users.heavyWorker(), "FR-15 Heavy completed chore", 5, 3);
         createTask(household, "FR-15 Heavy open chore", "Open non-overdue task for the heavy-burden roommate.",
             today.plusDays(3), TaskStatus.OPEN, users.mainTenant(), users.heavyWorker(), null, 2);
 
         // Medium Worker: 3 completed tasks in the 30-day window and 1 overdue task.
-        // Expected score: 3 * 1.0 + 1 * 1.0 = 4.0.
+        // Expected score: 3 * 1.0 + 1 * 2.0 = 5.0, Bucket C.
         createFr15CompletedTasks(household, users.mainTenant(), users.mediumWorker(), "FR-15 Medium completed chore", 3, 7);
         createTask(household, "FR-15 Medium overdue chore", "Overdue task for the medium-burden roommate.",
             today.minusDays(2), TaskStatus.OPEN, users.mainTenant(), users.mediumWorker(), null, 4);
 
         // Light Worker: 1 completed task in the 30-day window and no current open/overdue tasks.
-        // Expected score: 1 * 1.0 = 1.0. With threshold 1.0, Light Worker is the only candidate.
+        // Expected score: 1 * 1.0 = 1.0, Bucket A. Light Worker is the exact minimum-score Bucket A candidate.
         createFr15CompletedTasks(household, users.mainTenant(), users.lightWorker(), "FR-15 Light completed chore", 1, 10);
 
         Task oldCompleted = createTask(household, "FR-15 Light old completed chore",

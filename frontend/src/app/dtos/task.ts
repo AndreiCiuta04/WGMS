@@ -44,6 +44,7 @@ export interface FairChoreRoommateStatsDto {
   completedTasks: number;
   openTasks: number;
   overdueTasks: number;
+  fairnessBucket: string;
   fairnessScore: number;
   candidate: boolean;
   recommended: boolean;

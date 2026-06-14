@@ -31,13 +31,14 @@ roommate.light@example.com   Light Worker
 Expected default 30-day scores:
 
 ```text
-Anna Fair      2 completed + 1 open-not-overdue = 2.5
-Heavy Worker   5 completed + 1 open-not-overdue = 5.5
-Medium Worker  3 completed + 1 overdue          = 4.0
-Light Worker   1 completed                      = 1.0
+Anna Fair      2 completed + 1 open-not-overdue = 2.75, Bucket A
+Heavy Worker   5 completed + 1 open-not-overdue = 5.75, Bucket A
+Medium Worker  3 completed + 1 overdue          = 5.0, Bucket C
+Light Worker   1 completed                      = 1.0, Bucket A
 ```
 
-With the `1.0` candidate threshold, Light Worker is the only fair candidate and should be recommended in task creation.
+The bucket algorithm first considers Bucket A (`NO_OVERDUE_AVAILABLE`) and then selects the exact minimum score in that bucket,
+so Light Worker is the only fair candidate and should be recommended in task creation.
 The seed data also includes an old Light Worker completion outside the 30-day window and a second noise household whose tasks
 must not affect the Fair Chore Demo WG calculation.
 
@@ -87,21 +88,28 @@ Task creation can request a fair chore suggestion from `GET /api/v1/tasks/fair-b
 The backend derives the current household from the authenticated user's active roommate record; clients do not supply a trusted
 household id.
 
-The default history window is 30 days. For every active, non-anonymized roommate in the household, the score is:
+The default history window is 30 days. For every active, non-anonymized roommate in the household, the backend first assigns a fairness bucket:
+
+- `NO_OVERDUE_AVAILABLE`: no overdue tasks and fewer than 3 open non-overdue tasks.
+- `NO_OVERDUE_OVERLOADED`: no overdue tasks and 3 or more open non-overdue tasks.
+- `HAS_OVERDUE`: at least one overdue task.
+
+The recommendation prefers the first non-empty bucket in that order. Inside the selected bucket, the score is:
 
 ```text
 completedTasksInHistoryWindow * 1.0
-+ openTasksNotOverdue * 0.5
-+ overdueTasks * 1.0
++ openTasksNotOverdue * 0.75
++ overdueTasks * 2.0
 ```
 
 Lower score means less recent chore burden. Overdue tasks are counted as overdue, not also as open. Because tasks currently store
 status and `updatedAt` but no dedicated `completedAt`, current `DONE` tasks updated inside the window are used as the completion
 signal; undone tasks no longer have status `DONE` and are scored by their current state.
 
-Roommates whose score is within `1.0` of the minimum score form the candidate pool. The recommendation is selected from that pool
-with seeded randomness based on stable context, so repeated requests with the same task title/due date return the same recommendation
-while different contexts can rotate between similarly fair roommates.
+Only roommates in the selected bucket with the exact minimum score form the candidate pool. If there is one candidate, that roommate
+is recommended. If there is an exact tie, seeded randomness based on stable context chooses between the tied roommates, so repeated
+requests with the same task title/due date return the same recommendation while different contexts can rotate only within the true
+minimum-score tie group.
 
 The Angular task creation form shows the suggestion and offers a "Use suggestion" action. Users can still manually choose any
 household assignee afterwards.

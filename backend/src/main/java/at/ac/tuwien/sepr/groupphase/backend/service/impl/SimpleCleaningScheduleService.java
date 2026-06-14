@@ -13,6 +13,7 @@ import at.ac.tuwien.sepr.groupphase.backend.entity.TaskStatus;
 import at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException;
+import at.ac.tuwien.sepr.groupphase.backend.exception.ValidationException;
 import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
@@ -288,18 +289,38 @@ public class SimpleCleaningScheduleService implements CleaningScheduleService {
             return cleaningSchedule.getAssignedTo();
         }
 
-        ApplicationUser recommendedAssignee = fairChoreBalancingService.findRecommendedAssigneeForSchedule(
-            cleaningSchedule.getHousehold(),
-            cleaningSchedule,
-            cleaningSchedule.getNextDueDate()
-        );
+        ApplicationUser recommendedAssignee;
+        try {
+            recommendedAssignee = fairChoreBalancingService.findRecommendedAssigneeForSchedule(
+                cleaningSchedule.getHousehold(),
+                cleaningSchedule,
+                cleaningSchedule.getNextDueDate()
+            );
+        } catch (ConflictException | ForbiddenException | NotFoundException | ValidationException e) {
+            LOGGER.warn(
+                "Fair balancing failed for cleaning schedule {}. Falling back to configured assignee if available.",
+                cleaningSchedule.getId(),
+                e
+            );
+            recommendedAssignee = null;
+        }
 
         if (recommendedAssignee != null) {
             return recommendedAssignee;
         }
 
-        if (cleaningSchedule.getAssignedTo() != null) {
-            return cleaningSchedule.getAssignedTo();
+        ApplicationUser configuredAssignee = cleaningSchedule.getAssignedTo();
+        if (configuredAssignee != null) {
+            boolean configuredAssigneeIsValid = roommateRepository.existsByUserIdAndHouseholdIdAndActiveTrue(
+                configuredAssignee.getId(),
+                cleaningSchedule.getHousehold().getId()
+            );
+
+            if (configuredAssigneeIsValid) {
+                return configuredAssignee;
+            }
+
+            throw new ConflictException("Cleaning schedule fallback assignee is no longer an active member of this household.");
         }
 
         throw new ConflictException("Cleaning schedule has no assignee and fair balancing found no recommendation.");

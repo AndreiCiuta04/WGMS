@@ -74,7 +74,7 @@ describe('TaskService', () => {
       recommendedDisplayName: 'Anna Berger',
       recommendedEmail: 'roommate@example.com',
       historyDays: 30,
-      algorithm: 'HISTORY_SCORE_SEEDED_POOL',
+      algorithm: 'HISTORY_BUCKET_SCORE_SEEDED_TIE',
       reason: 'Lower scores mean less recent chore burden.',
       stats: []
     });

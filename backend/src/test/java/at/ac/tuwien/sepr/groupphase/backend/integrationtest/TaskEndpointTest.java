@@ -41,6 +41,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -234,6 +235,14 @@ public class TaskEndpointTest implements TestData {
         Task doneForRoommate = saveTask(household, mainTenant, roommate, "Completed own WG task");
         doneForRoommate.setStatus(TaskStatus.DONE);
         taskRepository.save(doneForRoommate);
+        Task otherHouseholdDoneForCurrentUser = saveTask(
+            otherHousehold,
+            outsider,
+            mainTenant,
+            "Other household task assigned to current user"
+        );
+        otherHouseholdDoneForCurrentUser.setStatus(TaskStatus.DONE);
+        taskRepository.save(otherHouseholdDoneForCurrentUser);
         saveTask(otherHousehold, outsider, outsider, "Other household task");
 
         MvcResult mvcResult = this.mockMvc.perform(get(TASK_BASE_URI + "/fair-balancing/recommendation")
@@ -249,10 +258,73 @@ public class TaskEndpointTest implements TestData {
         assertAll(
             () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
             () -> assertNotNull(recommendation.recommendedUserId()),
+            () -> assertEquals("HISTORY_BUCKET_SCORE_SEEDED_TIE", recommendation.algorithm()),
             () -> assertEquals(3, recommendation.stats().size()),
             () -> assertEquals(0, recommendation.stats().stream().filter(stats -> OUTSIDER_EMAIL.equals(stats.email())).count()),
-            () -> assertEquals(1, recommendation.stats().stream().filter(stats -> ROOMMATE_EMAIL.equals(stats.email())).findFirst().orElseThrow().completedTasks())
+            () -> assertEquals(1, recommendation.stats().stream()
+                .filter(stats -> ROOMMATE_EMAIL.equals(stats.email()))
+                .findFirst()
+                .orElseThrow()
+                .completedTasks()),
+            () -> assertEquals(0, recommendation.stats().stream()
+                .filter(stats -> MAIN_TENANT_EMAIL.equals(stats.email()))
+                .findFirst()
+                .orElseThrow()
+                .completedTasks()),
+            () -> assertTrue(recommendation.stats().stream().allMatch(stats -> stats.fairnessBucket() != null)),
+            () -> assertTrue(response.getContentAsString().contains("fairnessBucket")),
+            () -> assertFalse(response.getContentAsString().contains("Completed own WG task")),
+            () -> assertFalse(response.getContentAsString().contains("Other household task"))
         );
+    }
+
+    @Test
+    public void givenBucketScenario_whenGetFairBalancingRecommendation_thenReturnsBestBucketAndExactMinimumCandidate() throws Exception {
+        saveOpenTasks(mainTenant, 3);
+        Task overdueForRoommate = saveTask(household, mainTenant, roommate, "Overdue chore");
+        overdueForRoommate.setDueDate(TEST_TASK_DUE_DATE.minusDays(10));
+        taskRepository.save(overdueForRoommate);
+
+        MvcResult mvcResult = this.mockMvc.perform(get(TASK_BASE_URI + "/fair-balancing/recommendation")
+                .param("taskTitle", "Mop floor")
+                .param("dueDate", TEST_TASK_DUE_DATE.toString())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        MockHttpServletResponse response = mvcResult.getResponse();
+        FairChoreRecommendationDto recommendation = jsonMapper.readValue(response.getContentAsString(), FairChoreRecommendationDto.class);
+        FairChoreRoommateStatsDto selected = recommendation.stats().stream()
+            .filter(FairChoreRoommateStatsDto::recommended)
+            .findFirst()
+            .orElseThrow();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
+            () -> assertEquals(SECOND_ROOMMATE_EMAIL, recommendation.recommendedEmail()),
+            () -> assertEquals("NO_OVERDUE_AVAILABLE", selected.fairnessBucket()),
+            () -> assertEquals(0.0d, selected.fairnessScore()),
+            () -> assertTrue(selected.candidate()),
+            () -> assertFalse(recommendation.stats().stream()
+                .filter(stats -> MAIN_TENANT_EMAIL.equals(stats.email()))
+                .findFirst()
+                .orElseThrow()
+                .candidate()),
+            () -> assertFalse(recommendation.stats().stream()
+                .filter(stats -> ROOMMATE_EMAIL.equals(stats.email()))
+                .findFirst()
+                .orElseThrow()
+                .candidate())
+        );
+    }
+
+    @Test
+    public void givenInvalidHistoryDays_whenGetFairBalancingRecommendation_then400() throws Exception {
+        MvcResult mvcResult = this.mockMvc.perform(get(TASK_BASE_URI + "/fair-balancing/recommendation")
+                .param("historyDays", "366")
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), mvcResult.getResponse().getStatus());
     }
 
     @Test
@@ -293,6 +365,7 @@ public class TaskEndpointTest implements TestData {
             () -> assertEquals(HttpStatus.OK.value(), mvcResult.getResponse().getStatus()),
             () -> assertEquals(30, recommendation.historyDays()),
             () -> assertTrue(recommendation.stats().stream().allMatch(stats -> stats.fairnessScore() == 0.0d)),
+            () -> assertTrue(recommendation.stats().stream().allMatch(stats -> "NO_OVERDUE_AVAILABLE".equals(stats.fairnessBucket()))),
             () -> assertTrue(recommendation.stats().stream().anyMatch(FairChoreRoommateStatsDto::recommended))
         );
     }
@@ -348,6 +421,30 @@ public class TaskEndpointTest implements TestData {
             () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
             () -> assertEquals(TaskStatus.DONE, taskDetailDto.status()),
             () -> assertEquals(TaskStatus.DONE, taskRepository.findById(task.getId()).orElseThrow().getStatus())
+        );
+    }
+
+    @Test
+    public void givenDoneTask_whenAssignedUserReopensTask_then200AndStatusReturnsToOpen() throws Exception {
+        Task task = saveTask(household, mainTenant, roommate, TEST_TASK_TITLE);
+        task.setStatus(TaskStatus.DONE);
+        taskRepository.save(task);
+
+        TaskStatusUpdateDto statusUpdateDto = new TaskStatusUpdateDto(TaskStatus.OPEN);
+
+        MvcResult mvcResult = this.mockMvc.perform(patch(TASK_BASE_URI + "/{id}/status", task.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(statusUpdateDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+
+        MockHttpServletResponse response = mvcResult.getResponse();
+        TaskDetailDto taskDetailDto = jsonMapper.readValue(response.getContentAsString(), TaskDetailDto.class);
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
+            () -> assertEquals(TaskStatus.OPEN, taskDetailDto.status()),
+            () -> assertEquals(TaskStatus.OPEN, taskRepository.findById(task.getId()).orElseThrow().getStatus())
         );
     }
 
@@ -493,5 +590,11 @@ public class TaskEndpointTest implements TestData {
         task.setCreatedBy(creator);
         task.setAssignedTo(assignee);
         return taskRepository.save(task);
+    }
+
+    private void saveOpenTasks(ApplicationUser assignee, int count) {
+        for (int i = 0; i < count; i++) {
+            saveTask(household, mainTenant, assignee, "Open burden " + i);
+        }
     }
 }

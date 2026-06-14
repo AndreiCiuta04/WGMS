@@ -11,8 +11,8 @@ public interface FairChoreBalancingService {
 
     int DEFAULT_HISTORY_DAYS = 30;
     int MAX_HISTORY_DAYS = 365;
-    double FAIRNESS_THRESHOLD = 1.0d;
-    String ALGORITHM = "HISTORY_SCORE_SEEDED_POOL";
+    int MAX_OPEN_TASKS = 3;
+    String ALGORITHM = "HISTORY_BUCKET_SCORE_SEEDED_TIE";
 
     FairChoreRecommendationDto recommendAssignee(
         String currentUserEmail,

@@ -8,6 +8,7 @@ public record FairChoreRoommateStatsDto(
     long completedTasks,
     long openTasks,
     long overdueTasks,
+    String fairnessBucket,
     double fairnessScore,
     boolean candidate,
     boolean recommended

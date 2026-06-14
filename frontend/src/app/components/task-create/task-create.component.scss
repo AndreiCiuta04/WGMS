@@ -3,4 +3,41 @@
   border-radius: 0.375rem;
   padding: 1rem;
   background: #f8f9fa;
+  min-width: 0;
+}
+
+.fair-chore-suggestion > .d-flex {
+  flex-wrap: wrap;
+}
+
+.fair-chore-suggestion > .d-flex > div:first-child {
+  min-width: 0;
+}
+
+.fair-chore-suggestion p,
+.fair-chore-suggestion span {
+  overflow-wrap: anywhere;
+}
+
+.fair-chore-suggestion .table-responsive {
+  max-width: 100%;
+}
+
+@media (max-width: 576px) {
+  .wgms-card {
+    padding: 1rem;
+  }
+
+  .fair-chore-suggestion > .d-flex {
+    flex-direction: column;
+  }
+
+  .fair-chore-suggestion > .d-flex > .d-flex {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .fair-chore-suggestion > .d-flex > .d-flex .btn {
+    flex: 1 1 8rem;
+  }
 }

@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 
 import { TaskCreateComponent } from './task-create.component';
 import { TaskService } from '../../services/task.service';
@@ -64,12 +64,57 @@ describe('TaskCreateComponent', () => {
     expect(component.recommendation?.recommendedEmail).toBe('suggested@example.com');
   });
 
+  it('should render fair chore suggestion content and stats', () => {
+    fixture.detectChanges();
+
+    const card = (fixture.nativeElement as HTMLElement).querySelector('[data-cy="fair-chore-suggestion"]');
+    const recommendationText = (fixture.nativeElement as HTMLElement).querySelector('[data-cy="fair-chore-recommendation"]');
+    const reason = (fixture.nativeElement as HTMLElement).querySelector('[data-cy="fair-chore-reason"]');
+    const stats = (fixture.nativeElement as HTMLElement).querySelector('[data-cy="fair-chore-stats"]');
+
+    expect(card?.textContent).toContain('Fair chore suggestion');
+    expect(recommendationText?.textContent).toContain('Suggested Roommate');
+    expect(recommendationText?.textContent).toContain('suggested@example.com');
+    expect(reason?.textContent).toContain('Lower scores mean less recent chore burden.');
+    expect(stats?.textContent).toContain('Suggested Roommate');
+    expect(stats?.textContent).toContain('candidate');
+  });
+
   it('should handle fair chore suggestion loading errors gracefully', () => {
     taskService.getFairBalancingRecommendation.and.returnValue(throwError(() => ({ status: 500 })));
 
     fixture.detectChanges();
 
     expect(component.recommendationError).toBe('Could not load a fair chore suggestion.');
+    expect((fixture.nativeElement as HTMLElement).querySelector('[data-cy="fair-chore-suggestion-error"]')?.textContent)
+      .toContain('Could not load a fair chore suggestion.');
+  });
+
+  it('should set loading state while fair chore suggestion is pending', () => {
+    const recommendationSubject = new Subject<FairChoreRecommendationDto>();
+    taskService.getFairBalancingRecommendation.and.returnValue(recommendationSubject.asObservable());
+
+    component.loadFairBalancingRecommendation();
+
+    expect(component.recommendationLoading).toBeTrue();
+
+    recommendationSubject.next(recommendation());
+    recommendationSubject.complete();
+
+    expect(component.recommendationLoading).toBeFalse();
+  });
+
+  it('should show empty state and disable use suggestion when no recommendation is returned', () => {
+    taskService.getFairBalancingRecommendation.and.returnValue(of(undefined as unknown as FairChoreRecommendationDto));
+
+    fixture.detectChanges();
+
+    const emptyState = (fixture.nativeElement as HTMLElement).querySelector('[data-cy="fair-chore-suggestion-empty"]');
+    const useButton = (fixture.nativeElement as HTMLElement)
+      .querySelector('[data-cy="fair-chore-use-suggestion"]') as HTMLButtonElement | null;
+
+    expect(emptyState?.textContent).toContain('No suggestion available.');
+    expect(useButton?.disabled).toBeTrue();
   });
 
   it('should fill assignee when suggestion is used and still allow manual override', () => {
@@ -233,7 +278,7 @@ function recommendation(overrides: Partial<FairChoreRecommendationDto> = {}): Fa
     recommendedDisplayName: 'Suggested Roommate',
     recommendedEmail: 'suggested@example.com',
     historyDays: 30,
-    algorithm: 'HISTORY_SCORE_SEEDED_POOL',
+    algorithm: 'HISTORY_BUCKET_SCORE_SEEDED_TIE',
     reason: 'Lower scores mean less recent chore burden.',
     stats: [
       {
@@ -244,6 +289,7 @@ function recommendation(overrides: Partial<FairChoreRecommendationDto> = {}): Fa
         completedTasks: 0,
         openTasks: 0,
         overdueTasks: 0,
+        fairnessBucket: 'NO_OVERDUE_AVAILABLE',
         fairnessScore: 0,
         candidate: true,
         recommended: true

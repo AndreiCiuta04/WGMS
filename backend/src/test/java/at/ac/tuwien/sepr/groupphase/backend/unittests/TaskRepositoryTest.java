@@ -19,12 +19,15 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(SpringExtension.class)
 @DataJpaTest
@@ -75,6 +78,68 @@ public class TaskRepositoryTest implements TestData {
             () -> assertEquals(1, result.size()),
             () -> assertEquals("Own WG task", result.get(0).getTitle()),
             () -> assertEquals(setup.household.getId(), result.get(0).getHousehold().getId())
+        );
+    }
+
+    @Test
+    public void givenTasksInDifferentHouseholds_whenFindAllByHouseholdIdForFairBalancing_thenOnlyHouseholdTasksAreReturned() {
+        TestSetup setup = createSetup();
+
+        taskRepository.save(createTask(setup.household, setup.mainTenant, setup.roommate, "Own WG fairness task"));
+        taskRepository.save(createTask(
+            setup.otherHousehold,
+            setup.outsider,
+            setup.mainTenant,
+            "Other WG task assigned to current user"
+        ));
+        taskRepository.flush();
+
+        List<Task> result = taskRepository.findAllByHousehold_Id(setup.household.getId());
+
+        assertAll(
+            () -> assertEquals(1, result.size()),
+            () -> assertEquals("Own WG fairness task", result.get(0).getTitle()),
+            () -> assertEquals(setup.household.getId(), result.get(0).getHousehold().getId())
+        );
+    }
+
+    @Test
+    public void givenFairBalancingTasks_whenFindFairBalancingTasksByHouseholdId_thenFiltersHouseholdStatusAndHistoryWindow() {
+        TestSetup setup = createSetup();
+
+        taskRepository.save(createTask(setup.household, setup.mainTenant, setup.roommate, "Open included"));
+        taskRepository.save(createTaskWithStatus(setup.household, setup.mainTenant, setup.roommate, "In progress included", TaskStatus.IN_PROGRESS));
+        taskRepository.save(createTaskWithStatus(setup.household, setup.mainTenant, setup.roommate, "Done recent included", TaskStatus.DONE));
+        taskRepository.save(createTaskWithStatus(setup.household, setup.mainTenant, setup.roommate, "Cancelled excluded", TaskStatus.CANCELLED));
+        taskRepository.save(createTask(setup.otherHousehold, setup.outsider, setup.outsider, "Other household excluded"));
+        taskRepository.flush();
+
+        List<Task> result = taskRepository.findFairBalancingTasksByHouseholdId(
+            setup.household.getId(),
+            List.of(TaskStatus.OPEN, TaskStatus.IN_PROGRESS),
+            TaskStatus.DONE,
+            LocalDateTime.now().minusDays(1)
+        );
+        List<String> titles = result.stream().map(Task::getTitle).toList();
+
+        List<Task> futureWindowResult = taskRepository.findFairBalancingTasksByHouseholdId(
+            setup.household.getId(),
+            List.of(TaskStatus.OPEN, TaskStatus.IN_PROGRESS),
+            TaskStatus.DONE,
+            LocalDateTime.now().plusDays(1)
+        );
+        List<String> futureWindowTitles = futureWindowResult.stream().map(Task::getTitle).toList();
+
+        assertAll(
+            () -> assertEquals(3, result.size()),
+            () -> assertTrue(titles.contains("Open included")),
+            () -> assertTrue(titles.contains("In progress included")),
+            () -> assertTrue(titles.contains("Done recent included")),
+            () -> assertFalse(titles.contains("Cancelled excluded")),
+            () -> assertFalse(titles.contains("Other household excluded")),
+            () -> assertTrue(futureWindowTitles.contains("Open included")),
+            () -> assertTrue(futureWindowTitles.contains("In progress included")),
+            () -> assertFalse(futureWindowTitles.contains("Done recent included"))
         );
     }
 
@@ -183,6 +248,12 @@ public class TaskRepositoryTest implements TestData {
         task.setStatus(TaskStatus.OPEN);
         task.setCreatedBy(creator);
         task.setAssignedTo(assignee);
+        return task;
+    }
+
+    private Task createTaskWithStatus(Household household, ApplicationUser creator, ApplicationUser assignee, String title, TaskStatus status) {
+        Task task = createTask(household, creator, assignee, title);
+        task.setStatus(status);
         return task;
     }
 
