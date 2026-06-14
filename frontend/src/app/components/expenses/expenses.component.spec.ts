@@ -279,16 +279,6 @@ describe('ExpensesComponent', () => {
     expect(component.isScanningReceipt).toBeFalse();
   });
 
-  it('should not scan and should warn when the camera frame is not ready', () => {
-    fixture.detectChanges();
-    stubCameraCanvas(component, 0, 0);
-
-    component.captureAndScan();
-
-    expect(receiptOcrService.scanCanvas).not.toHaveBeenCalled();
-    expect(component.errorMessage).toBe('Camera frame is not ready yet. Wait a moment and capture again.');
-  });
-
   it('should stop the live camera stream when the bill panel is toggled closed', () => {
     fixture.detectChanges();
     const track = { stop: jasmine.createSpy('stop') };

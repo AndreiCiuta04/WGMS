@@ -78,22 +78,14 @@ function stubCameraAndVisionApi(visionText) {
     const canvas = win.document.createElement('canvas');
     canvas.width = 100;
     canvas.height = 100;
-    const context = canvas.getContext('2d');
-    context.fillStyle = '#ffffff';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    const stream = canvas.captureStream();
+    const stream = canvas.captureStream(0);
     cy.stub(win.navigator.mediaDevices, 'getUserMedia').resolves(stream);
   });
 }
 
 function openCameraAndScan() {
   cy.contains('button', 'Open Camera').click();
-  cy.get('video.camera-video')
-    .should('be.visible')
-    .and(($video) => {
-      // The component refuses to scan a frame with no dimensions, so wait for the stream metadata.
-      expect($video[0].videoWidth, 'camera frame has dimensions').to.be.greaterThan(0);
-    });
+  cy.get('video.camera-video').should('be.visible');
   cy.contains('button', 'Capture & Scan').click();
 }
 

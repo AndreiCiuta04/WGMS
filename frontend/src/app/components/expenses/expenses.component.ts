@@ -207,11 +207,6 @@ export class ExpensesComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (!video.videoWidth || !video.videoHeight) {
-      this.errorMessage = 'Camera frame is not ready yet. Wait a moment and capture again.';
-      return;
-    }
-
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;

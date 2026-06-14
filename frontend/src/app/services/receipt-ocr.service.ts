@@ -52,7 +52,9 @@ export class ReceiptOcrService {
   }
 
   private extractDescription(lines: string[]): string {
-    const candidate = lines.find(line => !this.looksLikeTotalLine(line) && this.extractAmountsFromLine(line).length === 0);
+    // The merchant title is the first non-total line that contains letters. Pure date and amount
+    // lines have no letters, so they are skipped without disqualifying titles like "FR14 MARKET".
+    const candidate = lines.find(line => !this.looksLikeTotalLine(line) && /[a-z]/i.test(line));
     return (candidate ?? 'Scanned receipt').slice(0, 120);
   }
 

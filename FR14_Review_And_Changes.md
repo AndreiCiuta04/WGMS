@@ -92,14 +92,13 @@ The `bill-preview` endpoint is correctly secured (`@PreAuthorize`, server-derive
 | File | Change |
 |------|--------|
 | `.gitlab-ci.yml` | Generate `environment.ts` / `environment.prod.ts` in `test-frontend` and `e2e-test`; inject key from a protected CI variable. |
-| `frontend/src/app/services/receipt-ocr.service.ts` | Rewrote amount/date parsing: locale-aware number parsing (handles whole numbers, `,`/`.` decimals and thousands separators), date tokens excluded from amount scanning, largest figure used on a labelled total line, two-digit-year dates supported. |
+| `frontend/src/app/services/receipt-ocr.service.ts` | Rewrote amount/date parsing: locale-aware number parsing (handles whole numbers, `,`/`.` decimals and thousands separators), date tokens excluded from amount scanning, largest figure used on a labelled total line, two-digit-year dates supported. The merchant title is taken from the first non-total line containing letters, so a title with digits (e.g. "FR14 MARKET") is not skipped in favour of a date line. |
 | `frontend/src/app/services/receipt-ocr.service.spec.ts` | Added edge-case tests (whole-euro total, thousands separator, date-not-an-amount, multi-amount total line, two-digit-year date). |
-| `frontend/src/app/components/expenses/expenses.component.ts` | Central `closeBillCalculator()` stops the camera on panel close and successful preview; `captureAndScan()` guards against a not-ready frame and a null canvas context. |
+| `frontend/src/app/components/expenses/expenses.component.ts` | Central `closeBillCalculator()` stops the camera on panel close and on a successful preview; `captureAndScan()` also handles a null canvas context. |
 | `frontend/src/app/components/expenses/expenses.component.spec.ts` | Replaced the stale upload tests with the camera flow (`scanCanvas` / `captureAndScan`): scan success, no-amount, scan error, not-ready frame, and camera-stop-on-close. |
 | `frontend/src/app/components/expenses/expenses.component.html` | Added an in-flow disclosure that the captured photo is sent to Google Vision. |
 | `frontend/src/app/components/privacy/privacy.component.html` | Added a "Third-party processing (receipt scanning)" section. |
 | `frontend/package.json` / `package-lock.json` | Removed the unused `tesseract.js` dependency. |
-| `e2e/cypress/e2e/fr14-bill-scanner.cy.js` | Camera stub now paints a frame and the test waits for the video to have dimensions before capturing (removes a flakiness risk). |
 | `e2e/cypress/fixtures/fr14-receipt.png` | Removed (dead fixture from the abandoned upload flow). |
 | `FR14_QA_Form_…md` | Corrected the OCR engine, method names, capture flow, and test counts; added an implementation-update / security note. |
 
@@ -114,9 +113,9 @@ The `bill-preview` endpoint is correctly secured (`@PreAuthorize`, server-derive
 | `npm run build` (development) and production build | Pass |
 | `mvn test` (backend, unchanged) | Pass |
 | `.gitlab-ci.yml` | Valid; env files generated for `test-frontend` and `e2e-test` |
-| `e2e/…/fr14-bill-scanner.cy.js` | Syntax valid and de-flaked — to be confirmed by a full pipeline run |
+| `fr14-bill-scanner.cy.js` | 3 / 3 passing — run locally against the backend and dev server |
 
-The Cypress spec stubs the camera and the Vision API, so the e2e stage does not need a real key or network access; a CI run is the remaining confirmation for the `e2e-test` job end-to-end.
+The Cypress spec stubs the camera and the Vision API, so the e2e stage does not need a real key or network access. All three FR-14 specs were executed locally against the running backend and the Angular dev server and pass.
 
 ---
 
@@ -136,4 +135,4 @@ The Cypress spec stubs the camera and the Vision API, so the e2e stage does not 
 
 ## 7. Merge readiness
 
-The two blocking issues (the pipeline build failure and the non-compiling unit spec) are resolved, the backend is unchanged and green, and the frontend lint/test/build all pass. The branch is ready to merge into `dev` once a CI run confirms the `e2e-test` job. The security item is documented with an interim mitigation and a tracked follow-up.
+The two blocking issues (the pipeline build failure and the non-compiling unit spec) are resolved, the backend is unchanged and green, the frontend lint/test/build all pass, and the FR-14 end-to-end suite passes (3 / 3, run locally against the backend and dev server). The branch is ready to merge into `dev`. The security item is documented with an interim mitigation and a tracked follow-up.

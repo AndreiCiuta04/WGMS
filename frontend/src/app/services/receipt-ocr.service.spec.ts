@@ -83,6 +83,18 @@ describe('ReceiptOcrService', () => {
     expect(draft.totalAmount).toBe(15);
   });
 
+  it('should keep a merchant title that contains digits and not fall back to the date line', () => {
+    const draft = service.parseReceiptText(`
+      FR14 MARKET
+      07.06.2026
+      Total EUR 18,00
+    `);
+
+    expect(draft.description).toBe('FR14 MARKET');
+    expect(draft.totalAmount).toBe(18);
+    expect(draft.date).toBe('2026-06-07');
+  });
+
   it('should understand a two-digit-year European date', () => {
     const draft = service.parseReceiptText(`
       Hofer
