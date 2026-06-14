@@ -38,12 +38,18 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Locale;
+import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class ShoppingItemServiceImpl implements ShoppingItemService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+    private static final Pattern SUGGESTION_QUANTITY_PATTERN = Pattern.compile(
+        "^(?:(\\d+)\\s*[x×]\\s*)?(\\d+(?:[.,]\\d+)?)\\s*([a-zA-Z]+)$"
+    );
     private final ShoppingItemRepository shoppingItemRepository;
     private final RoommateRepository roommateRepository;
     private final UserService userService;
@@ -225,11 +231,12 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
             );
 
         String normalizedName = normalize(dto.name());
-        String normalizedQuantity = normalize(dto.quantity());
+        SuggestionQuantity suggestionQuantity =
+            parseSuggestionQuantity(dto.quantity());
 
         ShoppingItem duplicate = activeSuggestions.stream()
             .filter(item -> normalize(item.getName()).equals(normalizedName))
-            .filter(item -> normalize(item.getQuantity()).equals(normalizedQuantity))
+            .filter(suggestionQuantity::matches)
             .findFirst()
             .orElse(null);
 
@@ -247,7 +254,9 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
 
         ShoppingItem item = new ShoppingItem();
         item.setName(cleanDisplayValue(dto.name()));
-        item.setQuantity(cleanDisplayValue(dto.quantity()));
+        item.setQuantityCount(suggestionQuantity.count());
+        item.setQuantityAmount(suggestionQuantity.amount());
+        item.setQuantityUnit(suggestionQuantity.unit());
         item.setNotes(cleanDisplayValue(dto.notes()));
         item.setStatus(ShoppingItemStatus.NEEDED);
         item.setVisibility(ShoppingItemVisibility.SHARED);
@@ -555,7 +564,7 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         return new ShoppingItemSuggestionDto(
             item.getId(),
             item.getName(),
-            item.getQuantity(),
+            formatSuggestionQuantity(item),
             item.getNotes(),
             item.getHousehold().getId(),
             item.getCreatedBy().getId(),
@@ -568,6 +577,104 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
             item.getCreatedAt(),
             item.getUpdatedAt()
         );
+    }
+
+
+    private SuggestionQuantity parseSuggestionQuantity(String value) {
+        String cleaned = cleanDisplayValue(value);
+
+        if (cleaned == null) {
+            return new SuggestionQuantity(null, null, null);
+        }
+
+        Matcher matcher = SUGGESTION_QUANTITY_PATTERN.matcher(cleaned);
+
+        if (!matcher.matches()) {
+            throw new ValidationException(
+                "Quantity must use a format such as '2 L', "
+                    + "'1 pack', or '5 x 3 L'."
+            );
+        }
+
+        Integer count = matcher.group(1) == null
+            ? null
+            : Integer.valueOf(matcher.group(1));
+
+        BigDecimal amount =
+            new BigDecimal(matcher.group(2).replace(',', '.'));
+
+        QuantityUnit unit = parseQuantityUnit(matcher.group(3));
+
+        return new SuggestionQuantity(count, amount, unit);
+    }
+
+    private QuantityUnit parseQuantityUnit(String value) {
+        return switch (value.toLowerCase(Locale.ROOT)) {
+            case "ml", "milliliter", "milliliters" ->
+                QuantityUnit.MILLILITER;
+
+            case "l", "liter", "liters", "litre", "litres" ->
+                QuantityUnit.LITER;
+
+            case "g", "gram", "grams" ->
+                QuantityUnit.GRAM;
+
+            case "kg", "kilogram", "kilograms" ->
+                QuantityUnit.KILOGRAM;
+
+            case "pc", "pcs", "piece", "pieces" ->
+                QuantityUnit.PIECE;
+
+            case "pack", "packs" ->
+                QuantityUnit.PACK;
+
+            default -> throw new ValidationException(
+                "Unsupported quantity unit: " + value
+            );
+        };
+    }
+
+    private String formatSuggestionQuantity(ShoppingItem item) {
+        if (item.getQuantityCount() == null
+            && item.getQuantityAmount() == null
+            && item.getQuantityUnit() == null) {
+            return null;
+        }
+
+        StringBuilder result = new StringBuilder();
+
+        if (item.getQuantityCount() != null) {
+            result.append(item.getQuantityCount()).append(" x ");
+        }
+
+        if (item.getQuantityAmount() != null) {
+            result.append(
+                item.getQuantityAmount()
+                    .stripTrailingZeros()
+                    .toPlainString()
+            );
+        }
+
+        if (item.getQuantityUnit() != null) {
+            if (result.length() > 0) {
+                result.append(' ');
+            }
+
+            result.append(quantityUnitLabel(item.getQuantityUnit()));
+        }
+
+        return result.toString();
+    }
+
+    private String quantityUnitLabel(QuantityUnit unit) {
+        return switch (unit) {
+            case MILLILITER -> "ml";
+            case LITER -> "L";
+            case GRAM -> "g";
+            case KILOGRAM -> "kg";
+            case PIECE -> "piece";
+            case PACK -> "pack";
+        };
     }
 
     private String normalize(String value) {
@@ -585,4 +692,26 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
     }
 
     private record AggregationKey(String normalizedName, Integer count, BigDecimal amount, QuantityUnit unit) {}
+
+    private record SuggestionQuantity(
+        Integer count,
+        BigDecimal amount,
+        QuantityUnit unit
+    ) {
+
+        private boolean matches(ShoppingItem item) {
+            return Objects.equals(count, item.getQuantityCount())
+                && Objects.equals(
+                normalizeAmount(amount),
+                normalizeAmount(item.getQuantityAmount())
+            )
+                && unit == item.getQuantityUnit();
+        }
+
+        private static BigDecimal normalizeAmount(BigDecimal value) {
+            return value == null
+                ? null
+                : value.stripTrailingZeros();
+        }
+    }
 }

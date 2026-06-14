@@ -505,7 +505,8 @@ public class ShoppingItemServiceTest {
     public void givenEquivalentSuggestionFromOtherUser_whenCreateSuggestion_thenExistingSuggestionReturnedAndVoteAdded() {
         ShoppingItem existing = sampleItem(60L, ShoppingItemVisibility.SHARED);
         existing.setName(" Milk ");
-        existing.setQuantity(" 2L ");
+        existing.setQuantityAmount(new BigDecimal("2"));
+        existing.setQuantityUnit(QuantityUnit.LITER);
         existing.setSuggested(true);
         existing.setCreatedBy(otherUser);
         existing.getVotedBy().add(otherUser);
@@ -540,7 +541,8 @@ public class ShoppingItemServiceTest {
     public void givenEquivalentSuggestionAlreadyVotedByUser_whenCreateSuggestion_thenNoDuplicateVoteOrSave() {
         ShoppingItem existing = sampleItem(61L, ShoppingItemVisibility.SHARED);
         existing.setName("Milk");
-        existing.setQuantity("2L");
+        existing.setQuantityAmount(new BigDecimal("2"));
+        existing.setQuantityUnit(QuantityUnit.LITER);
         existing.setSuggested(true);
         existing.getVotedBy().add(user);
 

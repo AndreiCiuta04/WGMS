@@ -630,7 +630,8 @@ public class ShoppingItemEndpointTest implements TestData {
     @Test
     public void givenEquivalentSuggestion_whenCreateAgain_thenExistingSuggestionReturnedAndVoteAdded() throws Exception {
         ShoppingItem existing = seedSuggestion(" Milk ", userA, household);
-        existing.setQuantity(" 2L ");
+        existing.setQuantityAmount(new BigDecimal("2"));
+        existing.setQuantityUnit(QuantityUnit.LITER);
         shoppingItemRepository.saveAndFlush(existing);
 
         ShoppingItemSuggestionCreateDto dto =
