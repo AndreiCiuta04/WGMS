@@ -4,9 +4,20 @@
 
 This QA form checks **FR14 - One-Click Expense Calculator / Bill Scanner**.
 
-Implemented scope: FR14 adds a receipt scanner flow to the existing `/expenses` page. A user can open **Bill Scanner**, take/upload a receipt image, run client-side OCR, review the extracted title/date/amount, select participants in the existing split list, generate an equal-split expense draft, correct any field, and save through the existing FR05 expense creation flow.
+Implemented scope: FR14 adds a receipt scanner flow to the existing `/expenses` page. A user can open **Bill Scanner**, open the device camera and capture a receipt frame, run OCR through the **Google Vision API**, review the extracted title/date/amount, select participants in the existing split list, generate an equal-split expense draft, correct any field, and save through the existing FR05 expense creation flow.
 
-The raw receipt image and OCR text are not persisted. The backend receives only the reviewed bill fields and selected participant ids through `POST /api/v1/expenses/bill-preview`; final persistence still uses `POST /api/v1/expenses`.
+The backend never receives or stores the raw receipt image or OCR text; it receives only the reviewed bill fields and selected participant ids through `POST /api/v1/expenses/bill-preview`, and final persistence still uses `POST /api/v1/expenses`. Note that OCR is **not** on-device: the captured image is sent from the browser to the Google Vision API (a third-party processor) for text detection.
+
+---
+
+## Implementation update & known limitations
+
+- OCR engine was migrated from on-device `tesseract.js` to the **Google Vision REST API** (commit *"Replace tesseract OCR with Google Vision API and live camera capture"*), and the input changed from file upload to **live camera capture**. Earlier revisions of this form described the tesseract/upload design; the statements below were corrected to match the shipped code.
+- **Security caveat:** the Google Vision API key is read from `environment.googleVisionApiKey` inside `ReceiptOcrService`, so it is compiled into the client bundle and is visible to any user; the receipt image is also sent directly from the browser to Google. The proper fix is a backend OCR proxy that keeps the key server-side (tracked as a follow-up). As an interim hardening (decided for this milestone):
+  - The real key lives only in the protected `GOOGLE_VISION_API_KEY` CI/CD variable; the repo and `environment.ts.example` contain only a placeholder.
+  - The scanner UI and the privacy page now disclose that the photo is sent to Google Vision; manual entry is the no-transfer fallback.
+  - **Action required in the Google Cloud console** for the deployed key: restrict it to the Vision API only, add an HTTP-referrer restriction to the deployed origin, and set a usage quota / budget alert to cap abuse.
+- `environment.ts` / `environment.prod.ts` are gitignored; CI generates them from `environment.ts.example` (and an optional `GOOGLE_VISION_API_KEY` variable). Local builds need `cp src/environments/environment.ts.example src/environments/environment.ts`.
 
 ---
 
@@ -25,10 +36,10 @@ The raw receipt image and OCR text are not persisted. The backend receives only 
 
 ## Evidence
 
-- `ReceiptOcrService` runs `tesseract.js` client-side and parses date/amount/title.
-- `ExpensesComponent.scanReceiptImage(...)` fills the bill review form from OCR output.
+- `ReceiptOcrService.scanCanvas(...)` sends the captured camera frame to the Google Vision API; `parseReceiptText(...)` parses date/amount/title from the returned text.
+- `ExpensesComponent.captureAndScan()` captures a camera frame to a canvas and fills the bill review form from the OCR draft.
 - `ExpensesComponent.previewBillExpense(...)` sends reviewed data to the backend preview endpoint.
-- Cypress uploads `e2e/cypress/fixtures/fr14-receipt.png` and waits for OCR-extracted fields.
+- Cypress stubs `navigator.mediaDevices.getUserMedia` and intercepts the Vision API, then asserts the OCR-extracted fields.
 
 Status: **Pass**
 
@@ -83,7 +94,7 @@ Status: **Pass**
 - [x] Backend preview endpoint requires authentication.
 - [x] Backend derives payer from the authenticated user's active roommate record.
 - [x] Participant ids are validated against the current household.
-- [x] Raw receipt image/OCR text is not stored.
+- [x] Raw receipt image/OCR text is not stored by the backend (note: the image is sent to the Google Vision API for OCR).
 - [x] Failed OCR or invalid preview input creates no partial expense.
 - [x] OCR parsing logic is separated into `ReceiptOcrService`.
 - [x] Expense creation reuses existing expense/settlement logic.
@@ -92,7 +103,7 @@ Status: **Pass**
 
 - `POST /expenses/bill-preview` is auth-scoped.
 - Preview stores no database entity and only returns a reviewed DTO.
-- Raw image stays in the browser file input/OCR flow.
+- The backend never receives or stores the raw image/OCR text; the captured image is sent to the Google Vision API for OCR.
 - Component tests cover OCR success and preview validation.
 
 Status: **Pass**
@@ -103,14 +114,14 @@ Status: **Pass**
 
 | Area | Status | Evidence |
 |---|---|---|
-| Camera/upload OCR flow | Pass | `ReceiptOcrService`, `ExpensesComponent.scanReceiptImage`, FR14 Cypress fixture upload |
+| Camera OCR flow | Pass | `ReceiptOcrService.scanCanvas`, `ExpensesComponent.captureAndScan`, FR14 Cypress camera/Vision stubs |
 | Reviewed expense draft | Pass | `POST /expenses/bill-preview`, component preview tests |
 | Calculation correctness | Pass | ExpenseEndpointTest preview/equal split tests |
 | Payment status integration | Pass | FR14 Cypress checks `/payment-status` |
 | Backend tests | Pass | `mvn -B test` - 224 passing |
-| Frontend tests | Pass | `npm test -- --watch=false --browsers=ChromeHeadless` - 276 passing |
+| Frontend tests | Pass | `npm test -- --watch=false --browsers=ChromeHeadless` - 285 passing |
 | Build/lint | Pass | `npm run build`, `npm run lint` |
-| E2E tests | Pass | `npx cypress run --spec cypress/e2e/fr14-bill-scanner.cy.js` - 2 passing |
+| E2E tests | Pass | `npx cypress run --spec cypress/e2e/fr14-bill-scanner.cy.js` - 3 passing |
 
 ## Required verification commands
 

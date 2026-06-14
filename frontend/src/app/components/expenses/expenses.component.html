@@ -38,7 +38,7 @@
         <div class="receipt-scan-row">
           <div>
             <h4>Scan Receipt</h4>
-            <p class="caption mb-0">Point camera at receipt, then capture.</p>
+            <p class="caption mb-0">Point camera at receipt, then capture. The captured photo is sent to the Google Vision service to read the text.</p>
           </div>
           @if (!isCameraActive && !isScanningReceipt) {
             <button type="button" class="btn btn-outline-primary btn-sm" (click)="startCamera()">Open Camera</button>

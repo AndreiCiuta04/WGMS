@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { ElementRef, NO_ERRORS_SCHEMA } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { of, throwError } from 'rxjs';
 
@@ -33,12 +33,12 @@ describe('ExpensesComponent', () => {
     ]);
     householdService = jasmine.createSpyObj<HouseholdService>('HouseholdService', ['getMyHousehold', 'getMembers']);
     authService = jasmine.createSpyObj<AuthService>('AuthService', ['getUserEmail']);
-    receiptOcrService = jasmine.createSpyObj<ReceiptOcrService>('ReceiptOcrService', ['scanReceipt']);
+    receiptOcrService = jasmine.createSpyObj<ReceiptOcrService>('ReceiptOcrService', ['scanCanvas']);
 
     householdService.getMyHousehold.and.returnValue(of(household()));
     householdService.getMembers.and.returnValue(of(roommates()));
     authService.getUserEmail.and.returnValue('main@example.com');
-    receiptOcrService.scanReceipt.and.resolveTo({
+    receiptOcrService.scanCanvas.and.resolveTo({
       description: 'Scanned supermarket receipt',
       totalAmount: 12.5,
       date: '2026-06-05'
@@ -233,21 +233,15 @@ describe('ExpensesComponent', () => {
     expect(component.isPreviewingBill).toBeFalse();
   });
 
-  it('should scan a receipt image and prefill bill data for review', async () => {
+  it('should capture a camera frame, scan it, and prefill bill data for review', async () => {
     fixture.detectChanges();
-    const file = new File(['fake image'], 'receipt.png', { type: 'image/png' });
-    const event = {
-      target: {
-        files: [file],
-        value: 'receipt.png'
-      }
-    } as unknown as Event;
+    const fakeCanvas = stubCameraCanvas(component);
 
-    component.scanReceiptImage(event);
+    component.captureAndScan();
     await fixture.whenStable();
     await new Promise(resolve => setTimeout(resolve, 0));
 
-    expect(receiptOcrService.scanReceipt).toHaveBeenCalledOnceWith(file);
+    expect(receiptOcrService.scanCanvas).toHaveBeenCalledOnceWith(fakeCanvas);
     expect(component.billForm.value).toEqual({
       description: 'Scanned supermarket receipt',
       totalAmount: '12,50',
@@ -255,6 +249,59 @@ describe('ExpensesComponent', () => {
     });
     expect(component.successMessage).toBe('Receipt scanned. Review the extracted bill data.');
     expect(component.isScanningReceipt).toBeFalse();
+    expect(component.isCameraActive).toBeFalse();
+  });
+
+  it('should prompt for manual entry when the scanned receipt has no amount', async () => {
+    fixture.detectChanges();
+    receiptOcrService.scanCanvas.and.resolveTo({ description: 'Blurry receipt', totalAmount: null, date: '2026-06-05' });
+    stubCameraCanvas(component);
+
+    component.captureAndScan();
+    await fixture.whenStable();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(component.billForm.get('totalAmount')?.value).toBe('');
+    expect(component.successMessage).toBe('Receipt scanned, but no amount was found. Enter the bill total manually.');
+    expect(component.isScanningReceipt).toBeFalse();
+  });
+
+  it('should surface a readable error when the receipt scan fails', async () => {
+    fixture.detectChanges();
+    receiptOcrService.scanCanvas.and.rejectWith(new Error('Vision API error: 500'));
+    stubCameraCanvas(component);
+
+    component.captureAndScan();
+    await fixture.whenStable();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(component.errorMessage).toBe('Could not scan the receipt. Enter the bill data manually.');
+    expect(component.isScanningReceipt).toBeFalse();
+  });
+
+  it('should not scan and should warn when the camera frame is not ready', () => {
+    fixture.detectChanges();
+    stubCameraCanvas(component, 0, 0);
+
+    component.captureAndScan();
+
+    expect(receiptOcrService.scanCanvas).not.toHaveBeenCalled();
+    expect(component.errorMessage).toBe('Camera frame is not ready yet. Wait a moment and capture again.');
+  });
+
+  it('should stop the live camera stream when the bill panel is toggled closed', () => {
+    fixture.detectChanges();
+    const track = { stop: jasmine.createSpy('stop') };
+    component.videoStream = { getTracks: () => [track] } as unknown as MediaStream;
+    component.isCameraActive = true;
+    component.billCalculatorOpen = true;
+
+    component.toggleBillCalculator();
+
+    expect(track.stop).toHaveBeenCalled();
+    expect(component.isCameraActive).toBeFalse();
+    expect(component.videoStream).toBeNull();
+    expect(component.billCalculatorOpen).toBeFalse();
   });
 
   it('should show readable error when equal split input is incomplete', () => {
@@ -417,6 +464,20 @@ describe('ExpensesComponent', () => {
     expect(component.expenses).toEqual([]);
   });
 });
+
+function stubCameraCanvas(component: ExpensesComponent, videoWidth = 100, videoHeight = 100): HTMLCanvasElement {
+  const realCreateElement = document.createElement.bind(document);
+  const video = realCreateElement('video') as HTMLVideoElement;
+  Object.defineProperty(video, 'videoWidth', { value: videoWidth, configurable: true });
+  Object.defineProperty(video, 'videoHeight', { value: videoHeight, configurable: true });
+  component.receiptVideoRef = { nativeElement: video } as ElementRef<HTMLVideoElement>;
+
+  const context = { drawImage: jasmine.createSpy('drawImage') } as unknown as CanvasRenderingContext2D;
+  const fakeCanvas = { width: 0, height: 0, getContext: () => context } as unknown as HTMLCanvasElement;
+  spyOn(document, 'createElement').and.callFake(((tag: string) =>
+    tag === 'canvas' ? fakeCanvas : realCreateElement(tag)) as typeof document.createElement);
+  return fakeCanvas;
+}
 
 function validExpenseForm(overrides: Partial<{
   description: string;

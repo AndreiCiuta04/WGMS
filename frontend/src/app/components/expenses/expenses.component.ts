@@ -120,10 +120,19 @@ export class ExpensesComponent implements OnInit, OnDestroy {
 
   toggleBillCalculator(): void {
     this.clearMessages();
-    this.billCalculatorOpen = !this.billCalculatorOpen;
-    if (this.billCalculatorOpen && !this.billForm.get('date')?.value) {
+    if (this.billCalculatorOpen) {
+      this.closeBillCalculator();
+      return;
+    }
+    this.billCalculatorOpen = true;
+    if (!this.billForm.get('date')?.value) {
       this.billForm.patchValue({ date: this.today() });
     }
+  }
+
+  private closeBillCalculator(): void {
+    this.stopCamera();
+    this.billCalculatorOpen = false;
   }
 
   previewBillExpense(): void {
@@ -157,7 +166,7 @@ export class ExpensesComponent implements OnInit, OnDestroy {
         });
         this.applyCalculatedSplits(preview.splits);
         this.successMessage = 'Bill data ready for review.';
-        this.billCalculatorOpen = false;
+        this.closeBillCalculator();
         this.submitted = false;
       },
       error: err => {
@@ -198,10 +207,20 @@ export class ExpensesComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (!video.videoWidth || !video.videoHeight) {
+      this.errorMessage = 'Camera frame is not ready yet. Wait a moment and capture again.';
+      return;
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    canvas.getContext('2d')!.drawImage(video, 0, 0);
+    const context = canvas.getContext('2d');
+    if (!context) {
+      this.errorMessage = 'Could not capture the camera frame. Enter the bill data manually.';
+      return;
+    }
+    context.drawImage(video, 0, 0);
 
     this.stopCamera();
     this.isScanningReceipt = true;

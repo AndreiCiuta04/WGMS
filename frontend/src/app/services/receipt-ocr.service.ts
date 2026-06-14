@@ -52,14 +52,18 @@ export class ReceiptOcrService {
   }
 
   private extractDescription(lines: string[]): string {
-    const candidate = lines.find(line => !this.looksLikeTotalLine(line) && !this.extractAmountFromLine(line));
+    const candidate = lines.find(line => !this.looksLikeTotalLine(line) && this.extractAmountsFromLine(line).length === 0);
     return (candidate ?? 'Scanned receipt').slice(0, 120);
   }
 
   private extractTotalAmount(lines: string[]): number | null {
-    const totalLine = [...lines].reverse().find(line => this.looksLikeTotalLine(line) && this.extractAmountFromLine(line) !== null);
+    const totalLine = [...lines].reverse()
+      .find(line => this.looksLikeTotalLine(line) && this.extractAmountsFromLine(line).some(amount => amount > 0));
     if (totalLine) {
-      return this.extractAmountFromLine(totalLine);
+      // On a labelled total line the gross total is normally the largest figure on the line
+      // (e.g. "NETTO 15,00 BRUTTO 18,90" or "TOTAL 18,90 EUR 0,00 change").
+      const totalLineAmounts = this.extractAmountsFromLine(totalLine).filter(amount => amount > 0);
+      return Math.max(...totalLineAmounts);
     }
 
     const amounts = lines
@@ -79,9 +83,14 @@ export class ReceiptOcrService {
       return this.toIsoDate(Number(isoDate[1]), Number(isoDate[2]), Number(isoDate[3]));
     }
 
-    const europeanDate = text.match(/\b(0?[1-9]|[12]\d|3[01])[-/.](0?[1-9]|1[0-2])[-/.](20\d{2})\b/);
-    if (europeanDate) {
-      return this.toIsoDate(Number(europeanDate[3]), Number(europeanDate[2]), Number(europeanDate[1]));
+    const fullEuropeanDate = text.match(/\b(0?[1-9]|[12]\d|3[01])[-/.](0?[1-9]|1[0-2])[-/.](20\d{2})\b/);
+    if (fullEuropeanDate) {
+      return this.toIsoDate(Number(fullEuropeanDate[3]), Number(fullEuropeanDate[2]), Number(fullEuropeanDate[1]));
+    }
+
+    const shortEuropeanDate = text.match(/\b(0?[1-9]|[12]\d|3[01])[-/.](0?[1-9]|1[0-2])[-/.](\d{2})\b/);
+    if (shortEuropeanDate) {
+      return this.toIsoDate(2000 + Number(shortEuropeanDate[3]), Number(shortEuropeanDate[2]), Number(shortEuropeanDate[1]));
     }
 
     return this.toLocalIsoDate(new Date());
@@ -91,15 +100,47 @@ export class ReceiptOcrService {
     return /\b(total|summe|gesamt|betrag|amount|paid|zahlung)\b/i.test(line);
   }
 
-  private extractAmountFromLine(line: string): number | null {
-    return this.extractAmountsFromLine(line).at(-1) ?? null;
+  private extractAmountsFromLine(line: string): number[] {
+    // Drop date tokens first so "07.06.2026" is not mistaken for the amount 7.06.
+    const withoutDates = line.replace(/\b\d{1,4}[.\-/]\d{1,2}[.\-/]\d{2,4}\b/g, ' ');
+
+    // Match grouped amounts ("1.234,56", "1 234,56") and plain amounts ("18", "18,90", "12.40").
+    const matches = withoutDates.match(/\d{1,3}(?:[.\s]\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?/g) ?? [];
+
+    return matches
+      .map(match => this.parseAmountToken(match))
+      .filter((amount): amount is number => amount !== null && Number.isFinite(amount));
   }
 
-  private extractAmountsFromLine(line: string): number[] {
-    const matches = line.match(/(?:EUR\s*)?\d{1,6}(?:[.,]\d{1,2})\b/gi) ?? [];
-    return matches
-      .map(match => Number(match.replace(/EUR/i, '').trim().replace(',', '.')))
-      .filter(amount => Number.isFinite(amount));
+  private parseAmountToken(token: string): number | null {
+    let normalized = token.trim();
+    const hasDot = normalized.includes('.');
+    const hasComma = normalized.includes(',');
+
+    if (hasDot && hasComma) {
+      // The separator that appears last is the decimal separator; the other groups thousands.
+      if (normalized.lastIndexOf(',') > normalized.lastIndexOf('.')) {
+        normalized = normalized.replace(/[.\s]/g, '').replace(',', '.');
+      } else {
+        normalized = normalized.replace(/[,\s]/g, '');
+      }
+    } else if (hasComma) {
+      const fraction = normalized.split(',').pop() ?? '';
+      normalized = (normalized.split(',').length === 2 && fraction.length <= 2)
+        ? normalized.replace(',', '.')
+        : normalized.replace(/[,\s]/g, '');
+    } else if (hasDot) {
+      const groups = normalized.split('.');
+      const fraction = groups[groups.length - 1];
+      if (!(groups.length === 2 && fraction.length <= 2)) {
+        // Dots are thousands separators ("1.234", "1.234.567"), not a decimal point.
+        normalized = normalized.replace(/\./g, '');
+      }
+    }
+
+    normalized = normalized.replace(/\s/g, '');
+    const value = Number(normalized);
+    return Number.isFinite(value) ? value : null;
   }
 
   private toIsoDate(year: number, month: number, day: number): string {

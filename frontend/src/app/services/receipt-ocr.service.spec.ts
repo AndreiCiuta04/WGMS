@@ -44,4 +44,53 @@ describe('ReceiptOcrService', () => {
     expect(draft.description).toBe('Unreadable receipt');
     expect(draft.totalAmount).toBeNull();
   });
+
+  it('should read a whole-euro total that has no decimal places', () => {
+    const draft = service.parseReceiptText(`
+      Spar
+      Gesamt EUR 18
+    `);
+
+    expect(draft.totalAmount).toBe(18);
+  });
+
+  it('should parse a thousands-separated total without truncating it', () => {
+    const draft = service.parseReceiptText(`
+      Moebelhaus
+      Summe 1.234,56
+    `);
+
+    expect(draft.totalAmount).toBe(1234.56);
+  });
+
+  it('should not mistake a date for the total amount', () => {
+    const draft = service.parseReceiptText(`
+      Billa
+      07.06.2026
+      Gesamt 9
+    `);
+
+    expect(draft.totalAmount).toBe(9);
+    expect(draft.date).toBe('2026-06-07');
+  });
+
+  it('should pick the largest figure on a total line with several numbers', () => {
+    const draft = service.parseReceiptText(`
+      Restaurant
+      TOTAL 15,00 EUR 3,00 Trinkgeld
+    `);
+
+    expect(draft.totalAmount).toBe(15);
+  });
+
+  it('should understand a two-digit-year European date', () => {
+    const draft = service.parseReceiptText(`
+      Hofer
+      07.06.26
+      Betrag 4,20
+    `);
+
+    expect(draft.date).toBe('2026-06-07');
+    expect(draft.totalAmount).toBe(4.2);
+  });
 });
