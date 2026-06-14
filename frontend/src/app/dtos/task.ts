@@ -35,3 +35,27 @@ export interface TaskUpdateDto {
   dueDate: string;
   assignedToEmail: string;
 }
+
+export interface FairChoreRoommateStatsDto {
+  roommateId: number;
+  userId: number;
+  displayName: string;
+  email: string;
+  completedTasks: number;
+  openTasks: number;
+  overdueTasks: number;
+  fairnessScore: number;
+  candidate: boolean;
+  recommended: boolean;
+}
+
+export interface FairChoreRecommendationDto {
+  recommendedRoommateId: number;
+  recommendedUserId: number;
+  recommendedDisplayName: string;
+  recommendedEmail: string;
+  historyDays: number;
+  algorithm: string;
+  reason: string;
+  stats: FairChoreRoommateStatsDto[];
+}

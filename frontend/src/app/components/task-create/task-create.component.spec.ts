@@ -9,7 +9,7 @@ import { TaskService } from '../../services/task.service';
 import { HouseholdService } from '../../services/household.service';
 import { Household } from '../../dtos/household';
 import { Roommate } from '../../dtos/roommate';
-import { TaskDetailDto, TaskStatus } from '../../dtos/task';
+import { FairChoreRecommendationDto, TaskDetailDto, TaskStatus } from '../../dtos/task';
 
 describe('TaskCreateComponent', () => {
   let component: TaskCreateComponent;
@@ -19,13 +19,14 @@ describe('TaskCreateComponent', () => {
   let router: jasmine.SpyObj<Router>;
 
   beforeEach(async () => {
-    taskService = jasmine.createSpyObj<TaskService>('TaskService', ['create']);
+    taskService = jasmine.createSpyObj<TaskService>('TaskService', ['create', 'getFairBalancingRecommendation']);
     householdService = jasmine.createSpyObj<HouseholdService>('HouseholdService', ['getMyHousehold', 'getMembers']);
     router = jasmine.createSpyObj<Router>('Router', ['navigate']);
 
     householdService.getMyHousehold.and.returnValue(of(household()));
     householdService.getMembers.and.returnValue(of([roommate()]));
     taskService.create.and.returnValue(of(task()));
+    taskService.getFairBalancingRecommendation.and.returnValue(of(recommendation()));
 
     await TestBed.configureTestingModule({
       declarations: [TaskCreateComponent],
@@ -54,6 +55,31 @@ describe('TaskCreateComponent', () => {
     expect(householdService.getMyHousehold).toHaveBeenCalled();
     expect(householdService.getMembers).toHaveBeenCalledOnceWith(1);
     expect(component.roommates).toEqual([roommate()]);
+  });
+
+  it('should display fair chore suggestion on init', () => {
+    fixture.detectChanges();
+
+    expect(taskService.getFairBalancingRecommendation).toHaveBeenCalled();
+    expect(component.recommendation?.recommendedEmail).toBe('suggested@example.com');
+  });
+
+  it('should handle fair chore suggestion loading errors gracefully', () => {
+    taskService.getFairBalancingRecommendation.and.returnValue(throwError(() => ({ status: 500 })));
+
+    fixture.detectChanges();
+
+    expect(component.recommendationError).toBe('Could not load a fair chore suggestion.');
+  });
+
+  it('should fill assignee when suggestion is used and still allow manual override', () => {
+    fixture.detectChanges();
+
+    component.useSuggestion();
+    expect(component.taskForm.get('assignedToEmail')?.value).toBe('suggested@example.com');
+
+    component.taskForm.patchValue({ assignedToEmail: 'roommate@example.com' });
+    expect(component.taskForm.get('assignedToEmail')?.value).toBe('roommate@example.com');
   });
 
   it('should block service call when title is empty', () => {
@@ -196,6 +222,33 @@ function task(overrides: Partial<TaskDetailDto> = {}): TaskDetailDto {
     assignedToEmail: 'roommate@example.com',
     createdAt: '2026-06-01T00:00:00',
     updatedAt: '2026-06-01T00:00:00',
+    ...overrides
+  };
+}
+
+function recommendation(overrides: Partial<FairChoreRecommendationDto> = {}): FairChoreRecommendationDto {
+  return {
+    recommendedRoommateId: 2,
+    recommendedUserId: 2,
+    recommendedDisplayName: 'Suggested Roommate',
+    recommendedEmail: 'suggested@example.com',
+    historyDays: 30,
+    algorithm: 'HISTORY_SCORE_SEEDED_POOL',
+    reason: 'Lower scores mean less recent chore burden.',
+    stats: [
+      {
+        roommateId: 2,
+        userId: 2,
+        displayName: 'Suggested Roommate',
+        email: 'suggested@example.com',
+        completedTasks: 0,
+        openTasks: 0,
+        overdueTasks: 0,
+        fairnessScore: 0,
+        candidate: true,
+        recommended: true
+      }
+    ],
     ...overrides
   };
 }

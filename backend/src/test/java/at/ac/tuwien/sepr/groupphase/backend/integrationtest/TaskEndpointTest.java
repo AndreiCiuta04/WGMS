@@ -3,6 +3,8 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepositor
 
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
 import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreRecommendationDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreRoommateStatsDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskDetailDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskStatusUpdateDto;
@@ -40,6 +42,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -156,6 +159,14 @@ public class TaskEndpointTest implements TestData {
     }
 
     @Test
+    public void givenNoToken_whenGetFairBalancingRecommendation_then403() throws Exception {
+        MvcResult mvcResult = this.mockMvc.perform(get(TASK_BASE_URI + "/fair-balancing/recommendation"))
+            .andReturn();
+
+        assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus());
+    }
+
+    @Test
     public void givenBlankTitle_whenCreateTask_then400() throws Exception {
         TaskCreateDto taskCreateDto = validCreateDto(ROOMMATE_EMAIL);
         taskCreateDto = new TaskCreateDto("   ", taskCreateDto.description(), taskCreateDto.dueDate(), taskCreateDto.assignedToEmail());
@@ -215,6 +226,74 @@ public class TaskEndpointTest implements TestData {
             () -> assertEquals(1, tasks.size()),
             () -> assertEquals("Task in own WG", tasks.get(0).title()),
             () -> assertEquals(household.getId(), tasks.get(0).householdId())
+        );
+    }
+
+    @Test
+    public void givenAuthenticatedUser_whenGetFairBalancingRecommendation_thenReturnsCurrentHouseholdStatsOnly() throws Exception {
+        Task doneForRoommate = saveTask(household, mainTenant, roommate, "Completed own WG task");
+        doneForRoommate.setStatus(TaskStatus.DONE);
+        taskRepository.save(doneForRoommate);
+        saveTask(otherHousehold, outsider, outsider, "Other household task");
+
+        MvcResult mvcResult = this.mockMvc.perform(get(TASK_BASE_URI + "/fair-balancing/recommendation")
+                .param("taskTitle", "Mop floor")
+                .param("dueDate", TEST_TASK_DUE_DATE.toString())
+                .param("householdId", otherHousehold.getId().toString())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        MockHttpServletResponse response = mvcResult.getResponse();
+        FairChoreRecommendationDto recommendation = jsonMapper.readValue(response.getContentAsString(), FairChoreRecommendationDto.class);
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
+            () -> assertNotNull(recommendation.recommendedUserId()),
+            () -> assertEquals(3, recommendation.stats().size()),
+            () -> assertEquals(0, recommendation.stats().stream().filter(stats -> OUTSIDER_EMAIL.equals(stats.email())).count()),
+            () -> assertEquals(1, recommendation.stats().stream().filter(stats -> ROOMMATE_EMAIL.equals(stats.email())).findFirst().orElseThrow().completedTasks())
+        );
+    }
+
+    @Test
+    public void givenSameRequest_whenGetFairBalancingRecommendationTwice_thenSameRecommendation() throws Exception {
+        MvcResult first = this.mockMvc.perform(get(TASK_BASE_URI + "/fair-balancing/recommendation")
+                .param("taskTitle", "Mop floor")
+                .param("dueDate", TEST_TASK_DUE_DATE.toString())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+        MvcResult second = this.mockMvc.perform(get(TASK_BASE_URI + "/fair-balancing/recommendation")
+                .param("taskTitle", "Mop floor")
+                .param("dueDate", TEST_TASK_DUE_DATE.toString())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        FairChoreRecommendationDto firstRecommendation = jsonMapper.readValue(first.getResponse().getContentAsString(), FairChoreRecommendationDto.class);
+        FairChoreRecommendationDto secondRecommendation = jsonMapper.readValue(second.getResponse().getContentAsString(), FairChoreRecommendationDto.class);
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), first.getResponse().getStatus()),
+            () -> assertEquals(HttpStatus.OK.value(), second.getResponse().getStatus()),
+            () -> assertEquals(firstRecommendation.recommendedUserId(), secondRecommendation.recommendedUserId())
+        );
+    }
+
+    @Test
+    public void givenNoHistory_whenGetFairBalancingRecommendation_thenReturnsValidActiveRoommate() throws Exception {
+        MvcResult mvcResult = this.mockMvc.perform(get(TASK_BASE_URI + "/fair-balancing/recommendation")
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        FairChoreRecommendationDto recommendation = jsonMapper.readValue(
+            mvcResult.getResponse().getContentAsString(),
+            FairChoreRecommendationDto.class
+        );
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals(30, recommendation.historyDays()),
+            () -> assertTrue(recommendation.stats().stream().allMatch(stats -> stats.fairnessScore() == 0.0d)),
+            () -> assertTrue(recommendation.stats().stream().anyMatch(FairChoreRoommateStatsDto::recommended))
         );
     }
 

@@ -52,6 +52,34 @@ describe('TaskService', () => {
     request.flush([task()]);
   });
 
+  it('should send GET to fair balancing recommendation with stable context params', () => {
+    service.getFairBalancingRecommendation({
+      historyDays: 30,
+      taskTitle: 'Clean kitchen',
+      dueDate: '2026-06-05'
+    }).subscribe(response => {
+      expect(response.recommendedEmail).toBe('roommate@example.com');
+    });
+
+    const request = httpTestingController.expectOne(req =>
+      req.url === `${backendUri}/tasks/fair-balancing/recommendation`
+      && req.params.get('historyDays') === '30'
+      && req.params.get('taskTitle') === 'Clean kitchen'
+      && req.params.get('dueDate') === '2026-06-05'
+    );
+    expect(request.request.method).toBe('GET');
+    request.flush({
+      recommendedRoommateId: 1,
+      recommendedUserId: 1,
+      recommendedDisplayName: 'Anna Berger',
+      recommendedEmail: 'roommate@example.com',
+      historyDays: 30,
+      algorithm: 'HISTORY_SCORE_SEEDED_POOL',
+      reason: 'Lower scores mean less recent chore burden.',
+      stats: []
+    });
+  });
+
   it('should send POST to create task with body', () => {
     const body: TaskCreateDto = {
       title: 'Clean kitchen',

@@ -20,6 +20,9 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findAllByHousehold_IdOrderByDueDateAscCreatedAtDesc(Long householdId);
 
     @EntityGraph(attributePaths = {"household", "createdBy", "assignedTo", "cleaningSchedule"})
+    List<Task> findAllByHousehold_Id(Long householdId);
+
+    @EntityGraph(attributePaths = {"household", "createdBy", "assignedTo", "cleaningSchedule"})
     List<Task> findByHousehold_IdAndAssignedTo_IdOrderByDueDateAscCreatedAtDesc(
         Long householdId,
         Long assignedToId

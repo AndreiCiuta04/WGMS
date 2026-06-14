@@ -12,6 +12,7 @@ export interface CleaningScheduleCreateDto {
   startDate: string; // ISO format date YYYY-MM-DD
   endDate?: string; // ISO format date YYYY-MM-DD
   assignedToEmail: string;
+  fairBalancingEnabled: boolean;
 }
 
 export interface CleaningScheduleDetailDto {
@@ -24,6 +25,7 @@ export interface CleaningScheduleDetailDto {
   endDate?: string;
   nextDueDate: string;
   active: boolean;
+  fairBalancingEnabled: boolean;
   createdByEmail: string;
   assignedToEmail: string;
   createdAt: string;
@@ -37,6 +39,7 @@ export interface CleaningScheduleUpdateDto {
   startDate: string;
   endDate?: string;
   assignedToEmail: string;
+  fairBalancingEnabled: boolean;
 }
 
 export interface CleaningScheduleActiveUpdateDto {

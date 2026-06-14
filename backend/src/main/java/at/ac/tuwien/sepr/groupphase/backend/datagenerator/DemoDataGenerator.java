@@ -22,6 +22,7 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ShoppingItemRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
+import jakarta.persistence.EntityManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -38,13 +39,16 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Profile("datagen")
+@Profile({"datagen", "generateData"})
 @Component
 public class DemoDataGenerator implements ApplicationRunner {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+    private static final String PRESENTATION_DEMO_EMAIL = "cemil.demo@wgms.local";
     private static final String DEMO_PASSWORD = "Password123!";
+    private static final String FR15_MAIN_TENANT_EMAIL = "maintenant.fr15@example.com";
+    private static final String FR15_PASSWORD = "password";
 
     private final UserRepository userRepository;
     private final HouseholdRepository householdRepository;
@@ -55,6 +59,7 @@ public class DemoDataGenerator implements ApplicationRunner {
     private final ExpenseSplitRepository expenseSplitRepository;
     private final ShoppingItemRepository shoppingItemRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EntityManager entityManager;
 
     public DemoDataGenerator(UserRepository userRepository,
                              HouseholdRepository householdRepository,
@@ -64,7 +69,8 @@ public class DemoDataGenerator implements ApplicationRunner {
                              ExpenseRepository expenseRepository,
                              ExpenseSplitRepository expenseSplitRepository,
                              ShoppingItemRepository shoppingItemRepository,
-                             PasswordEncoder passwordEncoder) {
+                             PasswordEncoder passwordEncoder,
+                             EntityManager entityManager) {
         this.userRepository = userRepository;
         this.householdRepository = householdRepository;
         this.roommateRepository = roommateRepository;
@@ -74,16 +80,26 @@ public class DemoDataGenerator implements ApplicationRunner {
         this.expenseSplitRepository = expenseSplitRepository;
         this.shoppingItemRepository = shoppingItemRepository;
         this.passwordEncoder = passwordEncoder;
+        this.entityManager = entityManager;
     }
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (userRepository.findUserByEmail("cemil.demo@wgms.local") != null) {
-            LOGGER.info("Demo data already exists. Skipping generation.");
-            return;
+        if (userRepository.findUserByEmail(PRESENTATION_DEMO_EMAIL) == null) {
+            generatePresentationDemoData();
+        } else {
+            LOGGER.info("Presentation demo data already exists. Skipping generation.");
         }
 
+        if (userRepository.findUserByEmail(FR15_MAIN_TENANT_EMAIL) == null) {
+            generateFr15FairChoreDemoData();
+        } else {
+            LOGGER.info("FR-15 fair chore demo data already exists. Skipping generation.");
+        }
+    }
+
+    private void generatePresentationDemoData() {
         LOGGER.info("Generating WGMS presentation demo data for UC-01 to UC-05.");
 
         DemoUsers users = createUsers();
@@ -107,6 +123,20 @@ public class DemoDataGenerator implements ApplicationRunner {
         LOGGER.info("Users without WG for live invitation demo:");
         LOGGER.info("invite.link.demo@wgms.local    use for invitation-link demo");
         LOGGER.info("invite.email.demo@wgms.local   use for direct email invitation demo");
+    }
+
+    private void generateFr15FairChoreDemoData() {
+        LOGGER.info("Generating FR-15 fair chore balancing demo data.");
+
+        Fr15Users users = createFr15Users();
+        Household household = createFr15Household("Fair Chore Demo WG", "FR-15 Demo Street 15, 1040 Wien", users.mainTenant());
+        createFr15Roommates(household, users);
+        createFr15FairnessTasks(household, users);
+        createFr15NoiseHousehold();
+
+        LOGGER.info("FR-15 demo data generated successfully.");
+        LOGGER.info("FR-15 login account: maintenant.fr15@example.com");
+        LOGGER.info("FR-15 expected recommendation in the task form: Light Worker");
     }
 
     // -------------------------------------------------------------------------
@@ -138,9 +168,13 @@ public class DemoDataGenerator implements ApplicationRunner {
     }
 
     private ApplicationUser createUser(String email, String firstName, String lastName, boolean admin) {
+        return createUser(email, firstName, lastName, admin, DEMO_PASSWORD);
+    }
+
+    private ApplicationUser createUser(String email, String firstName, String lastName, boolean admin, String rawPassword) {
         ApplicationUser user = new ApplicationUser(
             email,
-            passwordEncoder.encode(DEMO_PASSWORD),
+            passwordEncoder.encode(rawPassword),
             firstName,
             lastName,
             admin
@@ -334,7 +368,7 @@ public class DemoDataGenerator implements ApplicationRunner {
             TaskStatus.OPEN, users.andrei(), users.cemil(), schedules.get(4), 7);
     }
 
-    private void createTask(Household household,
+    private Task createTask(Household household,
                             String title,
                             String description,
                             LocalDate dueDate,
@@ -356,7 +390,107 @@ public class DemoDataGenerator implements ApplicationRunner {
         task.setCleaningSchedule(cleaningSchedule);
         task.setCreatedAt(createdAt);
         task.setUpdatedAt(createdAt.plusHours(4));
-        taskRepository.save(task);
+        return taskRepository.save(task);
+    }
+
+    // -------------------------------------------------------------------------
+    // FR-15: Deterministic fair chore balancing demo data
+    // -------------------------------------------------------------------------
+
+    private Fr15Users createFr15Users() {
+        ApplicationUser mainTenant = createUser(FR15_MAIN_TENANT_EMAIL, "Anna", "Fair", false, FR15_PASSWORD);
+        ApplicationUser heavyWorker = createUser("roommate.heavy@example.com", "Heavy", "Worker", false, FR15_PASSWORD);
+        ApplicationUser mediumWorker = createUser("roommate.medium@example.com", "Medium", "Worker", false, FR15_PASSWORD);
+        ApplicationUser lightWorker = createUser("roommate.light@example.com", "Light", "Worker", false, FR15_PASSWORD);
+
+        return new Fr15Users(mainTenant, heavyWorker, mediumWorker, lightWorker);
+    }
+
+    private Household createFr15Household(String name, String address, ApplicationUser createdBy) {
+        Household household = new Household();
+        household.setName(name);
+        household.setAddress(address);
+        household.setCreatedBy(createdBy);
+        household.setCreatedAt(LocalDateTime.now().minusMonths(2));
+        return householdRepository.save(household);
+    }
+
+    private void createFr15Roommates(Household household, Fr15Users users) {
+        createRoommate(users.mainTenant(), household, HouseholdRole.MAIN_TENANT, LocalDate.now().minusMonths(6));
+        createRoommate(users.heavyWorker(), household, HouseholdRole.ROOMMATE, LocalDate.now().minusMonths(5));
+        createRoommate(users.mediumWorker(), household, HouseholdRole.ROOMMATE, LocalDate.now().minusMonths(4));
+        createRoommate(users.lightWorker(), household, HouseholdRole.ROOMMATE, LocalDate.now().minusMonths(3));
+    }
+
+    private void createFr15FairnessTasks(Household household, Fr15Users users) {
+        LocalDate today = LocalDate.now();
+
+        // Anna Fair is the logged-in main tenant and is also an active roommate, so she needs some burden
+        // to keep the manual demo recommendation focused on Light Worker.
+        // Expected score: 2 * 1.0 + 1 * 0.5 = 2.5.
+        createFr15CompletedTasks(household, users.mainTenant(), users.mainTenant(), "FR-15 Anna completed chore", 2, 5);
+        createTask(household, "FR-15 Anna open chore", "Open non-overdue task for the main tenant.",
+            today.plusDays(2), TaskStatus.OPEN, users.mainTenant(), users.mainTenant(), null, 2);
+
+        // Heavy Worker: 5 completed tasks in the 30-day window and 1 open non-overdue task.
+        // Expected score: 5 * 1.0 + 1 * 0.5 = 5.5.
+        createFr15CompletedTasks(household, users.mainTenant(), users.heavyWorker(), "FR-15 Heavy completed chore", 5, 3);
+        createTask(household, "FR-15 Heavy open chore", "Open non-overdue task for the heavy-burden roommate.",
+            today.plusDays(3), TaskStatus.OPEN, users.mainTenant(), users.heavyWorker(), null, 2);
+
+        // Medium Worker: 3 completed tasks in the 30-day window and 1 overdue task.
+        // Expected score: 3 * 1.0 + 1 * 1.0 = 4.0.
+        createFr15CompletedTasks(household, users.mainTenant(), users.mediumWorker(), "FR-15 Medium completed chore", 3, 7);
+        createTask(household, "FR-15 Medium overdue chore", "Overdue task for the medium-burden roommate.",
+            today.minusDays(2), TaskStatus.OPEN, users.mainTenant(), users.mediumWorker(), null, 4);
+
+        // Light Worker: 1 completed task in the 30-day window and no current open/overdue tasks.
+        // Expected score: 1 * 1.0 = 1.0. With threshold 1.0, Light Worker is the only candidate.
+        createFr15CompletedTasks(household, users.mainTenant(), users.lightWorker(), "FR-15 Light completed chore", 1, 10);
+
+        Task oldCompleted = createTask(household, "FR-15 Light old completed chore",
+            "Completed outside the default 30-day history window; must not affect the default score.",
+            today.minusDays(45), TaskStatus.DONE, users.mainTenant(), users.lightWorker(), null, 45);
+        overrideTaskUpdatedAt(oldCompleted, LocalDateTime.now().minusDays(45));
+    }
+
+    private void createFr15CompletedTasks(Household household,
+                                          ApplicationUser createdBy,
+                                          ApplicationUser assignedTo,
+                                          String titlePrefix,
+                                          int count,
+                                          int firstDaysAgo) {
+        LocalDate today = LocalDate.now();
+        for (int i = 0; i < count; i++) {
+            int daysAgo = firstDaysAgo + i;
+            createTask(household, titlePrefix + " " + (i + 1), "Completed FR-15 scoring task.",
+                today.minusDays(daysAgo), TaskStatus.DONE, createdBy, assignedTo, null, daysAgo);
+        }
+    }
+
+    private void createFr15NoiseHousehold() {
+        ApplicationUser noiseMain = createUser("fr15.noise.main@example.com", "Noise", "Tenant", false, FR15_PASSWORD);
+        ApplicationUser noiseRoommate = createUser("fr15.noise.roommate@example.com", "Noise", "Roommate", false, FR15_PASSWORD);
+        Household noiseHousehold = createFr15Household("FR-15 Noise WG", "Noise Street 1, 1040 Wien", noiseMain);
+        createRoommate(noiseMain, noiseHousehold, HouseholdRole.MAIN_TENANT, LocalDate.now().minusMonths(3));
+        createRoommate(noiseRoommate, noiseHousehold, HouseholdRole.ROOMMATE, LocalDate.now().minusMonths(2));
+
+        LocalDate today = LocalDate.now();
+        createTask(noiseHousehold, "FR-15 Noise completed chore", "Other-household completed task; must be ignored.",
+            today.minusDays(5), TaskStatus.DONE, noiseMain, noiseRoommate, null, 5);
+        createTask(noiseHousehold, "FR-15 Noise overdue chore", "Other-household overdue task; must be ignored.",
+            today.minusDays(1), TaskStatus.OPEN, noiseMain, noiseRoommate, null, 1);
+        createTask(noiseHousehold, "FR-15 Noise undone chore",
+            "Represents an undone completion in the current model: the current status is OPEN, not DONE.",
+            today.plusDays(5), TaskStatus.OPEN, noiseMain, noiseRoommate, null, 2);
+    }
+
+    private void overrideTaskUpdatedAt(Task task, LocalDateTime updatedAt) {
+        entityManager.flush();
+        entityManager.createQuery("update Task task set task.updatedAt = :updatedAt where task.id = :id")
+            .setParameter("updatedAt", updatedAt)
+            .setParameter("id", task.getId())
+            .executeUpdate();
     }
 
     // -------------------------------------------------------------------------
@@ -829,6 +963,13 @@ public class DemoDataGenerator implements ApplicationRunner {
         Roommate daniel,
         Roommate taras,
         Roommate andrei
+    ) {}
+
+    private record Fr15Users(
+        ApplicationUser mainTenant,
+        ApplicationUser heavyWorker,
+        ApplicationUser mediumWorker,
+        ApplicationUser lightWorker
     ) {}
 
     private record ExpenseShare(Roommate roommate, BigDecimal amountOwed) {}

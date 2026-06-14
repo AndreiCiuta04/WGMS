@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { TaskService } from '../../services/task.service';
 import { HouseholdService } from '../../services/household.service';
 import { Roommate } from '../../dtos/roommate';
-import { TaskCreateDto } from '../../dtos/task';
+import { FairChoreRecommendationDto, TaskCreateDto } from '../../dtos/task';
 
 @Component({
   selector: 'app-task-create',
@@ -19,6 +19,9 @@ export class TaskCreateComponent implements OnInit {
   submitted = false;
   error = false;
   errorMessage = '';
+  recommendation?: FairChoreRecommendationDto;
+  recommendationLoading = false;
+  recommendationError = '';
 
   constructor(
     private formBuilder: FormBuilder,
@@ -36,6 +39,7 @@ export class TaskCreateComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadRoommates();
+    this.loadFairBalancingRecommendation();
   }
 
   loadRoommates(): void {
@@ -64,6 +68,36 @@ export class TaskCreateComponent implements OnInit {
         this.error = true;
         this.errorMessage = 'Could not load your household.';
       }
+    });
+  }
+
+  loadFairBalancingRecommendation(): void {
+    this.recommendationLoading = true;
+    this.recommendationError = '';
+
+    this.taskService.getFairBalancingRecommendation({
+      taskTitle: this.taskForm.get('title')?.value || undefined,
+      dueDate: this.taskForm.get('dueDate')?.value || undefined
+    }).subscribe({
+      next: recommendation => {
+        this.recommendation = recommendation;
+        this.recommendationLoading = false;
+      },
+      error: err => {
+        console.error('Error fetching fair chore recommendation', err);
+        this.recommendationLoading = false;
+        this.recommendationError = 'Could not load a fair chore suggestion.';
+      }
+    });
+  }
+
+  useSuggestion(): void {
+    if (!this.recommendation?.recommendedEmail) {
+      return;
+    }
+
+    this.taskForm.patchValue({
+      assignedToEmail: this.recommendation.recommendedEmail
     });
   }
 

@@ -28,7 +28,7 @@ import {TermsComponent} from './components/terms/terms.component';
 import {LegalComponent} from './components/legal/legal.component';
 
 const routes: Routes = [
-  {path: '', component: HomeComponent},
+  {path: '', pathMatch: 'full', component: HomeComponent},
   {path: 'login', component: LoginComponent},
   {path: 'register', component: RegisterComponent},
   {path: 'privacy', component: PrivacyComponent},

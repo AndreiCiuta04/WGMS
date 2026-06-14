@@ -1,10 +1,12 @@
 package at.ac.tuwien.sepr.groupphase.backend.endpoint;
 
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreRecommendationDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskDetailDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskStatusUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.mapper.TaskMapper;
+import at.ac.tuwien.sepr.groupphase.backend.service.FairChoreBalancingService;
 import at.ac.tuwien.sepr.groupphase.backend.service.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -22,10 +24,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.lang.invoke.MethodHandles;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -36,10 +40,36 @@ public class TaskEndpoint {
 
     private final TaskService taskService;
     private final TaskMapper taskMapper;
+    private final FairChoreBalancingService fairChoreBalancingService;
 
-    public TaskEndpoint(TaskService taskService, TaskMapper taskMapper) {
+    public TaskEndpoint(
+        TaskService taskService,
+        TaskMapper taskMapper,
+        FairChoreBalancingService fairChoreBalancingService
+    ) {
         this.taskService = taskService;
         this.taskMapper = taskMapper;
+        this.fairChoreBalancingService = fairChoreBalancingService;
+    }
+
+    @Secured("ROLE_USER")
+    @GetMapping(value = "/fair-balancing/recommendation")
+    @Operation(summary = "Get a fair chore assignee recommendation", security = @SecurityRequirement(name = "apiKey"))
+    public FairChoreRecommendationDto fairBalancingRecommendation(
+        @RequestParam(name = "historyDays", required = false) Integer historyDays,
+        @RequestParam(name = "taskTitle", required = false) String taskTitle,
+        @RequestParam(name = "dueDate", required = false) LocalDate dueDate,
+        @RequestParam(name = "cleaningScheduleId", required = false) Long cleaningScheduleId,
+        Authentication authentication
+    ) {
+        LOGGER.info("GET /api/v1/tasks/fair-balancing/recommendation");
+        return fairChoreBalancingService.recommendAssignee(
+            getCurrentUserEmail(authentication),
+            historyDays,
+            taskTitle,
+            dueDate,
+            cleaningScheduleId
+        );
     }
 
     @Secured("ROLE_USER")
