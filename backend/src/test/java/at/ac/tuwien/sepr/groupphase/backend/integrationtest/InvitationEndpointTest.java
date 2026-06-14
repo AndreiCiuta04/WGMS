@@ -1,6 +1,7 @@
 package at.ac.tuwien.sepr.groupphase.backend.integrationtest;
 
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
+import at.ac.tuwien.sepr.groupphase.backend.basetest.TestDbCleaner;
 import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.InvitationCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.InvitationDto;
@@ -52,6 +53,12 @@ public class InvitationEndpointTest implements TestData {
     private HouseholdInvitationRepository invitationRepository;
 
     @Autowired
+    private NotificationRepository notificationRepository;
+
+    @Autowired
+    private NotificationSettingRepository notificationSettingRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -80,6 +87,7 @@ public class InvitationEndpointTest implements TestData {
         invitationRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
+        TestDbCleaner.clearNotificationData(notificationRepository, notificationSettingRepository);
         userRepository.deleteAll();
 
         userA = new ApplicationUser("userA@test.com", "pass", "User", "A", false);

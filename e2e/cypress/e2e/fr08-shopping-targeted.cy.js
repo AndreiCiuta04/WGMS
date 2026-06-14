@@ -45,7 +45,8 @@ describe('FR-08 Targeted Shopping Visibility E2E', () => {
       cy.logoutUser();
       cy.loginUser(requester.email, requester.password);
       cy.visit('/#/shopping-items/create');
-      cy.contains('h2', 'Add Shopping Item').should('be.visible');
+      cy.location('hash').should('eq', '#/shopping-items/create');
+      cy.contains('h2', 'Add Shopping Item', { timeout: 10000 }).should('be.visible');
       cy.get('#name').type(itemName);
       cy.fillShoppingQuantity({ amount: 1, unit: 'PIECE' });
       cy.get('#visibility').select('TARGETED');
@@ -100,7 +101,8 @@ describe('FR-08 Targeted Shopping Visibility E2E', () => {
     });
 
     cy.visit('/#/shopping-items/create');
-    cy.contains('h2', 'Add Shopping Item').should('be.visible');
+    cy.location('hash').should('eq', '#/shopping-items/create');
+    cy.contains('h2', 'Add Shopping Item', { timeout: 10000 }).should('be.visible');
     cy.get('#name').type(`Self Targeted Item ${Date.now()}`);
     cy.get('#visibility').select('TARGETED');
     cy.get('#targetUserEmail')

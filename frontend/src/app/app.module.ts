@@ -36,6 +36,8 @@ import {ProfileEditComponent} from './components/profile-edit/profile-edit.compo
 import {PrivacyComponent} from './components/privacy/privacy.component';
 import {TermsComponent} from './components/terms/terms.component';
 import {LegalComponent} from './components/legal/legal.component';
+import {NotificationSettingsComponent} from './components/notification-settings/notification-settings.component';
+import {NotificationPanelComponent} from './components/notification-panel/notification-panel.component';
 import {ConfirmDialogComponent} from './components/confirm-dialog/confirm-dialog.component';
 import {MobileNavMenuComponent} from './components/mobile-nav-menu/mobile-nav-menu.component';
 import {ShoppingQuantityPipe} from './pipes/shopping-quantity.pipe';
@@ -71,6 +73,8 @@ import {ShoppingQuantityPipe} from './pipes/shopping-quantity.pipe';
     PrivacyComponent,
     TermsComponent,
     LegalComponent,
+    NotificationSettingsComponent,
+    NotificationPanelComponent,
     ConfirmDialogComponent,
     MobileNavMenuComponent,
     ShoppingQuantityPipe,

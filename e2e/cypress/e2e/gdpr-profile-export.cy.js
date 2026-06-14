@@ -39,7 +39,9 @@ describe('GDPR profile, export, correction, and anonymization', () => {
     cy.logoutUser();
     cy.loginUser(user.email, user.password);
 
+    cy.intercept('GET', '**/api/v1/users/me').as('loadProfile');
     cy.visit('/#/profile');
+    cy.wait('@loadProfile').its('response.statusCode').should('eq', 200);
     cy.get('[data-cy="profile-page"]').should('be.visible');
     cy.get('[data-cy="profile-data"]').should('contain', user.email);
     cy.get('[data-cy="profile-data"]').should('contain', user.firstName);
