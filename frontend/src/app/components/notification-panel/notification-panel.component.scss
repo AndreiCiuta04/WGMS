@@ -1,0 +1,112 @@
+$forest-green: #346739;
+$forest-green-hover: #29522d;
+$eggwhite-bg: #FBFAF3;
+$text-primary: #1F2A1F;
+$text-secondary: #5F6B5F;
+
+.notification-dropdown-wrapper {
+  z-index: 1050;
+}
+
+.trigger-btn {
+  color: $text-secondary;
+  transition: color 0.15s ease, transform 0.1s ease;
+  
+  &:hover {
+    color: $forest-green;
+    transform: scale(1.05);
+  }
+}
+
+.custom-badge {
+  font-size: 0.65rem;
+  padding: 0.25em 0.45em;
+  transform: translate(-10%, -10%) !important;
+}
+
+.notification-dropdown-card {
+  width: 320px;
+  right: 0;
+  left: auto;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: 8px;
+  background-color: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  transform-origin: top right;
+  animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.dropdown-header-custom {
+  background-color: rgba(52, 103, 57, 0.03);
+}
+
+.mark-all-btn {
+  font-size: 0.8rem;
+  color: $forest-green !important;
+  
+  &:hover {
+    color: $forest-green-hover !important;
+  }
+}
+
+.notification-list {
+  scrollbar-width: thin;
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(0,0,0,0.1);
+    border-radius: 3px;
+  }
+}
+
+.notification-item {
+  cursor: pointer;
+  background-color: #FFFFFF;
+  transition: background-color 0.15s ease;
+  
+  &:hover {
+    background-color: rgba(52, 103, 57, 0.02);
+  }
+  
+  &.unread {
+    background-color: rgba(52, 103, 57, 0.05);
+    
+    &:hover {
+      background-color: rgba(52, 103, 57, 0.07);
+    }
+  }
+}
+
+.notification-icon {
+  width: 36px;
+  height: 36px;
+  font-size: 1.1rem;
+}
+
+.notification-msg {
+  font-size: 0.875rem;
+  line-height: 1.25;
+  color: $text-primary;
+}
+
+.extra-small {
+  font-size: 0.75rem;
+}
+
+.small-dot {
+  font-size: 8px;
+  color: $forest-green !important;
+}

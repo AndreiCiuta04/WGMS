@@ -1,8 +1,10 @@
 package at.ac.tuwien.sepr.groupphase.backend.endpoint.dto;
 
+import at.ac.tuwien.sepr.groupphase.backend.entity.QuantityUnit;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItemStatus;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItemVisibility;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -12,7 +14,9 @@ import java.time.LocalDateTime;
  *
  * @param id                   item id
  * @param name                 item name
- * @param quantity             free-text quantity
+ * @param quantityCount        optional multiplier ("how many"), or {@code null}
+ * @param quantityAmount       optional measure amount (e.g. 3), or {@code null}
+ * @param quantityUnit         optional measure unit (e.g. LITER), or {@code null}
  * @param notes                free-text notes
  * @param status               current status
  * @param visibility           current visibility
@@ -31,7 +35,9 @@ import java.time.LocalDateTime;
 public record ShoppingItemDto(
     Long id,
     String name,
-    String quantity,
+    Integer quantityCount,
+    BigDecimal quantityAmount,
+    QuantityUnit quantityUnit,
     String notes,
     ShoppingItemStatus status,
     ShoppingItemVisibility visibility,

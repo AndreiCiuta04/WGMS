@@ -3,6 +3,7 @@ import { CleaningScheduleService } from '../../services/cleaning-schedule.servic
 import { CleaningScheduleDetailDto } from '../../dtos/cleaning-schedule';
 import { HouseholdService } from '../../services/household.service';
 import { AuthService } from '../../services/auth.service';
+import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 import { Roommate } from '../../dtos/roommate';
 
 @Component({
@@ -28,7 +29,8 @@ export class CleaningScheduleListComponent implements OnInit {
   constructor(
     private cleaningScheduleService: CleaningScheduleService,
     private householdService: HouseholdService,
-    public authService: AuthService
+    public authService: AuthService,
+    private confirmDialog: ConfirmDialogService
   ) { }
 
   ngOnInit(): void {
@@ -112,7 +114,15 @@ export class CleaningScheduleListComponent implements OnInit {
   }
 
   deleteSchedule(schedule: CleaningScheduleDetailDto) {
-    if (confirm(`Delete "${schedule.title}"? This cannot be undone.`)) {
+    this.confirmDialog.confirm({
+      title: 'Delete schedule?',
+      message: `"${schedule.title}" will be permanently removed. This cannot be undone.`,
+      confirmLabel: 'Delete',
+      danger: true
+    }).then(confirmed => {
+      if (!confirmed) {
+        return;
+      }
       this.cleaningScheduleService.delete(schedule.id).subscribe({
         next: () => {
           this.errorMessage = '';
@@ -129,7 +139,7 @@ export class CleaningScheduleListComponent implements OnInit {
           );
         }
       });
-    }
+    });
   }
 
   toggleManageExpanded() {

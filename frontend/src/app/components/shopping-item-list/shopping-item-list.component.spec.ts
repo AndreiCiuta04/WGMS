@@ -1,19 +1,22 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { RouterModule } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { ShoppingItemListComponent } from './shopping-item-list.component';
 import { ShoppingItemService } from '../../services/shopping-item.service';
-import { AggregatedShoppingItemDto, ShoppingItemDto, ShoppingItemStatus, ShoppingItemVisibility } from '../../dtos/shopping-item';
+import { ConfirmDialogService } from '../../services/confirm-dialog.service';
+import { ShoppingQuantityPipe } from '../../pipes/shopping-quantity.pipe';
+import { AggregatedShoppingItemDto, ShoppingItemDto, ShoppingItemStatus, ShoppingItemVisibility, QuantityUnit } from '../../dtos/shopping-item';
 import { LucideAngularModule, ShoppingCart, CircleCheck, CircleX, Pencil, Trash2, RotateCcw } from 'lucide-angular';
 
 describe('ShoppingItemListComponent', () => {
   let component: ShoppingItemListComponent;
   let fixture: ComponentFixture<ShoppingItemListComponent>;
   let serviceSpy: jasmine.SpyObj<ShoppingItemService>;
+  let confirmDialog: jasmine.SpyObj<ConfirmDialogService>;
 
   const personal: ShoppingItemDto = {
-    id: 1, name: 'My personal', quantity: null, notes: null,
+    id: 1, name: 'My personal', quantityCount: null, quantityAmount: null, quantityUnit: null, notes: null,
     status: ShoppingItemStatus.NEEDED, visibility: ShoppingItemVisibility.PERSONAL,
     householdId: 10, createdById: 100,
     createdByEmail: 'a@test.com', createdByFirstName: 'A', createdByLastName: 'B',
@@ -29,13 +32,13 @@ describe('ShoppingItemListComponent', () => {
   };
   const aggregated: AggregatedShoppingItemDto = {
     name: 'Milk',
-    quantity: '2L',
+    quantityCount: null, quantityAmount: 2, quantityUnit: QuantityUnit.LITER,
     itemCount: 2,
     sourceItems: [
       {
         id: 10,
         name: 'Milk',
-        quantity: '2L',
+        quantityCount: null, quantityAmount: 2, quantityUnit: QuantityUnit.LITER,
         notes: null,
         createdById: 100,
         createdByEmail: 'a@test.com',
@@ -46,7 +49,7 @@ describe('ShoppingItemListComponent', () => {
       {
         id: 11,
         name: ' milk ',
-        quantity: ' 2L ',
+        quantityCount: null, quantityAmount: 2, quantityUnit: QuantityUnit.LITER,
         notes: null,
         createdById: 200,
         createdByEmail: 'b@test.com',
@@ -60,7 +63,7 @@ describe('ShoppingItemListComponent', () => {
     ...personal,
     id: 3,
     name: 'Bought bread',
-    quantity: '1 loaf',
+    quantityCount: null, quantityAmount: 1, quantityUnit: QuantityUnit.PIECE,
     status: ShoppingItemStatus.BOUGHT,
     visibility: ShoppingItemVisibility.SHARED,
     updatedAt: '2026-05-18T08:00:00'
@@ -75,15 +78,20 @@ describe('ShoppingItemListComponent', () => {
     serviceSpy.findHouseholdShoppingHistory.and.returnValue(of([historyItem]));
     serviceSpy.updateStatus.and.returnValue(of({ ...personal, status: ShoppingItemStatus.BOUGHT }));
     serviceSpy.delete.and.returnValue(of(void 0));
+    confirmDialog = jasmine.createSpyObj<ConfirmDialogService>('ConfirmDialogService', ['confirm']);
+    confirmDialog.confirm.and.returnValue(Promise.resolve(true));
 
     await TestBed.configureTestingModule({
-      declarations: [ShoppingItemListComponent],
+      declarations: [ShoppingItemListComponent, ShoppingQuantityPipe],
       imports: [
         HttpClientTestingModule,
         RouterModule.forRoot([]),
         LucideAngularModule.pick({ShoppingCart, CircleCheck, CircleX, Pencil, Trash2, RotateCcw})
       ],
-      providers: [{ provide: ShoppingItemService, useValue: serviceSpy }]
+      providers: [
+        { provide: ShoppingItemService, useValue: serviceSpy },
+        { provide: ConfirmDialogService, useValue: confirmDialog }
+      ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(ShoppingItemListComponent);
@@ -141,19 +149,21 @@ describe('ShoppingItemListComponent', () => {
       { status: ShoppingItemStatus.CANCELLED });
   });
 
-  it('deleteItem() should call delete after confirm', () => {
-    spyOn(window, 'confirm').and.returnValue(true);
+  it('deleteItem() should call delete after confirm', fakeAsync(() => {
+    confirmDialog.confirm.and.returnValue(Promise.resolve(true));
     fixture.detectChanges();
     component.deleteItem(personal);
+    tick();
     expect(serviceSpy.delete).toHaveBeenCalledWith(1);
-  });
+  }));
 
-  it('deleteItem() should NOT call delete when confirm is dismissed', () => {
-    spyOn(window, 'confirm').and.returnValue(false);
+  it('deleteItem() should NOT call delete when confirm is dismissed', fakeAsync(() => {
+    confirmDialog.confirm.and.returnValue(Promise.resolve(false));
     fixture.detectChanges();
     component.deleteItem(personal);
+    tick();
     expect(serviceSpy.delete).not.toHaveBeenCalled();
-  });
+  }));
 
   it('should display an error message when loadItems fails', () => {
     serviceSpy.findAll.and.returnValue(throwError(() => ({

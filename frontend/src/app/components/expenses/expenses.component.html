@@ -287,19 +287,4 @@
       </div>
     }
   </section>
-
-  @if (expensePendingDelete) {
-    <div class="modal-backdrop-custom" role="presentation">
-      <div class="delete-dialog" role="dialog" aria-modal="true" aria-labelledby="deleteExpenseTitle">
-        <h3 id="deleteExpenseTitle">Delete expense?</h3>
-        <p>
-          {{ expensePendingDelete.description }} will be permanently removed from the shared expense history.
-        </p>
-        <div class="dialog-actions">
-          <button type="button" class="btn btn-outline-secondary" (click)="cancelDelete()">Cancel</button>
-          <button type="button" class="btn btn-outline-danger" (click)="confirmDelete()">OK</button>
-        </div>
-      </div>
-    </div>
-  }
 </div>

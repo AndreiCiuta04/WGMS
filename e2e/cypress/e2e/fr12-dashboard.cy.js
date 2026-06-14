@@ -208,7 +208,8 @@ describe('FR-12 Backend-Backed Dashboard E2E', () => {
       })
         .then(() => createShoppingItem(ownerToken, {
           name: shoppingName,
-          quantity: '3 kg',
+          quantityAmount: 3,
+          quantityUnit: 'KILOGRAM',
           notes: 'FR-12 dashboard shopping item',
           visibility: 'SHARED'
         }))

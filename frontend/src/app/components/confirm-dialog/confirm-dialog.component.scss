@@ -1,0 +1,25 @@
+$text-primary: #1F2A1F;
+$text-secondary: #5F6B5F;
+
+.confirm-dialog {
+  padding: 28px;
+}
+
+.confirm-title {
+  font-size: 20px;
+  margin-bottom: 12px;
+  color: $text-primary;
+}
+
+.confirm-message {
+  font-size: 15px;
+  color: $text-secondary;
+  margin-bottom: 24px;
+  white-space: pre-line;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}

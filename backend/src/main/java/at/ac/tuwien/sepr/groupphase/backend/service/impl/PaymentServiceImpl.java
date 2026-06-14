@@ -18,6 +18,8 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.PaymentService;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
+import at.ac.tuwien.sepr.groupphase.backend.service.NotificationService;
+import at.ac.tuwien.sepr.groupphase.backend.entity.NotificationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -41,6 +43,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final RoommateRepository roommateRepository;
     private final UserService userService;
     private final BalanceCalculator balanceCalculator;
+    private final NotificationService notificationService;
 
     public PaymentServiceImpl(
         ExpenseSplitRepository expenseSplitRepository,
@@ -48,7 +51,8 @@ public class PaymentServiceImpl implements PaymentService {
         HouseholdRepository householdRepository,
         RoommateRepository roommateRepository,
         UserService userService,
-        BalanceCalculator balanceCalculator
+        BalanceCalculator balanceCalculator,
+        NotificationService notificationService
     ) {
         this.expenseSplitRepository = expenseSplitRepository;
         this.paymentRepository = paymentRepository;
@@ -56,6 +60,7 @@ public class PaymentServiceImpl implements PaymentService {
         this.roommateRepository = roommateRepository;
         this.userService = userService;
         this.balanceCalculator = balanceCalculator;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -105,7 +110,17 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setDate(paymentCreateDto.date());
         payment.setCreatedBy(currentRoommate);
 
-        return toDto(paymentRepository.save(payment));
+        Payment savedPayment = paymentRepository.save(payment);
+
+        String fromName = currentRoommate.getUser().getFirstName() + " " + currentRoommate.getUser().getLastName();
+        notificationService.triggerNotification(
+            toRoommate.getUser(),
+            String.format("%s paid you EUR %s.", fromName, savedPayment.getAmount()),
+            NotificationType.PAYMENT_RECEIVED,
+            savedPayment.getId()
+        );
+
+        return toDto(savedPayment);
     }
 
     private void lockHouseholdForSettlement(Long householdId) {

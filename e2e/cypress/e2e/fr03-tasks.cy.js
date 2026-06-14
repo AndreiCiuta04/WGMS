@@ -70,7 +70,7 @@ describe('FR-03 Task Creation and Assignment E2E', () => {
       cy.intercept('PATCH', '**/api/v1/tasks/*/status').as('completeTask');
       cy.contains('.wgms-card', task.title).contains('button', 'Mark as Done').click();
       cy.wait('@completeTask').its('response.statusCode').should('eq', 200);
-      cy.contains('.wgms-card', task.title).contains('DONE').should('be.visible');
+      cy.contains('.wgms-card', task.title).contains('Done').should('be.visible');
     });
   });
 

@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 import { UserProfile } from '../../dtos/user-profile';
 
 @Component({
@@ -22,7 +23,11 @@ export class ProfileEditComponent implements OnInit {
   saving = false;
   leavingHousehold = false;
 
-  constructor(private authService: AuthService, private router: Router) { }
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    private confirmDialog: ConfirmDialogService
+  ) { }
 
   ngOnInit(): void {
     this.authService.getCurrentUserProfile().subscribe({
@@ -74,24 +79,30 @@ export class ProfileEditComponent implements OnInit {
   }
 
   leaveHousehold(): void {
-    const confirmed = window.confirm('Leave your current WG? Historical household records will stay readable.');
-    if (!confirmed) {
-      return;
-    }
-
-    this.leavingHousehold = true;
-    this.errorMessage = '';
-    this.successMessage = '';
-    this.authService.leaveCurrentHousehold().subscribe({
-      next: profile => {
-        this.profile = profile;
-        this.successMessage = 'You left your current WG.';
-        this.leavingHousehold = false;
-      },
-      error: () => {
-        this.leavingHousehold = false;
-        this.errorMessage = 'Could not leave your current WG.';
+    this.confirmDialog.confirm({
+      title: 'Leave your current WG?',
+      message: 'Historical household records will stay readable.',
+      confirmLabel: 'Leave WG',
+      danger: true
+    }).then(confirmed => {
+      if (!confirmed) {
+        return;
       }
+
+      this.leavingHousehold = true;
+      this.errorMessage = '';
+      this.successMessage = '';
+      this.authService.leaveCurrentHousehold().subscribe({
+        next: profile => {
+          this.profile = profile;
+          this.successMessage = 'You left your current WG.';
+          this.leavingHousehold = false;
+        },
+        error: () => {
+          this.leavingHousehold = false;
+          this.errorMessage = 'Could not leave your current WG.';
+        }
+      });
     });
   }
 }

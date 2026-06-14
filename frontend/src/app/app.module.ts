@@ -6,7 +6,6 @@ import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 import {AppRoutingModule} from './app-routing.module';
 import {AppComponent} from './app.component';
 import {HeaderComponent} from './components/header/header.component';
-import {FooterComponent} from './components/footer/footer.component';
 import {HomeComponent} from './components/home/home.component';
 import {LoginComponent} from './components/login/login.component';
 import {RegisterComponent} from './components/register/register.component';
@@ -30,19 +29,23 @@ import {SidebarComponent} from './components/sidebar/sidebar.component';
 import {BottomTabBarComponent} from './components/bottom-tab-bar/bottom-tab-bar.component';
 import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
 import {httpInterceptorProviders} from './interceptors';
-import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw, ReceiptText, HandCoins, Scale} from 'lucide-angular';
+import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw, ReceiptText, HandCoins, Scale, Search, SlidersHorizontal, ChevronDown, Ellipsis} from 'lucide-angular';
 import {PaymentStatusComponent} from './components/payment-status/payment-status.component';
 import {ProfileComponent} from './components/profile/profile.component';
 import {ProfileEditComponent} from './components/profile-edit/profile-edit.component';
 import {PrivacyComponent} from './components/privacy/privacy.component';
 import {TermsComponent} from './components/terms/terms.component';
 import {LegalComponent} from './components/legal/legal.component';
+import {NotificationSettingsComponent} from './components/notification-settings/notification-settings.component';
+import {NotificationPanelComponent} from './components/notification-panel/notification-panel.component';
+import {ConfirmDialogComponent} from './components/confirm-dialog/confirm-dialog.component';
+import {MobileNavMenuComponent} from './components/mobile-nav-menu/mobile-nav-menu.component';
+import {ShoppingQuantityPipe} from './pipes/shopping-quantity.pipe';
 
 @NgModule({
   declarations: [
     AppComponent,
     HeaderComponent,
-    FooterComponent,
     HomeComponent,
     LoginComponent,
     RegisterComponent,
@@ -70,6 +73,11 @@ import {LegalComponent} from './components/legal/legal.component';
     PrivacyComponent,
     TermsComponent,
     LegalComponent,
+    NotificationSettingsComponent,
+    NotificationPanelComponent,
+    ConfirmDialogComponent,
+    MobileNavMenuComponent,
+    ShoppingQuantityPipe,
   ],
   bootstrap: [AppComponent],
   imports: [BrowserModule,
@@ -77,7 +85,7 @@ import {LegalComponent} from './components/legal/legal.component';
     ReactiveFormsModule,
     NgbModule,
     FormsModule,
-    LucideAngularModule.pick({LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw, ReceiptText, HandCoins, Scale})],
+    LucideAngularModule.pick({LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw, ReceiptText, HandCoins, Scale, Search, SlidersHorizontal, ChevronDown, Ellipsis})],
   providers: [
     httpInterceptorProviders,
     provideHttpClient(withInterceptorsFromDi()),

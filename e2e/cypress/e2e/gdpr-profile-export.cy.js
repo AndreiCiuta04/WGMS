@@ -39,7 +39,9 @@ describe('GDPR profile, export, correction, and anonymization', () => {
     cy.logoutUser();
     cy.loginUser(user.email, user.password);
 
+    cy.intercept('GET', '**/api/v1/users/me').as('loadProfile');
     cy.visit('/#/profile');
+    cy.wait('@loadProfile').its('response.statusCode').should('eq', 200);
     cy.get('[data-cy="profile-page"]').should('be.visible');
     cy.get('[data-cy="profile-data"]').should('contain', user.email);
     cy.get('[data-cy="profile-data"]').should('contain', user.firstName);
@@ -111,12 +113,9 @@ describe('GDPR profile, export, correction, and anonymization', () => {
     cy.visit('/#/profile');
     cy.get('[data-cy="profile-page"]').should('be.visible');
 
-    cy.window().then(win => {
-      cy.stub(win, 'confirm').as('deleteConfirm').returns(true);
-    });
     cy.intercept('DELETE', '**/api/v1/users/me').as('deleteAccount');
     cy.get('[data-cy="profile-delete-account-button"]').click();
-    cy.get('@deleteConfirm').should('have.been.calledOnce');
+    cy.confirmDialog();
     cy.wait('@deleteAccount').its('response.statusCode').should('eq', 204);
 
     cy.location('hash').should('include', '/login');

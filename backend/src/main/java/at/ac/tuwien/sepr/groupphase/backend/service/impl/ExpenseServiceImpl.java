@@ -23,6 +23,8 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.ExpenseService;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
+import at.ac.tuwien.sepr.groupphase.backend.service.NotificationService;
+import at.ac.tuwien.sepr.groupphase.backend.entity.NotificationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -51,6 +53,7 @@ public class ExpenseServiceImpl implements ExpenseService {
     private final RoommateRepository roommateRepository;
     private final UserService userService;
     private final BalanceCalculator balanceCalculator;
+    private final NotificationService notificationService;
 
     public ExpenseServiceImpl(
         ExpenseRepository expenseRepository,
@@ -59,7 +62,8 @@ public class ExpenseServiceImpl implements ExpenseService {
         PaymentRepository paymentRepository,
         RoommateRepository roommateRepository,
         UserService userService,
-        BalanceCalculator balanceCalculator
+        BalanceCalculator balanceCalculator,
+        NotificationService notificationService
     ) {
         this.expenseRepository = expenseRepository;
         this.expenseSplitRepository = expenseSplitRepository;
@@ -68,6 +72,7 @@ public class ExpenseServiceImpl implements ExpenseService {
         this.roommateRepository = roommateRepository;
         this.userService = userService;
         this.balanceCalculator = balanceCalculator;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -95,6 +100,18 @@ public class ExpenseServiceImpl implements ExpenseService {
 
         Expense savedExpense = expenseRepository.save(expense);
         List<ExpenseSplit> savedSplits = expenseSplitRepository.saveAll(createSplits(savedExpense, expenseCreateDto.splits(), householdId));
+
+        String paidByName = paidBy.getUser().getFirstName() + " " + paidBy.getUser().getLastName();
+        for (ExpenseSplit split : savedSplits) {
+            if (!split.getRoommate().getId().equals(paidBy.getId())) {
+                notificationService.triggerNotification(
+                    split.getRoommate().getUser(),
+                    String.format("%s added an expense: %s. You owe EUR %s.", paidByName, savedExpense.getDescription(), split.getAmountOwed()),
+                    NotificationType.EXPENSE_CREATED,
+                    savedExpense.getId()
+                );
+            }
+        }
 
         return toDto(savedExpense, savedSplits);
     }

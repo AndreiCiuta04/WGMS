@@ -37,6 +37,14 @@ $eggwhite-bg: #FBFAF3;
   transition: color 0.15s ease;
   min-width: 60px;
 
+  // The "More" trigger is a <button>; strip native button chrome to match the tab links.
+  &.tab-more {
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
   &:hover {
     color: $forest-green !important;
   }

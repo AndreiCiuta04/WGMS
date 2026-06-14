@@ -4,13 +4,11 @@ function uniqueEmail(prefix) {
   return `${prefix}.${Date.now()}.${Math.floor(Math.random() * 100000)}@test.com`;
 }
 
-function addShoppingItem({ name, quantity, notes, visibility, targetUserEmail }) {
+function addShoppingItem({ name, amount, unit, notes, visibility, targetUserEmail }) {
   cy.visit('/#/shopping-items/create');
   cy.contains('h2', 'Add Shopping Item').should('be.visible');
   cy.get('#name').clear().type(name);
-  if (quantity) {
-    cy.get('#quantity').clear().type(quantity);
-  }
+  cy.fillShoppingQuantity({ amount, unit });
   if (notes) {
     cy.get('#notes').clear().type(notes);
   }
@@ -61,11 +59,11 @@ describe('UC-04 Shopping Collaboration E2E', () => {
 
       cy.logoutUser();
       cy.loginUser(requester.email, requester.password);
-      addShoppingItem({ name: sharedName, quantity: '1 pack', notes: 'Shared pantry item', visibility: 'SHARED' });
-      addShoppingItem({ name: groupedName, quantity: '1 kg', notes: 'First shared request', visibility: 'SHARED' });
-      addShoppingItem({ name: ` ${groupedName.toLowerCase()} `, quantity: ' 1 kg ', notes: 'Second shared request', visibility: 'SHARED' });
-      addShoppingItem({ name: personalName, quantity: '1', notes: 'Private item', visibility: 'PERSONAL' });
-      addShoppingItem({ name: targetedName, quantity: '1 box', notes: 'Please buy tea', visibility: 'TARGETED', targetUserEmail: buyer.email });
+      addShoppingItem({ name: sharedName, amount: 1, unit: 'PACK', notes: 'Shared pantry item', visibility: 'SHARED' });
+      addShoppingItem({ name: groupedName, amount: 1, unit: 'KILOGRAM', notes: 'First shared request', visibility: 'SHARED' });
+      addShoppingItem({ name: ` ${groupedName.toLowerCase()} `, amount: 1, unit: 'KILOGRAM', notes: 'Second shared request', visibility: 'SHARED' });
+      addShoppingItem({ name: personalName, amount: 1, notes: 'Private item', visibility: 'PERSONAL' });
+      addShoppingItem({ name: targetedName, amount: 1, unit: 'PACK', notes: 'Please buy tea', visibility: 'TARGETED', targetUserEmail: buyer.email });
 
       cy.logoutUser();
       cy.loginUser(buyer.email, buyer.password);

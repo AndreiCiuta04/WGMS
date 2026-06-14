@@ -60,12 +60,12 @@ describe('UC-02 Household Task Lifecycle E2E', () => {
       cy.contains('.nav-link.active', 'My Tasks').should('be.visible');
       cy.contains('.wgms-card', task.title).should('be.visible');
       cy.contains('.wgms-card', task.title).contains('button', 'Mark as Done').click();
-      cy.contains('.wgms-card', task.title).contains('DONE').should('be.visible');
+      cy.contains('.wgms-card', task.title).contains('Done').should('be.visible');
 
       cy.logoutUser();
       cy.loginUser(owner.email, owner.password);
       cy.visit('/#/tasks');
-      cy.contains('.wgms-card', task.title).contains('DONE').should('be.visible');
+      cy.contains('.wgms-card', task.title).contains('Done').should('be.visible');
 
       cy.visit('/#/history');
       cy.contains('h2', 'History').should('be.visible');

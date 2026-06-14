@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
@@ -6,12 +6,14 @@ import { of, throwError } from 'rxjs';
 
 import { ProfileEditComponent } from './profile-edit.component';
 import { AuthService } from '../../services/auth.service';
+import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 import { UserProfile } from '../../dtos/user-profile';
 
 describe('ProfileEditComponent', () => {
   let fixture: ComponentFixture<ProfileEditComponent>;
   let component: ProfileEditComponent;
   let authService: jasmine.SpyObj<AuthService>;
+  let confirmDialog: jasmine.SpyObj<ConfirmDialogService>;
   let router: Router;
 
   beforeEach(async () => {
@@ -29,10 +31,16 @@ describe('ProfileEditComponent', () => {
       roommateId: null
     })));
 
+    confirmDialog = jasmine.createSpyObj<ConfirmDialogService>('ConfirmDialogService', ['confirm']);
+    confirmDialog.confirm.and.returnValue(Promise.resolve(true));
+
     await TestBed.configureTestingModule({
       declarations: [ProfileEditComponent],
       imports: [FormsModule, RouterTestingModule],
-      providers: [{ provide: AuthService, useValue: authService }]
+      providers: [
+        { provide: AuthService, useValue: authService },
+        { provide: ConfirmDialogService, useValue: confirmDialog }
+      ]
     }).compileComponents();
 
     router = TestBed.inject(Router);
@@ -85,15 +93,16 @@ describe('ProfileEditComponent', () => {
     expect(component.submitted).toBeTrue();
   });
 
-  it('should leave the current household after confirmation', () => {
-    spyOn(window, 'confirm').and.returnValue(true);
+  it('should leave the current household after confirmation', fakeAsync(() => {
+    confirmDialog.confirm.and.returnValue(Promise.resolve(true));
 
     component.leaveHousehold();
+    tick();
 
     expect(authService.leaveCurrentHousehold).toHaveBeenCalled();
     expect(component.profile?.householdId).toBeNull();
     expect(component.successMessage).toBe('You left your current WG.');
-  });
+  }));
 
   it('should show an error when profile loading fails', () => {
     authService.getCurrentUserProfile.and.returnValue(throwError(() => new Error('failed')));

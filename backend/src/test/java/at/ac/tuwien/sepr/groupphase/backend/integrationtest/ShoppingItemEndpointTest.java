@@ -1,6 +1,7 @@
 package at.ac.tuwien.sepr.groupphase.backend.integrationtest;
 
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
+import at.ac.tuwien.sepr.groupphase.backend.basetest.TestDbCleaner;
 import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemDto;
@@ -9,6 +10,7 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemD
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
+import at.ac.tuwien.sepr.groupphase.backend.entity.QuantityUnit;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItem;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItemStatus;
@@ -16,6 +18,8 @@ import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItemVisibility;
 import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ShoppingItemRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.NotificationRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.NotificationSettingRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepository;
@@ -35,6 +39,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -53,16 +58,41 @@ public class ShoppingItemEndpointTest implements TestData {
 
     private static final String SHOPPING_ITEM_BASE_URI = BASE_URI + "/shopping-items";
 
-    @Autowired private MockMvc mockMvc;
-    @Autowired private ShoppingItemRepository shoppingItemRepository;
-    @Autowired private HouseholdRepository householdRepository;
-    @Autowired private RoommateRepository roommateRepository;
-    @Autowired private UserRepository userRepository;
-    @Autowired private JwtTokenizer jwtTokenizer;
-    @Autowired private SecurityProperties securityProperties;
-    @Autowired private JsonMapper jsonMapper;
-    @Autowired private TaskRepository taskRepository;
-    @Autowired private CleaningScheduleRepository cleaningScheduleRepository;
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ShoppingItemRepository shoppingItemRepository;
+
+    @Autowired
+    private HouseholdRepository householdRepository;
+
+    @Autowired
+    private RoommateRepository roommateRepository;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
+
+    @Autowired
+    private NotificationSettingRepository notificationSettingRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private JwtTokenizer jwtTokenizer;
+
+    @Autowired
+    private SecurityProperties securityProperties;
+
+    @Autowired
+    private JsonMapper jsonMapper;
+
+    @Autowired
+    private TaskRepository taskRepository;
+
+    @Autowired
+    private CleaningScheduleRepository cleaningScheduleRepository;
 
     private ApplicationUser userA;
     private ApplicationUser userB;
@@ -77,6 +107,7 @@ public class ShoppingItemEndpointTest implements TestData {
         shoppingItemRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
+        TestDbCleaner.clearNotificationData(notificationRepository, notificationSettingRepository);
         userRepository.deleteAll();
 
         userA = new ApplicationUser("usera@test.com", "pass", "User", "A", false);
@@ -123,12 +154,14 @@ public class ShoppingItemEndpointTest implements TestData {
         shoppingItemRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
+        TestDbCleaner.clearNotificationData(notificationRepository, notificationSettingRepository);
         userRepository.deleteAll();
     }
 
     @Test
     public void givenUserInHousehold_whenCreateItem_then201AndAttachedToHousehold() throws Exception {
-        ShoppingItemCreateDto dto = new ShoppingItemCreateDto("Milk", "2L", "Whole milk", ShoppingItemVisibility.PERSONAL, null);
+        ShoppingItemCreateDto dto = new ShoppingItemCreateDto(
+            "Milk", null, new BigDecimal("2"), QuantityUnit.LITER, "Whole milk", ShoppingItemVisibility.PERSONAL, null);
         String body = jsonMapper.writeValueAsString(dto);
 
         MvcResult result = mockMvc.perform(post(SHOPPING_ITEM_BASE_URI)
@@ -141,7 +174,8 @@ public class ShoppingItemEndpointTest implements TestData {
         ShoppingItemDto created = jsonMapper.readValue(result.getResponse().getContentAsString(), ShoppingItemDto.class);
         assertNotNull(created.id());
         assertEquals("Milk", created.name());
-        assertEquals("2L", created.quantity());
+        assertEquals(0, new BigDecimal("2").compareTo(created.quantityAmount()));
+        assertEquals(QuantityUnit.LITER, created.quantityUnit());
         assertEquals(ShoppingItemStatus.NEEDED, created.status());
         assertEquals(household.getId(), created.householdId());
         assertEquals("usera@test.com", created.createdByEmail());
@@ -156,7 +190,7 @@ public class ShoppingItemEndpointTest implements TestData {
             roommateRepository.save(r);
         });
 
-        ShoppingItemCreateDto dto = new ShoppingItemCreateDto("Milk", null, null, ShoppingItemVisibility.PERSONAL, null);
+        ShoppingItemCreateDto dto = new ShoppingItemCreateDto("Milk", null, null, null, null, ShoppingItemVisibility.PERSONAL, null);
         String body = jsonMapper.writeValueAsString(dto);
 
         MvcResult result = mockMvc.perform(post(SHOPPING_ITEM_BASE_URI)
@@ -170,7 +204,7 @@ public class ShoppingItemEndpointTest implements TestData {
     @Test
     public void givenUserCreatesTargetedItem_whenTargetGetsTargetedAtMe_thenItemVisible() throws Exception {
         ShoppingItemCreateDto dto = new ShoppingItemCreateDto(
-            "Tomatoes", "1kg", null, ShoppingItemVisibility.TARGETED, "userb@test.com");
+            "Tomatoes", null, new BigDecimal("1"), QuantityUnit.KILOGRAM, null, ShoppingItemVisibility.TARGETED, "userb@test.com");
         String body = jsonMapper.writeValueAsString(dto);
 
         MvcResult createResult = mockMvc.perform(post(SHOPPING_ITEM_BASE_URI)
@@ -247,7 +281,7 @@ public class ShoppingItemEndpointTest implements TestData {
     @Test
     public void givenCreateTargetedAtOutsideUser_then409() throws Exception {
         ShoppingItemCreateDto dto = new ShoppingItemCreateDto(
-            "Tomatoes", null, null, ShoppingItemVisibility.TARGETED, "userc@test.com");
+            "Tomatoes", null, null, null, null, ShoppingItemVisibility.TARGETED, "userc@test.com");
         String body = jsonMapper.writeValueAsString(dto);
 
         MvcResult result = mockMvc.perform(post(SHOPPING_ITEM_BASE_URI)
@@ -261,7 +295,7 @@ public class ShoppingItemEndpointTest implements TestData {
     @Test
     public void givenCreateTargetedAtSelf_then409() throws Exception {
         ShoppingItemCreateDto dto = new ShoppingItemCreateDto(
-            "Tomatoes", null, null, ShoppingItemVisibility.TARGETED, "usera@test.com");
+            "Tomatoes", null, null, null, null, ShoppingItemVisibility.TARGETED, "usera@test.com");
         String body = jsonMapper.writeValueAsString(dto);
 
         MvcResult result = mockMvc.perform(post(SHOPPING_ITEM_BASE_URI)
@@ -275,7 +309,7 @@ public class ShoppingItemEndpointTest implements TestData {
     @Test
     public void givenNoJwt_whenCreate_then403() throws Exception {
         ShoppingItemCreateDto dto = new ShoppingItemCreateDto(
-            "Bread", null, null, ShoppingItemVisibility.PERSONAL, null);
+            "Bread", null, null, null, null, ShoppingItemVisibility.PERSONAL, null);
         String body = jsonMapper.writeValueAsString(dto);
 
         MvcResult result = mockMvc.perform(post(SHOPPING_ITEM_BASE_URI)
@@ -288,7 +322,7 @@ public class ShoppingItemEndpointTest implements TestData {
     @Test
     public void givenBlankName_whenCreate_then400WithValidationErrors() throws Exception {
         ShoppingItemCreateDto dto = new ShoppingItemCreateDto(
-            "", null, null, ShoppingItemVisibility.PERSONAL, null);
+            "", null, null, null, null, ShoppingItemVisibility.PERSONAL, null);
         String body = jsonMapper.writeValueAsString(dto);
 
         MvcResult result = mockMvc.perform(post(SHOPPING_ITEM_BASE_URI)

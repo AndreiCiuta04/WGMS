@@ -28,7 +28,9 @@ function createShoppingItem(item, status = 'NEEDED') {
                 headers: authHeaders(token),
                 body: {
                     name: item.name,
-                    quantity: item.quantity,
+                    quantityCount: item.quantityCount,
+                    quantityAmount: item.quantityAmount,
+                    quantityUnit: item.quantityUnit,
                     notes: item.notes,
                     visibility: item.visibility || 'SHARED',
                     targetUserEmail: item.targetUserEmail
@@ -99,17 +101,19 @@ describe('FR-09 Shopping Aggregation and History E2E', () => {
 
         createShoppingItem({
             name: aggregateName,
-            quantity: '2L',
+            quantityAmount: 2,
+            quantityUnit: 'LITER',
             notes: 'First aggregate source'
         });
         createShoppingItem({
             name: repeatedAggregateName,
-            quantity: ' 2L ',
+            quantityAmount: 2,
+            quantityUnit: 'LITER',
             notes: 'Second aggregate source'
         });
         createShoppingItem({
             name: boughtName,
-            quantity: '1',
+            quantityAmount: 1,
             notes: 'Should stay out of active aggregate list'
         }, 'BOUGHT');
 
@@ -117,7 +121,8 @@ describe('FR-09 Shopping Aggregation and History E2E', () => {
         registerUserWithHousehold(otherHouseholdUser, `FR09 Other WG ${runId}`);
         createShoppingItem({
             name: otherHouseholdName,
-            quantity: '2L',
+            quantityAmount: 2,
+            quantityUnit: 'LITER',
             notes: 'Must not leak into owner household'
         });
 
@@ -134,7 +139,7 @@ describe('FR-09 Shopping Aggregation and History E2E', () => {
             .within(() => {
                 cy.get('[data-cy="aggregate-request-count"]')
                     .should('contain', '2 requests');
-                cy.contains('2L').should('be.visible');
+                cy.contains('2 L').should('be.visible');
             });
 
         cy.get('[data-cy="household-list-section"]')
@@ -156,17 +161,20 @@ describe('FR-09 Shopping Aggregation and History E2E', () => {
 
         createShoppingItem({
             name: boughtName,
-            quantity: '1 pack',
+            quantityAmount: 1,
+            quantityUnit: 'PACK',
             notes: 'Bought history item'
         }, 'BOUGHT');
         createShoppingItem({
             name: cancelledName,
-            quantity: '3 pcs',
+            quantityAmount: 3,
+            quantityUnit: 'PIECE',
             notes: 'Cancelled history item'
         }, 'CANCELLED');
         createShoppingItem({
             name: neededName,
-            quantity: '5 pcs',
+            quantityAmount: 5,
+            quantityUnit: 'PIECE',
             notes: 'Needed item should not be in history'
         });
 
@@ -174,7 +182,7 @@ describe('FR-09 Shopping Aggregation and History E2E', () => {
         registerUserWithHousehold(otherHouseholdUser, `FR09 Other History WG ${runId}`);
         createShoppingItem({
             name: otherHouseholdHistoryName,
-            quantity: '1',
+            quantityAmount: 1,
             notes: 'Must not leak into owner history'
         }, 'BOUGHT');
 
