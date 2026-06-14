@@ -11,9 +11,17 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
 import at.ac.tuwien.sepr.groupphase.backend.security.JwtTokenizer;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
+import at.ac.tuwien.sepr.groupphase.backend.service.EmailService;
+import at.ac.tuwien.sepr.groupphase.backend.service.EmailTemplateRenderer;
+import at.ac.tuwien.sepr.groupphase.backend.repository.VerificationCodeRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.NotificationSettingRepository;
+import at.ac.tuwien.sepr.groupphase.backend.entity.VerificationCode;
+import at.ac.tuwien.sepr.groupphase.backend.entity.NotificationSetting;
+import at.ac.tuwien.sepr.groupphase.backend.exception.VerificationRequiredException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
@@ -41,18 +49,31 @@ public class CustomUserDetailService implements UserService {
     private final RoommateRepository roommateRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenizer jwtTokenizer;
+    private final EmailService emailService;
+    private final EmailTemplateRenderer emailTemplateRenderer;
+    private final VerificationCodeRepository verificationCodeRepository;
+    private final NotificationSettingRepository notificationSettingRepository;
+
+    @Value("${wgms.mail.verification-enabled:false}")
+    private boolean verificationEnabled;
 
     @Autowired
-    public CustomUserDetailService(
-        UserRepository userRepository,
-        RoommateRepository roommateRepository,
-        PasswordEncoder passwordEncoder,
-        JwtTokenizer jwtTokenizer
-    ) {
+    public CustomUserDetailService(UserRepository userRepository,
+                                   RoommateRepository roommateRepository,
+                                   PasswordEncoder passwordEncoder,
+                                   JwtTokenizer jwtTokenizer,
+                                   EmailService emailService,
+                                   EmailTemplateRenderer emailTemplateRenderer,
+                                   VerificationCodeRepository verificationCodeRepository,
+                                   NotificationSettingRepository notificationSettingRepository) {
         this.userRepository = userRepository;
         this.roommateRepository = roommateRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenizer = jwtTokenizer;
+        this.emailService = emailService;
+        this.emailTemplateRenderer = emailTemplateRenderer;
+        this.verificationCodeRepository = verificationCodeRepository;
+        this.notificationSettingRepository = notificationSettingRepository;
     }
 
     @Override
@@ -209,6 +230,12 @@ public class CustomUserDetailService implements UserService {
         }
 
         if (passwordEncoder.matches(userLoginDto.getPassword(), applicationUser.getPassword())) {
+            // Check verification status
+            if (verificationEnabled && !Boolean.TRUE.equals(applicationUser.getVerified())) {
+                sendVerificationCode(applicationUser.getEmail());
+                throw new BadCredentialsException("VERIFICATION_REQUIRED");
+            }
+
             applicationUser.setFailedLoginAttempts(0);
             applicationUser.setAccountLockedUntil(null);
             userRepository.save(applicationUser);
@@ -258,7 +285,22 @@ public class CustomUserDetailService implements UserService {
         newUser.setPrivacyAcknowledgedAt(acceptedAt);
         newUser.setPrivacyVersion(PRIVACY_VERSION);
 
-        userRepository.save(newUser);
+        if (verificationEnabled) {
+            newUser.setVerified(false);
+        } else {
+            newUser.setVerified(true);
+        }
+
+        newUser = userRepository.save(newUser);
+
+        // Save default settings
+        NotificationSetting settings = new NotificationSetting(newUser);
+        notificationSettingRepository.save(settings);
+
+        if (verificationEnabled) {
+            sendVerificationCode(newUser.getEmail());
+            throw new VerificationRequiredException("VERIFICATION_REQUIRED");
+        }
 
         // Auto-login the user after registration
         UserLoginDto loginDto = new UserLoginDto();
@@ -266,5 +308,52 @@ public class CustomUserDetailService implements UserService {
         loginDto.setPassword(userRegistrationDto.getPassword()); // Use raw password for login check
 
         return login(loginDto);
+    }
+
+    @Override
+    @Transactional
+    public String verify(at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserVerifyDto userVerifyDto) {
+        LOGGER.debug("Verify user email {}", userVerifyDto.getEmail());
+
+        VerificationCode verificationCode = verificationCodeRepository.findByEmail(userVerifyDto.getEmail())
+            .orElseThrow(() -> new at.ac.tuwien.sepr.groupphase.backend.exception.ValidationException("Invalid email or verification code."));
+
+        if (verificationCode.getExpiresAt().isBefore(java.time.LocalDateTime.now())) {
+            verificationCodeRepository.delete(verificationCode);
+            throw new at.ac.tuwien.sepr.groupphase.backend.exception.ValidationException("Verification code has expired.");
+        }
+
+        if (!verificationCode.getCode().equals(userVerifyDto.getCode())) {
+            throw new at.ac.tuwien.sepr.groupphase.backend.exception.ValidationException("Invalid verification code.");
+        }
+
+        // Activate user
+        ApplicationUser user = findApplicationUserByEmail(userVerifyDto.getEmail());
+        user.setVerified(true);
+        userRepository.save(user);
+
+        // Delete code
+        verificationCodeRepository.delete(verificationCode);
+
+        // Generate token for auto-login
+        List<GrantedAuthority> grantedAuthorities = AuthorityUtils.createAuthorityList("ROLE_USER");
+        List<String> roles = grantedAuthorities.stream().map(GrantedAuthority::getAuthority).toList();
+        return jwtTokenizer.getAuthToken(user.getEmail(), roles);
+    }
+
+    private void sendVerificationCode(String email) {
+        // Generate random 6-digit code
+        String code = String.format("%06d", new java.util.Random().nextInt(1000000));
+        java.time.LocalDateTime expiresAt = java.time.LocalDateTime.now().plusMinutes(15);
+
+        // Remove old code if any
+        verificationCodeRepository.findByEmail(email).ifPresent(verificationCodeRepository::delete);
+
+        VerificationCode verificationCode = new VerificationCode(email, code, expiresAt);
+        verificationCodeRepository.save(verificationCode);
+
+        String subject = "WGMS: Verify your email";
+        String body = emailTemplateRenderer.renderVerificationEmail(code);
+        emailService.sendEmail(email, subject, body);
     }
 }

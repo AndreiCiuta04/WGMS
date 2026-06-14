@@ -16,6 +16,7 @@
     <!-- Mobile only: show brand (sidebar is hidden on mobile) -->
     <a class="header-app-brand" routerLink="/">WGMS</a>
     <div class="header-app-actions">
+      <app-notification-panel></app-notification-panel>
       <a routerLink="/profile" routerLinkActive="active" class="header-profile-btn">
         <lucide-icon name="user" [size]="18" [strokeWidth]="1.75"></lucide-icon>
         <span class="header-profile-label">Profile</span>

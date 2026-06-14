@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { UserRegistration } from '../../dtos/user-registration';
 import { RegisterDraftService } from '../../services/register-draft.service';
+import { NotificationService } from '../../services/notification.service';
 
 @Component({
   selector: 'app-register',
@@ -18,11 +19,19 @@ export class RegisterComponent implements OnInit {
   error = false;
   errorMessage = '';
 
+  // Verification properties
+  showVerification = false;
+  verificationEmail = '';
+  verificationCode = '';
+  verificationError = '';
+  verificationSubmitting = false;
+
   constructor(
     private formBuilder: UntypedFormBuilder,
     private authService: AuthService,
     private router: Router,
-    private registerDraftService: RegisterDraftService
+    private registerDraftService: RegisterDraftService,
+    private notificationService: NotificationService
   ) {
     this.registerForm = this.formBuilder.group({
       firstName: ['', [Validators.required]],
@@ -63,6 +72,12 @@ export class RegisterComponent implements OnInit {
         error: error => {
           console.log('Could not register due to:');
           console.log(error);
+          if (error.status === 403 && (error.error === 'VERIFICATION_REQUIRED' || error.error?.error === 'VERIFICATION_REQUIRED' || error.error?.message === 'VERIFICATION_REQUIRED')) {
+            this.showVerification = true;
+            this.verificationEmail = userRegistration.email;
+            this.error = false;
+            return;
+          }
           this.error = true;
           if (error.status === 409) {
             this.errorMessage = 'Email is already registered.';
@@ -85,6 +100,34 @@ export class RegisterComponent implements OnInit {
       email: this.registerForm.controls.email.value || '',
       password: this.registerForm.controls.password.value || '',
       termsAccepted: !!this.registerForm.controls.termsAccepted.value
+    });
+  }
+
+  submitVerificationCode() {
+    this.verificationSubmitting = true;
+    this.verificationError = '';
+    this.notificationService.verifyUser({
+      email: this.verificationEmail,
+      code: this.verificationCode
+    }).subscribe({
+      next: () => {
+        this.verificationSubmitting = false;
+        const pendingToken = localStorage.getItem('pendingInviteToken');
+        if (pendingToken) {
+          this.router.navigate(['/invite', pendingToken]);
+        } else {
+          this.router.navigate(['/']);
+        }
+      },
+      error: (err) => {
+        console.error('Verification failed', err);
+        this.verificationSubmitting = false;
+        if (err.status === 400 || err.status === 403) {
+          this.verificationError = 'Invalid or expired verification code.';
+        } else {
+          this.verificationError = 'An error occurred during verification. Please try again.';
+        }
+      }
     });
   }
 

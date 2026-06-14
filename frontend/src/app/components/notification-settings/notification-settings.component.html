@@ -1,0 +1,121 @@
+<div class="container py-4">
+  <div class="card settings-card border-0 shadow-lg overflow-hidden">
+    <div class="card-header border-0 bg-gradient text-white py-3">
+      <h3 class="mb-0 d-flex align-items-center gap-2">
+        <i class="bi bi-bell-fill"></i> Notification Settings
+      </h3>
+      <p class="mb-0 opacity-75">Customize how and when you receive alerts from WGMS</p>
+    </div>
+    <div class="card-body p-4">
+      @if (loading) {
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      }
+
+      @if (error) {
+        <div class="alert alert-danger border-0 rounded-3" role="alert">
+          {{ error }}
+        </div>
+      }
+
+      @if (success) {
+        <div class="alert alert-success border-0 rounded-3" role="alert">
+          Settings updated successfully!
+        </div>
+      }
+
+      @if (!loading) {
+        <form (ngSubmit)="saveSettings()">
+          <div class="row g-4">
+            <!-- Notification Triggers Column -->
+            <div class="col-md-6">
+              <h5 class="section-title border-bottom pb-2 mb-3">
+                Alert Preferences
+              </h5>
+
+              <div class="form-check form-switch mb-3 p-3 rounded-3 hover-bg">
+                <input class="form-check-input" type="checkbox" id="notifyTaskAssigned" name="notifyTaskAssigned" [(ngModel)]="settings.notifyTaskAssigned">
+                <label class="form-check-label fw-semibold" for="notifyTaskAssigned">
+                  Task Assigned
+                  <span class="d-block text-muted small fw-normal">Get notified when a roommate assigns a task to you.</span>
+                </label>
+              </div>
+
+              <div class="form-check form-switch mb-3 p-3 rounded-3 hover-bg">
+                <input class="form-check-input" type="checkbox" id="notifyTaskOverdue" name="notifyTaskOverdue" [(ngModel)]="settings.notifyTaskOverdue">
+                <label class="form-check-label fw-semibold" for="notifyTaskOverdue">
+                  Task Overdue
+                  <span class="d-block text-muted small fw-normal">Get daily reminders for tasks past their due dates.</span>
+                </label>
+              </div>
+
+              <div class="form-check form-switch mb-3 p-3 rounded-3 hover-bg">
+                <input class="form-check-input" type="checkbox" id="notifyExpenseCreated" name="notifyExpenseCreated" [(ngModel)]="settings.notifyExpenseCreated">
+                <label class="form-check-label fw-semibold" for="notifyExpenseCreated">
+                  Expense Split Created
+                  <span class="d-block text-muted small fw-normal">Receive an alert when a flatmate logs an expense splitting with you.</span>
+                </label>
+              </div>
+
+              <div class="form-check form-switch mb-3 p-3 rounded-3 hover-bg">
+                <input class="form-check-input" type="checkbox" id="notifyPaymentReceived" name="notifyPaymentReceived" [(ngModel)]="settings.notifyPaymentReceived">
+                <label class="form-check-label fw-semibold" for="notifyPaymentReceived">
+                  Payment Received
+                  <span class="d-block text-muted small fw-normal">Get notified when a roommate records a payment to settle balances with you.</span>
+                </label>
+              </div>
+
+              <div class="form-check form-switch mb-3 p-3 rounded-3 hover-bg">
+                <input class="form-check-input" type="checkbox" id="notifyCleaningReminder" name="notifyCleaningReminder" [(ngModel)]="settings.notifyCleaningReminder">
+                <label class="form-check-label fw-semibold" for="notifyCleaningReminder">
+                  Cleaning Reminders
+                  <span class="d-block text-muted small fw-normal">Receive alerts when a cleaning schedule is due for you.</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Notification Channels Column -->
+            <div class="col-md-6">
+              <h5 class="section-title border-bottom pb-2 mb-3">
+                Delivery Channels
+              </h5>
+
+              <div class="form-check form-switch mb-3 p-3 rounded-3 hover-bg">
+                <input class="form-check-input" type="checkbox" id="channelInApp" name="channelInApp" [(ngModel)]="settings.channelInApp">
+                <label class="form-check-label fw-semibold" for="channelInApp">
+                  In-App Notifications
+                  <span class="d-block text-muted small fw-normal">Show alerts in the header notification panel dropdown.</span>
+                </label>
+              </div>
+
+              <div class="form-check form-switch mb-3 p-3 rounded-3 hover-bg">
+                <input class="form-check-input" type="checkbox" id="channelEmail" name="channelEmail" [(ngModel)]="settings.channelEmail">
+                <label class="form-check-label fw-semibold" for="channelEmail">
+                  Email Notifications
+                  <span class="d-block text-muted small fw-normal">Forward alerts to your registered email address.</span>
+                </label>
+              </div>
+
+              <div class="form-check form-switch mb-3 p-3 rounded-3 hover-bg">
+                <input class="form-check-input" type="checkbox" id="channelPush" name="channelPush" [(ngModel)]="settings.channelPush">
+                <label class="form-check-label fw-semibold" for="channelPush">
+                  Push Notifications
+                  <span class="d-block text-muted small fw-normal">Receive notifications directly on your browser/device (future support).</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end mt-4 gap-2">
+            <button type="submit" class="btn btn-primary px-4 py-2 rounded-3 fw-semibold shadow-sm">
+              Save Settings
+            </button>
+          </div>
+        </form>
+      }
+    </div>
+  </div>
+</div>

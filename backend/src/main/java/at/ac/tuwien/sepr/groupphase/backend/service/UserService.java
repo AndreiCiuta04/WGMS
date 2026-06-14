@@ -79,4 +79,12 @@ public interface UserService extends UserDetailsService {
      * @return the JWT, if successful login directly after registration, or simply the registered user email
      */
     String register(at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserRegistrationDto userRegistrationDto);
+
+    /**
+     * Verify user registration code and return login token.
+     *
+     * @param userVerifyDto the verify details (email and code)
+     * @return the JWT token
+     */
+    String verify(at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserVerifyDto userVerifyDto);
 }

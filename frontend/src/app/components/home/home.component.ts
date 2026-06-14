@@ -6,6 +6,8 @@ import { DashboardService } from '../../services/dashboard.service';
 import { TaskDetailDto, TaskStatus } from '../../dtos/task';
 import { CleaningScheduleDetailDto } from '../../dtos/cleaning-schedule';
 import { ShoppingItemDto, ShoppingItemStatus } from '../../dtos/shopping-item';
+import { NotificationService } from '../../services/notification.service';
+import { NotificationDto } from '../../dtos/notification';
 import { UserProfile } from '../../dtos/user-profile';
 
 @Component({
@@ -26,6 +28,7 @@ export class HomeComponent implements OnInit {
   myPendingTasks: TaskDetailDto[] = [];
   householdSchedules: CleaningScheduleDetailDto[] = [];
   wgShoppingList: ShoppingItemDto[] = [];
+  unreadReminders: NotificationDto[] = [];
 
   // Financial status
   netBalance = 0;
@@ -43,7 +46,8 @@ export class HomeComponent implements OnInit {
     public authService: AuthService,
     private taskService: TaskService,
     private shoppingItemService: ShoppingItemService,
-    private dashboardService: DashboardService
+    private dashboardService: DashboardService,
+    private notificationService: NotificationService
   ) { }
 
   ngOnInit() {
@@ -97,6 +101,69 @@ export class HomeComponent implements OnInit {
         }
       }
     });
+
+    this.notificationService.getNotifications().subscribe({
+      next: (notifications) => {
+        this.unreadReminders = notifications.filter(n => !n.isRead);
+      },
+      error: (err) => {
+        console.error('Error fetching dashboard notifications:', err);
+      }
+    });
+  }
+
+  markReminderAsRead(id: number) {
+    this.notificationService.markAsRead(id).subscribe({
+      next: () => {
+        this.unreadReminders = this.unreadReminders.filter(n => n.id !== id);
+      },
+      error: (err) => {
+        console.error('Error marking reminder as read from dashboard:', err);
+      }
+    });
+  }
+
+  getReminderIcon(type: string): string {
+    switch (type) {
+      case 'TASK_ASSIGNED': return 'bi bi-person-check-fill';
+      case 'TASK_OVERDUE': return 'bi bi-exclamation-triangle-fill';
+      case 'EXPENSE_CREATED': return 'bi bi-receipt-cutoff';
+      case 'PAYMENT_RECEIVED': return 'bi bi-cash-coin';
+      case 'CLEANING_REMINDER': return 'bi bi-stars';
+      default: return 'bi bi-bell-fill';
+    }
+  }
+
+  getReminderClass(type: string): string {
+    switch (type) {
+      case 'TASK_ASSIGNED': return 'border-primary text-primary bg-primary-subtle';
+      case 'TASK_OVERDUE': return 'border-danger text-danger bg-danger-subtle';
+      case 'EXPENSE_CREATED': return 'border-warning text-warning bg-warning-subtle';
+      case 'PAYMENT_RECEIVED': return 'border-success text-success bg-success-subtle';
+      case 'CLEANING_REMINDER': return 'border-info text-info bg-info-subtle';
+      default: return 'border-secondary text-secondary bg-secondary-subtle';
+    }
+  }
+
+  formatRelativeTime(createdAtString: string): string {
+    if (!createdAtString) { return ''; }
+    const created = new Date(createdAtString);
+    const now = new Date();
+    const diffMs = now.getTime() - created.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) {
+      return 'Just now';
+    }
+    if (diffMins < 60) {
+      return `${diffMins}m ago`;
+    }
+    if (diffHours < 24) {
+      return `${diffHours}h ago`;
+    }
+    return `${diffDays}d ago`;
   }
 
   isOverdue(dueDateStr: string): boolean {

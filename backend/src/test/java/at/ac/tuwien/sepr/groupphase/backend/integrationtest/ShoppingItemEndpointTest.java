@@ -1,6 +1,7 @@
 package at.ac.tuwien.sepr.groupphase.backend.integrationtest;
 
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
+import at.ac.tuwien.sepr.groupphase.backend.basetest.TestDbCleaner;
 import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemDto;
@@ -17,6 +18,8 @@ import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItemVisibility;
 import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ShoppingItemRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.NotificationRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.NotificationSettingRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepository;
@@ -55,16 +58,41 @@ public class ShoppingItemEndpointTest implements TestData {
 
     private static final String SHOPPING_ITEM_BASE_URI = BASE_URI + "/shopping-items";
 
-    @Autowired private MockMvc mockMvc;
-    @Autowired private ShoppingItemRepository shoppingItemRepository;
-    @Autowired private HouseholdRepository householdRepository;
-    @Autowired private RoommateRepository roommateRepository;
-    @Autowired private UserRepository userRepository;
-    @Autowired private JwtTokenizer jwtTokenizer;
-    @Autowired private SecurityProperties securityProperties;
-    @Autowired private JsonMapper jsonMapper;
-    @Autowired private TaskRepository taskRepository;
-    @Autowired private CleaningScheduleRepository cleaningScheduleRepository;
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ShoppingItemRepository shoppingItemRepository;
+
+    @Autowired
+    private HouseholdRepository householdRepository;
+
+    @Autowired
+    private RoommateRepository roommateRepository;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
+
+    @Autowired
+    private NotificationSettingRepository notificationSettingRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private JwtTokenizer jwtTokenizer;
+
+    @Autowired
+    private SecurityProperties securityProperties;
+
+    @Autowired
+    private JsonMapper jsonMapper;
+
+    @Autowired
+    private TaskRepository taskRepository;
+
+    @Autowired
+    private CleaningScheduleRepository cleaningScheduleRepository;
 
     private ApplicationUser userA;
     private ApplicationUser userB;
@@ -79,6 +107,7 @@ public class ShoppingItemEndpointTest implements TestData {
         shoppingItemRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
+        TestDbCleaner.clearNotificationData(notificationRepository, notificationSettingRepository);
         userRepository.deleteAll();
 
         userA = new ApplicationUser("usera@test.com", "pass", "User", "A", false);
@@ -125,6 +154,7 @@ public class ShoppingItemEndpointTest implements TestData {
         shoppingItemRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
+        TestDbCleaner.clearNotificationData(notificationRepository, notificationSettingRepository);
         userRepository.deleteAll();
     }
 
