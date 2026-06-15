@@ -80,7 +80,6 @@ $eggwhite-bg: #FBFAF3;
   margin-left: auto;
 }
 
-.header-profile-btn,
 .header-logout-btn {
   display: flex;
   align-items: center;
@@ -104,7 +103,6 @@ $eggwhite-bg: #FBFAF3;
   }
 }
 
-.header-profile-label,
 .header-logout-label {
   @media (max-width: 480px) {
     display: none; // icon-only on very small screens
