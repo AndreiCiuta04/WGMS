@@ -51,6 +51,9 @@ public class ApplicationUser {
     @Column(name = "privacy_version")
     private String privacyVersion;
 
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean verified = true;
+
     public ApplicationUser() {
     }
 
@@ -62,6 +65,7 @@ public class ApplicationUser {
         this.admin = admin;
         this.failedLoginAttempts = 0;
         this.anonymized = false;
+        this.verified = true;
     }
 
     public Long getId() {
@@ -166,5 +170,13 @@ public class ApplicationUser {
 
     public void setPrivacyVersion(String privacyVersion) {
         this.privacyVersion = privacyVersion;
+    }
+
+    public Boolean getVerified() {
+        return verified;
+    }
+
+    public void setVerified(Boolean verified) {
+        this.verified = verified;
     }
 }

@@ -70,7 +70,7 @@ Cypress.Commands.add('loginUser', (email, password) => {
 });
 
 Cypress.Commands.add('logoutUser', () => {
-    cy.contains('a', 'Logout').click();
+    cy.get('.header-logout-btn', { timeout: 10000 }).should('be.visible').click();
 
     cy.window()
         .its('localStorage.authToken')
@@ -93,6 +93,8 @@ Cypress.Commands.add('createHousehold', ({ name, address }) => {
     cy.wait('@createHouseholdRequest')
         .its('response.statusCode')
         .should('eq', 201);
+
+    cy.location('hash', { timeout: 10000 }).should('eq', '#/');
 });
 
 Cypress.Commands.add('createInvitation', ({ invitedEmail }) => {

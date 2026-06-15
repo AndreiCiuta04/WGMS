@@ -1,6 +1,8 @@
 package at.ac.tuwien.sepr.groupphase.backend.service.impl;
 
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BalanceDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BillExpensePreviewDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BillExpensePreviewRequestDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseSplitCreateDto;
@@ -21,6 +23,8 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.ExpenseService;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
+import at.ac.tuwien.sepr.groupphase.backend.service.NotificationService;
+import at.ac.tuwien.sepr.groupphase.backend.entity.NotificationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -49,6 +53,7 @@ public class ExpenseServiceImpl implements ExpenseService {
     private final RoommateRepository roommateRepository;
     private final UserService userService;
     private final BalanceCalculator balanceCalculator;
+    private final NotificationService notificationService;
 
     public ExpenseServiceImpl(
         ExpenseRepository expenseRepository,
@@ -57,7 +62,8 @@ public class ExpenseServiceImpl implements ExpenseService {
         PaymentRepository paymentRepository,
         RoommateRepository roommateRepository,
         UserService userService,
-        BalanceCalculator balanceCalculator
+        BalanceCalculator balanceCalculator,
+        NotificationService notificationService
     ) {
         this.expenseRepository = expenseRepository;
         this.expenseSplitRepository = expenseSplitRepository;
@@ -66,6 +72,7 @@ public class ExpenseServiceImpl implements ExpenseService {
         this.roommateRepository = roommateRepository;
         this.userService = userService;
         this.balanceCalculator = balanceCalculator;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -93,6 +100,18 @@ public class ExpenseServiceImpl implements ExpenseService {
 
         Expense savedExpense = expenseRepository.save(expense);
         List<ExpenseSplit> savedSplits = expenseSplitRepository.saveAll(createSplits(savedExpense, expenseCreateDto.splits(), householdId));
+
+        String paidByName = paidBy.getUser().getFirstName() + " " + paidBy.getUser().getLastName();
+        for (ExpenseSplit split : savedSplits) {
+            if (!split.getRoommate().getId().equals(paidBy.getId())) {
+                notificationService.triggerNotification(
+                    split.getRoommate().getUser(),
+                    String.format("%s added an expense: %s. You owe EUR %s.", paidByName, savedExpense.getDescription(), split.getAmountOwed()),
+                    NotificationType.EXPENSE_CREATED,
+                    savedExpense.getId()
+                );
+            }
+        }
 
         return toDto(savedExpense, savedSplits);
     }
@@ -198,6 +217,32 @@ public class ExpenseServiceImpl implements ExpenseService {
         return buildEqualSplits(totalAmount, participantRoommateIds);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public BillExpensePreviewDto previewBillExpense(
+        BillExpensePreviewRequestDto previewRequestDto,
+        String currentUserEmail
+    ) {
+        LOGGER.debug("Preview bill expense by user {}", currentUserEmail);
+
+        ApplicationUser currentUser = userService.findApplicationUserByEmail(currentUserEmail);
+        Roommate currentRoommate = getCurrentRoommate(currentUser);
+        List<Long> participantRoommateIds = previewRequestDto.participantRoommateIds();
+
+        validateEqualSplitInput(previewRequestDto.totalAmount(), participantRoommateIds);
+        validateParticipantRoommatesAreUnique(participantRoommateIds);
+        validateParticipantsAreInCurrentHousehold(participantRoommateIds, currentRoommate.getHousehold().getId());
+        validateCurrentRoommateIsIncluded(participantRoommateIds, currentRoommate);
+
+        return new BillExpensePreviewDto(
+            previewRequestDto.description().trim(),
+            toMoney(previewRequestDto.totalAmount()),
+            previewRequestDto.date(),
+            currentRoommate.getId(),
+            buildEqualSplits(previewRequestDto.totalAmount(), participantRoommateIds)
+        );
+    }
+
     private Roommate getCurrentRoommateByEmail(String currentUserEmail) {
         ApplicationUser currentUser = userService.findApplicationUserByEmail(currentUserEmail);
         return getCurrentRoommate(currentUser);
@@ -273,6 +318,12 @@ public class ExpenseServiceImpl implements ExpenseService {
     private void validateParticipantsAreInCurrentHousehold(List<Long> participantRoommateIds, Long householdId) {
         for (Long roommateId : participantRoommateIds) {
             getActiveRoommateInHousehold(roommateId, householdId);
+        }
+    }
+
+    private void validateCurrentRoommateIsIncluded(List<Long> participantRoommateIds, Roommate currentRoommate) {
+        if (!participantRoommateIds.contains(currentRoommate.getId())) {
+            throw new ConflictException("The paying roommate must be included in the generated expense.");
         }
     }
 

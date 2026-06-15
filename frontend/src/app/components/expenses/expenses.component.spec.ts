@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { ElementRef, NO_ERRORS_SCHEMA } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { of, throwError } from 'rxjs';
 
@@ -11,6 +11,7 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 import { BalanceDto, ExpenseDto, ExpenseSplitCreateDto } from '../../dtos/expense';
 import { Household } from '../../dtos/household';
 import { Roommate } from '../../dtos/roommate';
+import { ReceiptOcrService } from '../../services/receipt-ocr.service';
 
 describe('ExpensesComponent', () => {
   let component: ExpensesComponent;
@@ -18,6 +19,7 @@ describe('ExpensesComponent', () => {
   let expenseService: jasmine.SpyObj<ExpenseService>;
   let householdService: jasmine.SpyObj<HouseholdService>;
   let authService: jasmine.SpyObj<AuthService>;
+  let receiptOcrService: jasmine.SpyObj<ReceiptOcrService>;
   let confirmDialog: jasmine.SpyObj<ConfirmDialogService>;
 
   beforeEach(async () => {
@@ -28,22 +30,39 @@ describe('ExpensesComponent', () => {
       'update',
       'delete',
       'calculateEqualSplits',
+      'previewBillExpense',
       'calculateBalances'
     ]);
     householdService = jasmine.createSpyObj<HouseholdService>('HouseholdService', ['getMyHousehold', 'getMembers']);
     authService = jasmine.createSpyObj<AuthService>('AuthService', ['getUserEmail']);
+    receiptOcrService = jasmine.createSpyObj<ReceiptOcrService>('ReceiptOcrService', ['scanCanvas']);
     confirmDialog = jasmine.createSpyObj<ConfirmDialogService>('ConfirmDialogService', ['confirm']);
     confirmDialog.confirm.and.returnValue(Promise.resolve(true));
 
     householdService.getMyHousehold.and.returnValue(of(household()));
     householdService.getMembers.and.returnValue(of(roommates()));
     authService.getUserEmail.and.returnValue('main@example.com');
+    receiptOcrService.scanCanvas.and.resolveTo({
+      description: 'Scanned supermarket receipt',
+      totalAmount: 12.5,
+      date: '2026-06-05'
+    });
     expenseService.findAll.and.returnValue(of([expense()]));
     expenseService.calculateBalances.and.returnValue(of([balance()]));
     expenseService.calculateEqualSplits.and.returnValue(of([
       { roommateId: 1, amountOwed: 6 },
       { roommateId: 2, amountOwed: 6 }
     ]));
+    expenseService.previewBillExpense.and.returnValue(of({
+      description: 'Bill scanner groceries',
+      totalAmount: 12,
+      date: '2026-06-05',
+      paidByRoommateId: 1,
+      splits: [
+        { roommateId: 1, amountOwed: 6 },
+        { roommateId: 2, amountOwed: 6 }
+      ]
+    }));
     expenseService.create.and.returnValue(of(expense()));
     expenseService.update.and.returnValue(of(expense({ description: 'Updated groceries' })));
     expenseService.delete.and.returnValue(of(void 0));
@@ -55,6 +74,7 @@ describe('ExpensesComponent', () => {
         { provide: ExpenseService, useValue: expenseService },
         { provide: HouseholdService, useValue: householdService },
         { provide: AuthService, useValue: authService },
+        { provide: ReceiptOcrService, useValue: receiptOcrService },
         { provide: ConfirmDialogService, useValue: confirmDialog }
       ],
       schemas: [NO_ERRORS_SCHEMA]
@@ -163,6 +183,120 @@ describe('ExpensesComponent', () => {
       { id: 1, selected: true, amount: '6,00' },
       { id: 2, selected: true, amount: '6,00' }
     ]);
+  });
+
+  it('should call bill preview service with bill data and selected participant ids', () => {
+    fixture.detectChanges();
+    component.billForm.patchValue(validExpenseForm({ description: 'Bill scanner groceries' }));
+    component.updateSplitSelection(component.splitRows[1], true);
+
+    component.previewBillExpense();
+
+    expect(expenseService.previewBillExpense).toHaveBeenCalledOnceWith({
+      description: 'Bill scanner groceries',
+      totalAmount: 12,
+      date: '2026-06-05',
+      participantRoommateIds: [1, 2]
+    });
+  });
+
+  it('should apply bill preview to the editable expense form for review', () => {
+    fixture.detectChanges();
+    component.billCalculatorOpen = true;
+    component.billForm.patchValue(validExpenseForm({ description: 'Bill scanner groceries' }));
+    component.updateSplitSelection(component.splitRows[1], true);
+
+    component.previewBillExpense();
+
+    expect(component.successMessage).toBe('Bill data ready for review.');
+    expect(component.billCalculatorOpen).toBeFalse();
+    expect(component.expenseForm.value).toEqual(validExpenseForm({ description: 'Bill scanner groceries' }));
+    expect(component.splitRows.map(row => ({ id: row.roommate.id, selected: row.selected, amount: row.amountOwed }))).toEqual([
+      { id: 1, selected: true, amount: '6,00' },
+      { id: 2, selected: true, amount: '6,00' }
+    ]);
+  });
+
+  it('should show readable error when bill preview input is incomplete', () => {
+    fixture.detectChanges();
+    component.billForm.patchValue(validExpenseForm({ description: '', totalAmount: '' }));
+
+    component.previewBillExpense();
+
+    expect(component.errorMessage).toBe('Enter bill data and select at least one participant.');
+    expect(expenseService.previewBillExpense).not.toHaveBeenCalled();
+  });
+
+  it('should show readable backend bill preview error', () => {
+    fixture.detectChanges();
+    expenseService.previewBillExpense.and.returnValue(throwError(() => ({ error: { message: 'The paying roommate must be included.' } })));
+    component.billForm.patchValue(validExpenseForm({ description: 'Bill scanner groceries' }));
+
+    component.previewBillExpense();
+
+    expect(component.errorMessage).toBe('The paying roommate must be included.');
+    expect(component.isPreviewingBill).toBeFalse();
+  });
+
+  it('should capture a camera frame, scan it, and prefill bill data for review', async () => {
+    fixture.detectChanges();
+    const fakeCanvas = stubCameraCanvas(component);
+
+    component.captureAndScan();
+    await fixture.whenStable();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(receiptOcrService.scanCanvas).toHaveBeenCalledOnceWith(fakeCanvas);
+    expect(component.billForm.value).toEqual({
+      description: 'Scanned supermarket receipt',
+      totalAmount: '12,50',
+      date: '2026-06-05'
+    });
+    expect(component.successMessage).toBe('Receipt scanned. Review the extracted bill data.');
+    expect(component.isScanningReceipt).toBeFalse();
+    expect(component.isCameraActive).toBeFalse();
+  });
+
+  it('should prompt for manual entry when the scanned receipt has no amount', async () => {
+    fixture.detectChanges();
+    receiptOcrService.scanCanvas.and.resolveTo({ description: 'Blurry receipt', totalAmount: null, date: '2026-06-05' });
+    stubCameraCanvas(component);
+
+    component.captureAndScan();
+    await fixture.whenStable();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(component.billForm.get('totalAmount')?.value).toBe('');
+    expect(component.successMessage).toBe('Receipt scanned, but no amount was found. Enter the bill total manually.');
+    expect(component.isScanningReceipt).toBeFalse();
+  });
+
+  it('should surface a readable error when the receipt scan fails', async () => {
+    fixture.detectChanges();
+    receiptOcrService.scanCanvas.and.rejectWith(new Error('Vision API error: 500'));
+    stubCameraCanvas(component);
+
+    component.captureAndScan();
+    await fixture.whenStable();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(component.errorMessage).toBe('Could not scan the receipt. Enter the bill data manually.');
+    expect(component.isScanningReceipt).toBeFalse();
+  });
+
+  it('should stop the live camera stream when the bill panel is toggled closed', () => {
+    fixture.detectChanges();
+    const track = { stop: jasmine.createSpy('stop') };
+    component.videoStream = { getTracks: () => [track] } as unknown as MediaStream;
+    component.isCameraActive = true;
+    component.billCalculatorOpen = true;
+
+    component.toggleBillCalculator();
+
+    expect(track.stop).toHaveBeenCalled();
+    expect(component.isCameraActive).toBeFalse();
+    expect(component.videoStream).toBeNull();
+    expect(component.billCalculatorOpen).toBeFalse();
   });
 
   it('should show readable error when equal split input is incomplete', () => {
@@ -325,6 +459,20 @@ describe('ExpensesComponent', () => {
     expect(component.expenses).toEqual([]);
   });
 });
+
+function stubCameraCanvas(component: ExpensesComponent, videoWidth = 100, videoHeight = 100): HTMLCanvasElement {
+  const realCreateElement = document.createElement.bind(document);
+  const video = realCreateElement('video') as HTMLVideoElement;
+  Object.defineProperty(video, 'videoWidth', { value: videoWidth, configurable: true });
+  Object.defineProperty(video, 'videoHeight', { value: videoHeight, configurable: true });
+  component.receiptVideoRef = { nativeElement: video } as ElementRef<HTMLVideoElement>;
+
+  const context = { drawImage: jasmine.createSpy('drawImage') } as unknown as CanvasRenderingContext2D;
+  const fakeCanvas = { width: 0, height: 0, getContext: () => context } as unknown as HTMLCanvasElement;
+  spyOn(document, 'createElement').and.callFake(((tag: string) =>
+    tag === 'canvas' ? fakeCanvas : realCreateElement(tag)) as typeof document.createElement);
+  return fakeCanvas;
+}
 
 function validExpenseForm(overrides: Partial<{
   description: string;

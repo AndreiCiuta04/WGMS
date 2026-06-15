@@ -51,3 +51,18 @@ export interface EqualSplitRequestDto {
   totalAmount: number;
   participantRoommateIds: number[];
 }
+
+export interface BillExpensePreviewRequestDto {
+  description: string;
+  totalAmount: number;
+  date: string;
+  participantRoommateIds: number[];
+}
+
+export interface BillExpensePreviewDto {
+  description: string;
+  totalAmount: number;
+  date: string;
+  paidByRoommateId: number;
+  splits: ExpenseSplitCreateDto[];
+}

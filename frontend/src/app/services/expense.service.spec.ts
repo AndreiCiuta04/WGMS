@@ -4,7 +4,14 @@ import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 
 import { ExpenseService } from './expense.service';
 import { Globals } from '../global/globals';
-import { BalanceDto, EqualSplitRequestDto, ExpenseCreateDto, ExpenseDto, ExpenseUpdateDto } from '../dtos/expense';
+import {
+  BalanceDto,
+  BillExpensePreviewRequestDto,
+  EqualSplitRequestDto,
+  ExpenseCreateDto,
+  ExpenseDto,
+  ExpenseUpdateDto
+} from '../dtos/expense';
 
 describe('ExpenseService', () => {
   const backendUri = 'http://backend.test/api/v1';
@@ -108,6 +115,42 @@ describe('ExpenseService', () => {
       { roommateId: 1, amountOwed: 6 },
       { roommateId: 2, amountOwed: 6 }
     ]);
+  });
+
+  it('should send POST to preview bill expense with body', () => {
+    const body: BillExpensePreviewRequestDto = {
+      description: 'Bill scanner groceries',
+      totalAmount: 12,
+      date: '2026-06-05',
+      participantRoommateIds: [1, 2]
+    };
+
+    service.previewBillExpense(body).subscribe(response => {
+      expect(response).toEqual({
+        description: 'Bill scanner groceries',
+        totalAmount: 12,
+        date: '2026-06-05',
+        paidByRoommateId: 1,
+        splits: [
+          { roommateId: 1, amountOwed: 6 },
+          { roommateId: 2, amountOwed: 6 }
+        ]
+      });
+    });
+
+    const request = httpTestingController.expectOne(`${backendUri}/expenses/bill-preview`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(body);
+    request.flush({
+      description: 'Bill scanner groceries',
+      totalAmount: 12,
+      date: '2026-06-05',
+      paidByRoommateId: 1,
+      splits: [
+        { roommateId: 1, amountOwed: 6 },
+        { roommateId: 2, amountOwed: 6 }
+      ]
+    });
   });
 
   it('should send GET to calculate balances', () => {

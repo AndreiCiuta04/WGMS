@@ -5,6 +5,7 @@ import at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.GoneException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.ValidationException;
+import at.ac.tuwien.sepr.groupphase.backend.exception.VerificationRequiredException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -76,8 +77,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(value = {BadCredentialsException.class})
     protected ResponseEntity<Object> handleBadCredentials(RuntimeException ex, WebRequest request) {
         logClientSafeWarning(ex);
+        if ("VERIFICATION_REQUIRED".equals(ex.getMessage())) {
+            return handleExceptionInternal(ex, "VERIFICATION_REQUIRED", new HttpHeaders(), HttpStatus.FORBIDDEN, request);
+        }
         return handleExceptionInternal(ex, UNAUTHORIZED_MESSAGE, new HttpHeaders(), HttpStatus.UNAUTHORIZED, request);
     }
+
+    @ExceptionHandler(value = {VerificationRequiredException.class})
+    protected ResponseEntity<Object> handleVerificationRequired(RuntimeException ex, WebRequest request) {
+        logClientSafeWarning(ex);
+        return handleExceptionInternal(ex, "VERIFICATION_REQUIRED", new HttpHeaders(), HttpStatus.FORBIDDEN, request);
+    }
+
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,

@@ -19,6 +19,7 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.PaymentService;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
+import at.ac.tuwien.sepr.groupphase.backend.service.NotificationService;
 import at.ac.tuwien.sepr.groupphase.backend.service.impl.BalanceCalculator;
 import at.ac.tuwien.sepr.groupphase.backend.service.impl.PaymentServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,6 +63,9 @@ public class PaymentServiceTest {
     @Mock
     private UserService userService;
 
+    @Mock
+    private NotificationService notificationService;
+
     private PaymentService paymentService;
 
     private Household household;
@@ -81,7 +85,8 @@ public class PaymentServiceTest {
             householdRepository,
             roommateRepository,
             userService,
-            new BalanceCalculator()
+            new BalanceCalculator(),
+            notificationService
         );
 
         household = createHousehold(1L, "Test WG");

@@ -3,6 +3,7 @@ import {UntypedFormBuilder, UntypedFormGroup, Validators} from '@angular/forms';
 import {Router} from '@angular/router';
 import {AuthService} from '../../services/auth.service';
 import {AuthRequest} from '../../dtos/auth-request';
+import {NotificationService} from '../../services/notification.service';
 
 
 @Component({
@@ -20,7 +21,19 @@ export class LoginComponent implements OnInit {
   error = false;
   errorMessage = '';
 
-  constructor(private formBuilder: UntypedFormBuilder, private authService: AuthService, private router: Router) {
+  // Verification properties
+  showVerification = false;
+  verificationEmail = '';
+  verificationCode = '';
+  verificationError = '';
+  verificationSubmitting = false;
+
+  constructor(
+    private formBuilder: UntypedFormBuilder,
+    private authService: AuthService,
+    private router: Router,
+    private notificationService: NotificationService
+  ) {
     this.loginForm = this.formBuilder.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]]
@@ -60,11 +73,45 @@ export class LoginComponent implements OnInit {
       error: error => {
         console.log('Could not log in due to:');
         console.log(error);
+        if (error.status === 403 && (error.error === 'VERIFICATION_REQUIRED' || error.error?.error === 'VERIFICATION_REQUIRED' || error.error?.message === 'VERIFICATION_REQUIRED')) {
+          this.showVerification = true;
+          this.verificationEmail = authRequest.email;
+          this.error = false;
+          return;
+        }
         this.error = true;
         if (typeof error.error === 'object') {
           this.errorMessage = error.error.error;
         } else {
           this.errorMessage = error.error;
+        }
+      }
+    });
+  }
+
+  submitVerificationCode() {
+    this.verificationSubmitting = true;
+    this.verificationError = '';
+    this.notificationService.verifyUser({
+      email: this.verificationEmail,
+      code: this.verificationCode
+    }).subscribe({
+      next: () => {
+        this.verificationSubmitting = false;
+        const pendingToken = localStorage.getItem('pendingInviteToken');
+        if (pendingToken) {
+          this.router.navigate(['/invite', pendingToken]);
+        } else {
+          this.router.navigate(['/']);
+        }
+      },
+      error: (err) => {
+        console.error('Verification failed', err);
+        this.verificationSubmitting = false;
+        if (err.status === 400 || err.status === 403) {
+          this.verificationError = 'Invalid or expired verification code.';
+        } else {
+          this.verificationError = 'An error occurred during verification. Please try again.';
         }
       }
     });

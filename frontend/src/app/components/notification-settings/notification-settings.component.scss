@@ -1,0 +1,43 @@
+.settings-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+
+  .card-header {
+    background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  }
+}
+
+.section-title {
+  color: #374151;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.hover-bg {
+  transition: all 0.2s ease-in-out;
+  border: 1px solid transparent;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(243, 244, 246, 0.8);
+    border-color: rgba(229, 231, 235, 1);
+  }
+
+  .form-check-input {
+    cursor: pointer;
+  }
+}
+
+.form-switch .form-check-input {
+  width: 2.5em;
+  height: 1.25em;
+  margin-left: -3em;
+  margin-top: 0.25em;
+  float: left;
+}
+
+.form-check {
+  padding-left: 3.5em;
+}

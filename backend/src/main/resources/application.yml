@@ -64,6 +64,13 @@ security:
       export:
         enabled: true
 
+wgms:
+  mail:
+    provider: ${WGMS_MAIL_PROVIDER:mock}
+    verification-enabled: ${WGMS_MAIL_VERIFICATION_ENABLED:false}
+    from: ${WGMS_MAIL_FROM:WGMS <noreply@shr8.sbs>}
+    apiKey: ${RESEND_API_KEY:}
+
 ---
 spring:
   config:

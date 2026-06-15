@@ -13,54 +13,86 @@
       }
 
       <div class="wgms-card">
-        <div class="card-header-clean mb-4">
-          <h2 class="mb-1">Login</h2>
-          <p class="caption">Welcome back to WGMS</p>
-        </div>
-
-        <form class="form" [formGroup]="loginForm" (ngSubmit)="loginUser()">
-          <div class="form-group mb-4">
-            <label for="inputEmail" class="caption mb-2 d-block">Email address</label>
-            <input type="email" name="email" formControlName="email" class="form-control" id="inputEmail"
-              placeholder="e.g. anna@example.com">
-            @if (submitted && loginForm.controls.email.errors) {
-              <div class="error mt-1">
-                @if (loginForm.controls.email.errors.required) {
-                  <small class="form-text text-danger">Email is required</small>
-                }
-                @if (loginForm.controls.email.errors.email) {
-                  <small class="form-text text-danger">Please provide a valid email</small>
-                }
-              </div>
-            }
+        @if (!showVerification) {
+          <div class="card-header-clean mb-4">
+            <h2 class="mb-1">Login</h2>
+            <p class="caption">Welcome back to WGMS</p>
           </div>
 
-          <div class="form-group mb-4">
-            <label for="password" class="caption mb-2 d-block">Password</label>
-            <input type="password" name="password" formControlName="password" class="form-control" id="password"
-              placeholder="••••••••">
-            @if (submitted && loginForm.controls.password.errors) {
-              <div class="error mt-1">
-                @if (loginForm.controls.password.errors.required) {
-                  <small class="form-text text-danger">Password is required</small>
-                }
-                @if (loginForm.controls.password.errors.minlength) {
-                  <small class="form-text text-danger">Minimum 8 characters required</small>
-                }
-              </div>
-            }
+          <form class="form" [formGroup]="loginForm" (ngSubmit)="loginUser()">
+            <div class="form-group mb-4">
+              <label for="inputEmail" class="caption mb-2 d-block">Email address</label>
+              <input type="email" name="email" formControlName="email" class="form-control" id="inputEmail"
+                placeholder="e.g. anna@example.com">
+              @if (submitted && loginForm.controls.email.errors) {
+                <div class="error mt-1">
+                  @if (loginForm.controls.email.errors.required) {
+                    <small class="form-text text-danger">Email is required</small>
+                  }
+                  @if (loginForm.controls.email.errors.email) {
+                    <small class="form-text text-danger">Please provide a valid email</small>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="form-group mb-4">
+              <label for="password" class="caption mb-2 d-block">Password</label>
+              <input type="password" name="password" formControlName="password" class="form-control" id="password"
+                placeholder="••••••••">
+              @if (submitted && loginForm.controls.password.errors) {
+                <div class="error mt-1">
+                  @if (loginForm.controls.password.errors.required) {
+                    <small class="form-text text-danger">Password is required</small>
+                  }
+                  @if (loginForm.controls.password.errors.minlength) {
+                    <small class="form-text text-danger">Minimum 8 characters required</small>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="text-center">
+              <button type="submit" class="btn btn-primary px-5 py-3">Login</button>
+            </div>
+          </form>
+
+          <div class="mt-4 pt-4 border-top text-center">
+            <span class="caption">Don't have an account? </span>
+            <a routerLink="/register" class="font-weight-bold">Register here</a>
+          </div>
+        } @else {
+          <div class="card-header-clean mb-4">
+            <h2 class="mb-1">Enter Verification Code</h2>
+            <p class="caption text-muted">A 6-digit code has been sent to <strong>{{ verificationEmail }}</strong>.</p>
           </div>
 
-          <div class="text-center">
-            <button type="submit" class="btn btn-primary px-5 py-3">Login</button>
+          @if (verificationError) {
+            <div class="alert alert-danger border-0 rounded-3 mb-4" role="alert">
+              {{ verificationError }}
+            </div>
+          }
+
+          <form class="form" (ngSubmit)="submitVerificationCode()">
+            <div class="form-group mb-4">
+              <label for="verificationCode" class="caption mb-2 d-block">Verification Code</label>
+              <input type="text" name="verificationCode" [(ngModel)]="verificationCode" class="form-control text-center fs-4" id="verificationCode"
+                placeholder="000000" maxlength="6" required style="letter-spacing: 4px; font-weight: bold;">
+            </div>
+
+            <div class="text-center">
+              <button type="submit" class="btn btn-primary px-5 py-3" [disabled]="verificationSubmitting || verificationCode.length !== 6">
+                Verify & Login
+              </button>
+            </div>
+          </form>
+
+          <div class="mt-4 pt-4 border-top text-center">
+            <button type="button" class="btn btn-link text-decoration-none caption fw-bold p-0 text-success" (click)="showVerification = false">
+              Back to Login
+            </button>
           </div>
-        </form>
-
-        <div class="mt-4 pt-4 border-top text-center">
-          <span class="caption">Don't have an account? </span>
-          <a routerLink="/register" class="font-weight-bold">Register here</a>
-        </div>
-
+        }
       </div>
 
     </div>

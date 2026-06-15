@@ -9,12 +9,14 @@ import { TaskService } from '../../services/task.service';
 import { ShoppingItemService } from '../../services/shopping-item.service';
 import { DashboardService } from '../../services/dashboard.service';
 import { DashboardDto } from '../../dtos/dashboard';
+import { NotificationService } from '../../services/notification.service';
 
 describe('HomeComponent', () => {
   let component: HomeComponent;
   let fixture: ComponentFixture<HomeComponent>;
   let dashboardServiceSpy: jasmine.SpyObj<DashboardService>;
   let authServiceSpy: jasmine.SpyObj<AuthService>;
+  let notificationServiceSpy: jasmine.SpyObj<NotificationService>;
 
   const dummyDashboardData: DashboardDto = {
     openTaskCount: 3,
@@ -45,6 +47,7 @@ describe('HomeComponent', () => {
   beforeEach(waitForAsync(() => {
     dashboardServiceSpy = jasmine.createSpyObj('DashboardService', ['getDashboardData']);
     authServiceSpy = jasmine.createSpyObj('AuthService', ['isLoggedIn', 'getUserEmail', 'getCurrentUserProfile']);
+    notificationServiceSpy = jasmine.createSpyObj('NotificationService', ['getNotifications', 'markAsRead']);
 
     TestBed.configureTestingModule({
       declarations: [HomeComponent, ShoppingQuantityPipe],
@@ -52,6 +55,7 @@ describe('HomeComponent', () => {
       providers: [
         { provide: DashboardService, useValue: dashboardServiceSpy },
         { provide: AuthService, useValue: authServiceSpy },
+        { provide: NotificationService, useValue: notificationServiceSpy },
         { provide: TaskService, useValue: {} },
         { provide: ShoppingItemService, useValue: {} }
       ],
@@ -64,6 +68,7 @@ describe('HomeComponent', () => {
     authServiceSpy.getUserEmail.and.returnValue('me@test.com');
     authServiceSpy.getCurrentUserProfile.and.returnValue(of(null as any));
     dashboardServiceSpy.getDashboardData.and.returnValue(of(dummyDashboardData));
+    notificationServiceSpy.getNotifications.and.returnValue(of([]));
 
     fixture = TestBed.createComponent(HomeComponent);
     component = fixture.componentInstance;
@@ -120,5 +125,32 @@ describe('HomeComponent', () => {
     fixture.detectChanges();
     const bannerElement = fixture.nativeElement.querySelector('.warning-banner');
     expect(bannerElement).toBeNull();
+  });
+
+  it('should render recent reminders if any unread are present', () => {
+    const dummyReminders = [
+      { id: 101, message: 'Clean tasks overdue', type: 'TASK_OVERDUE' as any, isRead: false, createdAt: '2026-06-07T12:00:00' }
+    ];
+    notificationServiceSpy.getNotifications.and.returnValue(of(dummyReminders));
+    fixture.detectChanges();
+
+    const remindersCard = fixture.nativeElement.querySelector('.reminders-card');
+    expect(remindersCard).toBeTruthy();
+    expect(remindersCard.textContent).toContain('Clean tasks overdue');
+  });
+
+  it('should mark reminder as read when button is clicked', () => {
+    const dummyReminders = [
+      { id: 101, message: 'Clean tasks overdue', type: 'TASK_OVERDUE' as any, isRead: false, createdAt: '2026-06-07T12:00:00' }
+    ];
+    notificationServiceSpy.getNotifications.and.returnValue(of(dummyReminders));
+    notificationServiceSpy.markAsRead.and.returnValue(of(undefined));
+    fixture.detectChanges();
+
+    const markBtn = fixture.nativeElement.querySelector('.reminders-card button');
+    expect(markBtn).toBeTruthy();
+    markBtn.click();
+
+    expect(notificationServiceSpy.markAsRead).toHaveBeenCalledWith(101);
   });
 });

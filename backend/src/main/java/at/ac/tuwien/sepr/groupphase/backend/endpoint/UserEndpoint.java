@@ -4,8 +4,9 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserProfileDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserProfileUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserRegistrationDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserDataExportDto;
-import at.ac.tuwien.sepr.groupphase.backend.service.UserExportService;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.UserVerifyDto;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
+import at.ac.tuwien.sepr.groupphase.backend.service.UserExportService;
 import jakarta.annotation.security.PermitAll;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -43,6 +44,13 @@ public class UserEndpoint {
     public String register(@Valid @RequestBody UserRegistrationDto userRegistrationDto) {
         LOGGER.info("POST /api/v1/users");
         return userService.register(userRegistrationDto);
+    }
+
+    @PermitAll
+    @PostMapping("/verify")
+    public String verify(@Valid @RequestBody UserVerifyDto userVerifyDto) {
+        LOGGER.info("POST /api/v1/users/verify");
+        return userService.verify(userVerifyDto);
     }
 
     @GetMapping("/me")
