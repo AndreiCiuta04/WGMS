@@ -11,3 +11,14 @@ ALTER TABLE IF EXISTS application_user ADD COLUMN IF NOT EXISTS privacy_version 
 -- FR-10: mark shopping items that are still suggestions.
 ALTER TABLE IF EXISTS shopping_item
 ADD COLUMN IF NOT EXISTS suggested boolean NOT NULL DEFAULT false;
+
+-- Keep existing local H2 databases compatible with new notification types.
+ALTER TABLE IF EXISTS notification
+ALTER COLUMN type ENUM(
+    'CLEANING_REMINDER',
+    'EXPENSE_CREATED',
+    'PAYMENT_RECEIVED',
+    'TASK_ASSIGNED',
+    'TASK_OVERDUE',
+    'OVERDUE_TASK_REMINDER'
+);

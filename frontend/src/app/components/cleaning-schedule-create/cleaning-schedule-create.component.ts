@@ -33,7 +33,8 @@ export class CleaningScheduleCreateComponent implements OnInit {
       frequency: ['', [Validators.required]],
       startDate: ['', [Validators.required]],
       endDate: [''],
-      assignedToEmail: ['', [Validators.required, Validators.email]]
+      assignedToEmail: ['', [Validators.required, Validators.email]],
+      fairBalancingEnabled: [false]
     });
   }
 
@@ -78,7 +79,8 @@ export class CleaningScheduleCreateComponent implements OnInit {
       frequency: formValue.frequency,
       startDate: formValue.startDate,
       endDate: formValue.endDate || undefined,
-      assignedToEmail: formValue.assignedToEmail
+      assignedToEmail: formValue.assignedToEmail,
+      fairBalancingEnabled: formValue.fairBalancingEnabled
     };
 
     this.cleaningScheduleService.create(dto).subscribe({

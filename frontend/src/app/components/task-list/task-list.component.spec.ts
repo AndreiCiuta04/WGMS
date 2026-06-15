@@ -118,6 +118,36 @@ describe('TaskListComponent', () => {
     expect(component.errorMessage).toBe('Could not mark the task as done.');
   });
 
+  it('should reopen done task and refresh the list', () => {
+    fixture.detectChanges();
+    taskService.findAll.calls.reset();
+    taskService.findAssignedToMe.calls.reset();
+
+    component.reopenTask(task({ id: 9, status: TaskStatus.DONE }));
+
+    expect(taskService.updateStatus).toHaveBeenCalledOnceWith(9, { status: TaskStatus.OPEN });
+    expect(taskService.findAll).toHaveBeenCalledTimes(1);
+    expect(taskService.findAssignedToMe).toHaveBeenCalledTimes(1);
+  });
+
+  it('should show readable error when reopening task fails', () => {
+    fixture.detectChanges();
+    taskService.updateStatus.and.returnValue(throwError(() => ({ status: 500 })));
+
+    component.reopenTask(task({ id: 9, status: TaskStatus.DONE }));
+
+    expect(component.errorMessage).toBe('Could not reopen the task.');
+  });
+
+  it('should render reopen action for done tasks', () => {
+    taskService.findAll.and.returnValue(of([task({ id: 9, status: TaskStatus.DONE })]));
+
+    fixture.detectChanges();
+
+    const reopenButton = (fixture.nativeElement as HTMLElement).querySelector('[data-cy="task-reopen"]');
+    expect(reopenButton?.textContent).toContain('Reopen');
+  });
+
   it('should delete task after confirmation and refresh the list', fakeAsync(() => {
     fixture.detectChanges();
     confirmDialog.confirm.and.returnValue(Promise.resolve(true));

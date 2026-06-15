@@ -102,6 +102,7 @@ export class NotificationPanelComponent implements OnInit, OnDestroy {
     switch (notification.type) {
       case NotificationType.TASK_ASSIGNED:
       case NotificationType.TASK_OVERDUE:
+      case NotificationType.OVERDUE_TASK_REMINDER:
         return ['/tasks'];
       case NotificationType.EXPENSE_CREATED:
         return ['/expenses'];
@@ -132,6 +133,7 @@ export class NotificationPanelComponent implements OnInit, OnDestroy {
       case NotificationType.TASK_ASSIGNED:
         return 'bg-primary-subtle text-primary';
       case NotificationType.TASK_OVERDUE:
+      case NotificationType.OVERDUE_TASK_REMINDER:
         return 'bg-danger-subtle text-danger';
       case NotificationType.EXPENSE_CREATED:
         return 'bg-warning-subtle text-warning';
@@ -149,6 +151,7 @@ export class NotificationPanelComponent implements OnInit, OnDestroy {
       case NotificationType.TASK_ASSIGNED:
         return 'bi bi-person-check-fill';
       case NotificationType.TASK_OVERDUE:
+      case NotificationType.OVERDUE_TASK_REMINDER:
         return 'bi bi-exclamation-triangle-fill';
       case NotificationType.EXPENSE_CREATED:
         return 'bi bi-receipt-cutoff';

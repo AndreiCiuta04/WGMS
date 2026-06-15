@@ -29,7 +29,7 @@ public class UserDataGenerator {
 
     @PostConstruct
     private void generateUser() {
-        if (userRepository.findAll().size() > 0) {
+        if (userRepository.findUserByEmail(TEST_USER_EMAIL) != null) {
             LOGGER.debug("user already generated");
         } else {
             LOGGER.debug("generating user entry for E2E tests");

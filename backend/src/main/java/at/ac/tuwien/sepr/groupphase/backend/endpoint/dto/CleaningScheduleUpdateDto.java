@@ -30,7 +30,9 @@ public record CleaningScheduleUpdateDto(
 
     @NotNull(message = "Assigned user email must not be null")
     @Email(message = "Assigned user email must be a valid email address")
-    String assignedToEmail
+    String assignedToEmail,
+
+    Boolean fairBalancingEnabled
 ) {
 
     @AssertTrue(message = "End date must not be before start date")

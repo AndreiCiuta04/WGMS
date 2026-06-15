@@ -122,7 +122,9 @@
 
             <div class="d-flex justify-content-end gap-3 border-top pt-3 mt-auto">
               @if (task.status !== TaskStatus.DONE) {
-                <button class="btn btn-outline-primary btn-sm" (click)="completeTask(task)">Mark as Done</button>
+                <button class="btn btn-outline-primary btn-sm" data-cy="task-mark-done" (click)="completeTask(task)">Mark as Done</button>
+              } @else {
+                <button class="btn btn-outline-primary btn-sm" data-cy="task-reopen" (click)="reopenTask(task)">Reopen</button>
               }
               <a [routerLink]="['/tasks', task.id, 'edit']" class="btn btn-outline-secondary btn-sm">Edit</a>
               <button class="btn btn-outline-danger btn-sm" (click)="deleteTask(task)">Delete</button>

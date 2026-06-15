@@ -182,6 +182,18 @@ export class TaskListComponent implements OnInit {
     });
   }
 
+  reopenTask(task: TaskDetailDto): void {
+    this.errorMessage = '';
+
+    this.taskService.updateStatus(task.id, { status: TaskStatus.OPEN }).subscribe({
+      next: () => this.loadTasks(),
+      error: err => {
+        console.error('Error reopening task', err);
+        this.errorMessage = 'Could not reopen the task.';
+      }
+    });
+  }
+
   deleteTask(task: TaskDetailDto): void {
     this.errorMessage = '';
 

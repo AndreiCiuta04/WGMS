@@ -101,6 +101,9 @@ describe('NotificationPanelComponent', () => {
       id: 1, message: 'x', type: NotificationType.TASK_OVERDUE, isRead: false, createdAt: ''
     })).toEqual(['/tasks']);
     expect(component.getNotificationRoute({
+      id: 5, message: 'x', type: NotificationType.OVERDUE_TASK_REMINDER, isRead: false, createdAt: ''
+    })).toEqual(['/tasks']);
+    expect(component.getNotificationRoute({
       id: 2, message: 'x', type: NotificationType.EXPENSE_CREATED, isRead: false, createdAt: ''
     })).toEqual(['/expenses']);
     expect(component.getNotificationRoute({

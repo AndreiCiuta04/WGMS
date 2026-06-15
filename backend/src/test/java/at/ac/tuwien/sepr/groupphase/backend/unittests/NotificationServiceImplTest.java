@@ -104,6 +104,28 @@ public class NotificationServiceImplTest {
     }
 
     @Test
+    public void givenOverdueReminderTypeAndOverdueSettingEnabled_whenTriggerNotification_thenPersistsNotification() {
+        NotificationSetting settings = new NotificationSetting(recipient);
+        settings.setChannelEmail(false);
+        settings.setNotifyTaskOverdue(true);
+        when(notificationSettingRepository.findByUserId(1L)).thenReturn(Optional.of(settings));
+        when(notificationRepository.existsByRecipientIdAndTypeAndReferenceIdAndIsReadFalse(1L,
+            NotificationType.OVERDUE_TASK_REMINDER, 2L)).thenReturn(false);
+
+        notificationService.triggerNotification(
+            recipient,
+            "Overdue task reminder: You currently have 5 overdue household tasks. Please review your assigned tasks.",
+            NotificationType.OVERDUE_TASK_REMINDER,
+            2L
+        );
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(captor.capture());
+        assertEquals(NotificationType.OVERDUE_TASK_REMINDER, captor.getValue().getType());
+        assertTrue(captor.getValue().getMessage().contains("5 overdue household tasks"));
+    }
+
+    @Test
     public void givenOtherUsersNotification_whenMarkAsRead_thenForbidden() {
         ApplicationUser owner = new ApplicationUser();
         owner.setId(2L);

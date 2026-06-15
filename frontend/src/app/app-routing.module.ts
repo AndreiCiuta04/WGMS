@@ -29,7 +29,7 @@ import {LegalComponent} from './components/legal/legal.component';
 import {NotificationSettingsComponent} from './components/notification-settings/notification-settings.component';
 
 const routes: Routes = [
-  {path: '', component: HomeComponent},
+  {path: '', pathMatch: 'full', component: HomeComponent},
   {path: 'login', component: LoginComponent},
   {path: 'register', component: RegisterComponent},
   {path: 'privacy', component: PrivacyComponent},
