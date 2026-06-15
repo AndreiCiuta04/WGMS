@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { ShoppingItemService } from '../../services/shopping-item.service';
-import { AggregatedShoppingItemDto, ShoppingItemDto, ShoppingItemStatus, ShoppingItemSuggestionDto, ShoppingItemVisibility } from '../../dtos/shopping-item';
+import { AggregatedShoppingItemDto, QUANTITY_UNIT_OPTIONS, QuantityUnit, ShoppingItemDto, ShoppingItemStatus, ShoppingItemSuggestionDto, ShoppingItemVisibility } from '../../dtos/shopping-item';
 import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 
 @Component({
@@ -24,9 +24,13 @@ export class ShoppingItemListComponent implements OnInit {
   successMessage: string | null = null;
 
   suggestionName = '';
-  suggestionQuantity = '';
+  suggestionQuantityCount: number | null = null;
+  suggestionQuantityAmount: number | null = null;
+  suggestionQuantityUnit: QuantityUnit | null = null;
   suggestionNotes = '';
   suggestionSubmitting = false;
+
+  readonly quantityUnitOptions = QUANTITY_UNIT_OPTIONS;
 
   suggestionActionIds = new Set<number>();
 
@@ -146,11 +150,23 @@ export class ShoppingItemListComponent implements OnInit {
 
   createSuggestion(): void {
     const name = this.suggestionName.trim();
-    const quantity = this.suggestionQuantity.trim();
     const notes = this.suggestionNotes.trim();
 
     if (!name) {
       this.actionError = 'Suggestion name is required.';
+      return;
+    }
+
+    const quantity = this.buildSuggestionQuantity();
+
+    if (
+      (this.suggestionQuantityCount != null
+        || this.suggestionQuantityAmount != null
+        || this.suggestionQuantityUnit != null)
+      && quantity == null
+    ) {
+      this.actionError =
+        'Quantity amount and unit must be provided together.';
       return;
     }
 
@@ -159,12 +175,14 @@ export class ShoppingItemListComponent implements OnInit {
 
     this.shoppingItemService.createSuggestion({
       name,
-      quantity: quantity || null,
+      quantity,
       notes: notes || null
     }).subscribe({
       next: () => {
         this.suggestionName = '';
-        this.suggestionQuantity = '';
+        this.suggestionQuantityCount = null;
+        this.suggestionQuantityAmount = null;
+        this.suggestionQuantityUnit = null;
         this.suggestionNotes = '';
         this.suggestionSubmitting = false;
         this.showSuccess('Suggestion saved and your vote recorded.');
@@ -177,6 +195,47 @@ export class ShoppingItemListComponent implements OnInit {
         this.suggestionSubmitting = false;
       }
     });
+  }
+
+  private buildSuggestionQuantity(): string | null {
+    const count = this.suggestionQuantityCount;
+    const amount = this.suggestionQuantityAmount;
+    const unit = this.suggestionQuantityUnit;
+
+    const nothingEntered =
+      count == null && amount == null && unit == null;
+
+    if (nothingEntered) {
+      return null;
+    }
+
+    if (amount == null || unit == null) {
+      return null;
+    }
+
+    const unitSymbol = this.quantityUnitSymbol(unit);
+    const measuredQuantity = `${amount} ${unitSymbol}`;
+
+    return count != null
+      ? `${count} x ${measuredQuantity}`
+      : measuredQuantity;
+  }
+
+  private quantityUnitSymbol(unit: QuantityUnit): string {
+    switch (unit) {
+      case QuantityUnit.MILLILITER:
+        return 'ml';
+      case QuantityUnit.LITER:
+        return 'L';
+      case QuantityUnit.GRAM:
+        return 'g';
+      case QuantityUnit.KILOGRAM:
+        return 'kg';
+      case QuantityUnit.PIECE:
+        return 'piece';
+      case QuantityUnit.PACK:
+        return 'pack';
+    }
   }
 
   voteForSuggestion(suggestion: ShoppingItemSuggestionDto): void {

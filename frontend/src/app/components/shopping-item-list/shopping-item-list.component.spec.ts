@@ -4,7 +4,7 @@ import { RouterModule } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { ShoppingItemListComponent } from './shopping-item-list.component';
 import { ShoppingItemService } from '../../services/shopping-item.service';
-import { AggregatedShoppingItemDto, ShoppingItemDto, ShoppingItemStatus, ShoppingItemSuggestionDto, ShoppingItemVisibility } from '../../dtos/shopping-item';
+import { AggregatedShoppingItemDto, QuantityUnit, ShoppingItemDto, ShoppingItemStatus, ShoppingItemSuggestionDto, ShoppingItemVisibility } from '../../dtos/shopping-item';
 import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 import { ShoppingQuantityPipe } from '../../pipes/shopping-quantity.pipe';
 import { LucideAngularModule, ShoppingCart, CircleCheck, CircleX, Pencil, Trash2, RotateCcw } from 'lucide-angular';
@@ -139,7 +139,9 @@ describe('ShoppingItemListComponent', () => {
       ...personal,
       id: suggestion.id,
       name: suggestion.name,
-      quantity: suggestion.quantity,
+      quantityCount: null,
+      quantityAmount: 1,
+      quantityUnit: QuantityUnit.PACK,
       notes: suggestion.notes,
       visibility: ShoppingItemVisibility.SHARED
     }));
@@ -302,21 +304,25 @@ describe('ShoppingItemListComponent', () => {
     fixture.detectChanges();
 
     component.suggestionName = 'Olive oil';
-    component.suggestionQuantity = '1 bottle';
+    component.suggestionQuantityCount = null;
+    component.suggestionQuantityAmount = 1;
+    component.suggestionQuantityUnit = QuantityUnit.PACK;
     component.suggestionNotes = 'For cooking';
 
     component.createSuggestion();
 
     expect(serviceSpy.createSuggestion).toHaveBeenCalledWith({
       name: 'Olive oil',
-      quantity: '1 bottle',
+      quantity: '1 pack',
       notes: 'For cooking'
     });
 
     expect(serviceSpy.findSuggestions).toHaveBeenCalledTimes(2);
     expect(component.currentTab).toBe('SUGGESTIONS');
     expect(component.suggestionName).toBe('');
-    expect(component.suggestionQuantity).toBe('');
+    expect(component.suggestionQuantityCount).toBeNull();
+    expect(component.suggestionQuantityAmount).toBeNull();
+    expect(component.suggestionQuantityUnit).toBeNull();
     expect(component.suggestionNotes).toBe('');
   });
 
@@ -386,5 +392,34 @@ describe('ShoppingItemListComponent', () => {
     component.deleteSuggestion(suggestion);
 
     expect(serviceSpy.deleteSuggestion).not.toHaveBeenCalled();
+  });
+
+  it('createSuggestion() builds a structured counted quantity', () => {
+    fixture.detectChanges();
+
+    component.suggestionName = 'Water';
+    component.suggestionQuantityCount = 5;
+    component.suggestionQuantityAmount = 3;
+    component.suggestionQuantityUnit = QuantityUnit.LITER;
+
+    component.createSuggestion();
+
+    expect(serviceSpy.createSuggestion).toHaveBeenCalledWith({
+      name: 'Water',
+      quantity: '5 x 3 L',
+      notes: null
+    });
+  });
+
+  it('createSuggestion() rejects incomplete structured quantity', () => {
+    component.suggestionName = 'Milk';
+    component.suggestionQuantityAmount = 2;
+    component.suggestionQuantityUnit = null;
+
+    component.createSuggestion();
+
+    expect(serviceSpy.createSuggestion).not.toHaveBeenCalled();
+    expect(component.actionError)
+      .toBe('Quantity amount and unit must be provided together.');
   });
 });

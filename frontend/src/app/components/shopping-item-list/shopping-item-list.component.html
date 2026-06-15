@@ -123,7 +123,7 @@
 
         <form class="suggestion-form" (ngSubmit)="createSuggestion()" data-cy="shopping-suggestion-form">
           <div class="row g-2">
-            <div class="col-md-4">
+            <div class="col-md-2">
               <input
                 class="form-control"
                 name="suggestionName"
@@ -133,16 +133,47 @@
                 placeholder="Suggest an item"
                 data-cy="suggestion-name-input">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
               <input
                 class="form-control"
-                name="suggestionQuantity"
-                [(ngModel)]="suggestionQuantity"
-                maxlength="50"
-                placeholder="Quantity"
-                data-cy="suggestion-quantity-input">
+                type="number"
+                min="1"
+                step="1"
+                name="suggestionQuantityCount"
+                [(ngModel)]="suggestionQuantityCount"
+                placeholder="Count"
+                data-cy="suggestion-quantity-count-input">
             </div>
-            <div class="col-md-3">
+
+            <div class="col-md-2">
+              <input
+                class="form-control"
+                type="number"
+                min="0"
+                step="0.001"
+                name="suggestionQuantityAmount"
+                [(ngModel)]="suggestionQuantityAmount"
+                placeholder="Amount"
+                data-cy="suggestion-quantity-amount-input">
+            </div>
+
+            <div class="col-md-2">
+              <select
+                class="form-select"
+                name="suggestionQuantityUnit"
+                [(ngModel)]="suggestionQuantityUnit"
+                data-cy="suggestion-quantity-unit-select">
+
+                <option [ngValue]="null">Unit</option>
+
+                @for (option of quantityUnitOptions; track option.value) {
+                  <option [ngValue]="option.value">
+                    {{ option.label }}
+                  </option>
+                }
+              </select>
+            </div>
+            <div class="col-md-2">
               <input
                 class="form-control"
                 name="suggestionNotes"
