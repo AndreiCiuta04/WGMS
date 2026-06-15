@@ -163,7 +163,7 @@ describe('FR-10 Shopping Item Suggestions and Voting E2E', () => {
         .type('1');
 
       cy.get('[data-cy="suggestion-quantity-unit-select"]')
-        .select('PACK');
+        .select('pack');
 
       cy.get('[data-cy="suggestion-notes-input"]')
         .clear()

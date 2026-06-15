@@ -273,7 +273,9 @@ describe('ShoppingItemService', () => {
       ...sampleItem,
       id: 5,
       name: 'Dishwasher tabs',
-      quantity: '1 pack',
+      quantityCount: null,
+      quantityAmount: 1,
+      quantityUnit: QuantityUnit.PACK,
       notes: 'Almost empty',
       visibility: ShoppingItemVisibility.SHARED
     };

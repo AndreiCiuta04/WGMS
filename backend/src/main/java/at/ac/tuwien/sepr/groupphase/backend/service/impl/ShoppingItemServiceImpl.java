@@ -280,6 +280,7 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
                 roommate.getHousehold().getId(),
                 ShoppingItemStatus.NEEDED
             ).stream()
+            .filter(item -> canViewWithinHousehold(item, currentUser))
             .map(item -> toSuggestionDto(item, currentUser))
             .toList();
     }
@@ -532,6 +533,10 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
             throw new ConflictException("Only active shopping item suggestions can be voted on.");
         }
 
+        if (!canViewWithinHousehold(item, currentUser)) {
+            throw new ForbiddenException("You are not allowed to access this shopping item suggestion.");
+        }
+
         return item;
     }
 
@@ -577,6 +582,21 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
             item.getCreatedAt(),
             item.getUpdatedAt()
         );
+    }
+
+    private boolean canViewWithinHousehold(ShoppingItem item,
+                                           ApplicationUser currentUser) {
+        if (Boolean.TRUE.equals(currentUser.getAdmin())) {
+            return true;
+        }
+        if (item.getCreatedBy().getId().equals(currentUser.getId())) {
+            return true;
+        }
+        if (item.getTargetUser() != null
+            && item.getTargetUser().getId().equals(currentUser.getId())) {
+            return true;
+        }
+        return item.getVisibility() == ShoppingItemVisibility.SHARED;
     }
 
 

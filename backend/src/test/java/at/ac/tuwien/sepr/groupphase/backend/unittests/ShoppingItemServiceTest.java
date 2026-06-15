@@ -426,6 +426,41 @@ public class ShoppingItemServiceTest {
     }
 
     @Test
+    public void givenInvisibleSuggestions_whenFindSuggestions_thenOnlyVisibleSuggestionsReturned() {
+        ShoppingItem ownPersonalSuggestion = sampleItem(70L, ShoppingItemVisibility.PERSONAL);
+        ownPersonalSuggestion.setSuggested(true);
+
+        ShoppingItem targetedAtCurrentUser = sampleItem(71L, ShoppingItemVisibility.TARGETED);
+        targetedAtCurrentUser.setSuggested(true);
+        targetedAtCurrentUser.setCreatedBy(otherUser);
+        targetedAtCurrentUser.setTargetUser(user);
+
+        ShoppingItem privateOtherSuggestion = sampleItem(72L, ShoppingItemVisibility.PERSONAL);
+        privateOtherSuggestion.setSuggested(true);
+        privateOtherSuggestion.setCreatedBy(otherUser);
+
+        ShoppingItem targetedAtOtherUser = sampleItem(73L, ShoppingItemVisibility.TARGETED);
+        targetedAtOtherUser.setSuggested(true);
+        targetedAtOtherUser.setCreatedBy(otherUser);
+        targetedAtOtherUser.setTargetUser(otherUser);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
+        when(shoppingItemRepository.findSuggestionsForHousehold(10L, ShoppingItemStatus.NEEDED))
+            .thenReturn(List.of(
+                ownPersonalSuggestion,
+                targetedAtCurrentUser,
+                privateOtherSuggestion,
+                targetedAtOtherUser
+            ));
+
+        List<ShoppingItemSuggestionDto> result = shoppingItemService.findSuggestions(user);
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().anyMatch(suggestion -> suggestion.id().equals(70L)));
+        assertTrue(result.stream().anyMatch(suggestion -> suggestion.id().equals(71L)));
+    }
+
+    @Test
     public void givenSuggestion_whenVoteForSuggestion_thenCurrentUserAddedToVotes() {
         ShoppingItem suggestion = sampleItem(52L, ShoppingItemVisibility.SHARED);
         suggestion.setSuggested(true);
@@ -482,6 +517,18 @@ public class ShoppingItemServiceTest {
         when(shoppingItemRepository.findById(55L)).thenReturn(Optional.of(item));
 
         assertThrows(ForbiddenException.class, () -> shoppingItemService.voteForSuggestion(55L, user));
+    }
+
+    @Test
+    public void givenPrivateSuggestionFromOtherUser_whenVoteForSuggestion_thenForbidden() {
+        ShoppingItem suggestion = sampleItem(74L, ShoppingItemVisibility.PERSONAL);
+        suggestion.setSuggested(true);
+        suggestion.setCreatedBy(otherUser);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
+        when(shoppingItemRepository.findById(74L)).thenReturn(Optional.of(suggestion));
+
+        assertThrows(ForbiddenException.class, () -> shoppingItemService.voteForSuggestion(74L, user));
     }
 
     @Test
