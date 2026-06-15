@@ -1,5 +1,7 @@
 function apiUrl() {
-  return cy.env('backendUrl').then((value) => value || 'http://localhost:8080/api/v1');
+  // cy.env() takes an array of keys and resolves to an object of their values
+  // (Cypress.env() is disabled by allowCypressEnv: false in cypress.config.js).
+  return cy.env(['backendUrl']).then(({ backendUrl }) => backendUrl || 'http://localhost:8080/api/v1');
 }
 
 function apiRequest(options) {
