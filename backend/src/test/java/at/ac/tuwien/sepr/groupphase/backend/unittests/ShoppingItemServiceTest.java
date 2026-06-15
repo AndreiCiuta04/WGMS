@@ -4,6 +4,8 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemStatusUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionCreateDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
@@ -33,6 +35,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -322,7 +325,7 @@ public class ShoppingItemServiceTest {
         bread.setQuantityUnit(QuantityUnit.PACK);
 
         when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
-        when(shoppingItemRepository.findAllByHouseholdIdAndVisibilityAndStatusOrderByCreatedAtDesc(
+        when(shoppingItemRepository.findAllByHouseholdIdAndVisibilityAndStatusAndSuggestedFalseOrderByCreatedAtDesc(
             10L,
             ShoppingItemVisibility.SHARED,
             ShoppingItemStatus.NEEDED
@@ -356,7 +359,7 @@ public class ShoppingItemServiceTest {
         cancelled.setStatus(ShoppingItemStatus.CANCELLED);
 
         when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
-        when(shoppingItemRepository.findAllByHouseholdIdAndStatusInOrderByUpdatedAtDesc(
+        when(shoppingItemRepository.findAllByHouseholdIdAndSuggestedFalseAndStatusInOrderByUpdatedAtDesc(
             10L,
             List.of(ShoppingItemStatus.BOUGHT, ShoppingItemStatus.CANCELLED)
         )).thenReturn(List.of(bought, cancelled));
@@ -366,7 +369,7 @@ public class ShoppingItemServiceTest {
         assertEquals(2, result.size());
         assertEquals(ShoppingItemStatus.BOUGHT, result.get(0).status());
         assertEquals(ShoppingItemStatus.CANCELLED, result.get(1).status());
-        verify(shoppingItemRepository).findAllByHouseholdIdAndStatusInOrderByUpdatedAtDesc(
+        verify(shoppingItemRepository).findAllByHouseholdIdAndSuggestedFalseAndStatusInOrderByUpdatedAtDesc(
             eq(10L),
             eq(List.of(ShoppingItemStatus.BOUGHT, ShoppingItemStatus.CANCELLED))
         );
@@ -379,6 +382,420 @@ public class ShoppingItemServiceTest {
         assertThrows(ForbiddenException.class,
             () -> shoppingItemService.findHouseholdShoppingHistory(user));
     }
+
+    @Test
+    public void givenUserInHousehold_whenCreateSuggestion_thenSuggestionCreatedWithCreatorVote() {
+        when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
+        when(shoppingItemRepository.save(any(ShoppingItem.class))).thenAnswer(invocation -> {
+            ShoppingItem item = invocation.getArgument(0);
+            item.setId(50L);
+            return item;
+        });
+
+        ShoppingItemSuggestionCreateDto dto = new ShoppingItemSuggestionCreateDto(
+            "Dishwasher tabs",
+            "1 pack",
+            "Almost empty"
+        );
+
+        ShoppingItemSuggestionDto result = shoppingItemService.createSuggestion(dto, user);
+
+        assertEquals(50L, result.id());
+        assertEquals("Dishwasher tabs", result.name());
+        assertEquals(10L, result.householdId());
+        assertEquals(1, result.voteCount());
+        assertTrue(result.votedByCurrentUser());
+    }
+
+    @Test
+    public void givenUserInHousehold_whenFindSuggestions_thenRepositoryUsesHouseholdAndNeededStatus() {
+        ShoppingItem suggestion = sampleItem(51L, ShoppingItemVisibility.SHARED);
+        suggestion.setSuggested(true);
+        suggestion.getVotedBy().add(user);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
+        when(shoppingItemRepository.findSuggestionsForHousehold(10L, ShoppingItemStatus.NEEDED))
+            .thenReturn(List.of(suggestion));
+
+        List<ShoppingItemSuggestionDto> result = shoppingItemService.findSuggestions(user);
+
+        assertEquals(1, result.size());
+        assertEquals(51L, result.get(0).id());
+        assertEquals(1, result.get(0).voteCount());
+        assertTrue(result.get(0).votedByCurrentUser());
+    }
+
+    @Test
+    public void givenInvisibleSuggestions_whenFindSuggestions_thenOnlyVisibleSuggestionsReturned() {
+        ShoppingItem ownPersonalSuggestion = sampleItem(70L, ShoppingItemVisibility.PERSONAL);
+        ownPersonalSuggestion.setSuggested(true);
+
+        ShoppingItem targetedAtCurrentUser = sampleItem(71L, ShoppingItemVisibility.TARGETED);
+        targetedAtCurrentUser.setSuggested(true);
+        targetedAtCurrentUser.setCreatedBy(otherUser);
+        targetedAtCurrentUser.setTargetUser(user);
+
+        ShoppingItem privateOtherSuggestion = sampleItem(72L, ShoppingItemVisibility.PERSONAL);
+        privateOtherSuggestion.setSuggested(true);
+        privateOtherSuggestion.setCreatedBy(otherUser);
+
+        ShoppingItem targetedAtOtherUser = sampleItem(73L, ShoppingItemVisibility.TARGETED);
+        targetedAtOtherUser.setSuggested(true);
+        targetedAtOtherUser.setCreatedBy(otherUser);
+        targetedAtOtherUser.setTargetUser(otherUser);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
+        when(shoppingItemRepository.findSuggestionsForHousehold(10L, ShoppingItemStatus.NEEDED))
+            .thenReturn(List.of(
+                ownPersonalSuggestion,
+                targetedAtCurrentUser,
+                privateOtherSuggestion,
+                targetedAtOtherUser
+            ));
+
+        List<ShoppingItemSuggestionDto> result = shoppingItemService.findSuggestions(user);
+
+        assertEquals(2, result.size());
+        assertTrue(result.stream().anyMatch(suggestion -> suggestion.id().equals(70L)));
+        assertTrue(result.stream().anyMatch(suggestion -> suggestion.id().equals(71L)));
+    }
+
+    @Test
+    public void givenSuggestion_whenVoteForSuggestion_thenCurrentUserAddedToVotes() {
+        ShoppingItem suggestion = sampleItem(52L, ShoppingItemVisibility.SHARED);
+        suggestion.setSuggested(true);
+        suggestion.setCreatedBy(otherUser);
+        suggestion.getVotedBy().add(otherUser);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
+        when(shoppingItemRepository.findById(52L)).thenReturn(Optional.of(suggestion));
+        when(shoppingItemRepository.save(any(ShoppingItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ShoppingItemSuggestionDto result = shoppingItemService.voteForSuggestion(52L, user);
+
+        assertEquals(2, result.voteCount());
+        assertTrue(result.votedByCurrentUser());
+    }
+
+    @Test
+    public void givenAlreadyVotedSuggestion_whenVoteForSuggestion_thenVoteCountDoesNotIncrease() {
+        ShoppingItem suggestion = sampleItem(53L, ShoppingItemVisibility.SHARED);
+        suggestion.setSuggested(true);
+        suggestion.getVotedBy().add(user);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
+        when(shoppingItemRepository.findById(53L)).thenReturn(Optional.of(suggestion));
+        when(shoppingItemRepository.save(any(ShoppingItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ShoppingItemSuggestionDto result = shoppingItemService.voteForSuggestion(53L, user);
+
+        assertEquals(1, result.voteCount());
+        assertTrue(result.votedByCurrentUser());
+    }
+
+    @Test
+    public void givenNormalItem_whenVoteForSuggestion_thenConflict() {
+        ShoppingItem item = sampleItem(54L, ShoppingItemVisibility.SHARED);
+        item.setSuggested(false);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
+        when(shoppingItemRepository.findById(54L)).thenReturn(Optional.of(item));
+
+        assertThrows(ConflictException.class, () -> shoppingItemService.voteForSuggestion(54L, user));
+    }
+
+    @Test
+    public void givenSuggestionFromOtherHousehold_whenVoteForSuggestion_thenForbidden() {
+        Household otherHousehold = new Household();
+        otherHousehold.setId(99L);
+
+        ShoppingItem item = sampleItem(55L, ShoppingItemVisibility.SHARED);
+        item.setSuggested(true);
+        item.setHousehold(otherHousehold);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
+        when(shoppingItemRepository.findById(55L)).thenReturn(Optional.of(item));
+
+        assertThrows(ForbiddenException.class, () -> shoppingItemService.voteForSuggestion(55L, user));
+    }
+
+    @Test
+    public void givenPrivateSuggestionFromOtherUser_whenVoteForSuggestion_thenForbidden() {
+        ShoppingItem suggestion = sampleItem(74L, ShoppingItemVisibility.PERSONAL);
+        suggestion.setSuggested(true);
+        suggestion.setCreatedBy(otherUser);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
+        when(shoppingItemRepository.findById(74L)).thenReturn(Optional.of(suggestion));
+
+        assertThrows(ForbiddenException.class, () -> shoppingItemService.voteForSuggestion(74L, user));
+    }
+
+    @Test
+    public void givenVotedSuggestion_whenRemoveVote_thenCurrentUserRemoved() {
+        ShoppingItem suggestion = sampleItem(56L, ShoppingItemVisibility.SHARED);
+        suggestion.setSuggested(true);
+        suggestion.getVotedBy().add(user);
+        suggestion.getVotedBy().add(otherUser);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L)).thenReturn(Optional.of(roommate));
+        when(shoppingItemRepository.findById(56L)).thenReturn(Optional.of(suggestion));
+        when(shoppingItemRepository.save(any(ShoppingItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ShoppingItemSuggestionDto result = shoppingItemService.removeVoteFromSuggestion(56L, user);
+
+        assertEquals(1, result.voteCount());
+        assertTrue(!result.votedByCurrentUser());
+    }
+
+    @Test
+    public void givenEquivalentSuggestionFromOtherUser_whenCreateSuggestion_thenExistingSuggestionReturnedAndVoteAdded() {
+        ShoppingItem existing = sampleItem(60L, ShoppingItemVisibility.SHARED);
+        existing.setName(" Milk ");
+        existing.setQuantityAmount(new BigDecimal("2"));
+        existing.setQuantityUnit(QuantityUnit.LITER);
+        existing.setSuggested(true);
+        existing.setCreatedBy(otherUser);
+        existing.getVotedBy().add(otherUser);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L))
+            .thenReturn(Optional.of(roommate));
+
+        when(shoppingItemRepository.findSuggestionsForHousehold(
+            10L,
+            ShoppingItemStatus.NEEDED
+        )).thenReturn(List.of(existing));
+
+        when(shoppingItemRepository.save(existing)).thenReturn(existing);
+
+        ShoppingItemSuggestionDto result = shoppingItemService.createSuggestion(
+            new ShoppingItemSuggestionCreateDto(
+                "milk",
+                "2l",
+                "Different notes"
+            ),
+            user
+        );
+
+        assertEquals(60L, result.id());
+        assertEquals(2, result.voteCount());
+        assertTrue(result.votedByCurrentUser());
+
+        verify(shoppingItemRepository).save(existing);
+    }
+
+    @Test
+    public void givenEquivalentSuggestionAlreadyVotedByUser_whenCreateSuggestion_thenNoDuplicateVoteOrSave() {
+        ShoppingItem existing = sampleItem(61L, ShoppingItemVisibility.SHARED);
+        existing.setName("Milk");
+        existing.setQuantityAmount(new BigDecimal("2"));
+        existing.setQuantityUnit(QuantityUnit.LITER);
+        existing.setSuggested(true);
+        existing.getVotedBy().add(user);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L))
+            .thenReturn(Optional.of(roommate));
+
+        when(shoppingItemRepository.findSuggestionsForHousehold(
+            10L,
+            ShoppingItemStatus.NEEDED
+        )).thenReturn(List.of(existing));
+
+        ShoppingItemSuggestionDto result = shoppingItemService.createSuggestion(
+            new ShoppingItemSuggestionCreateDto(
+                " milk ",
+                " 2l ",
+                "Ignored notes"
+            ),
+            user
+        );
+
+        assertEquals(61L, result.id());
+        assertEquals(1, result.voteCount());
+
+        verify(shoppingItemRepository, times(0))
+            .save(existing);
+    }
+
+    @Test
+    public void givenNoEquivalentSuggestionInCurrentHousehold_whenCreateSuggestion_thenCreatesNewSuggestion() {
+        when(roommateRepository.findByUserIdAndActiveTrue(1L))
+            .thenReturn(Optional.of(roommate));
+
+        when(shoppingItemRepository.findSuggestionsForHousehold(
+            10L,
+            ShoppingItemStatus.NEEDED
+        )).thenReturn(List.of());
+
+        when(shoppingItemRepository.save(any(ShoppingItem.class)))
+            .thenAnswer(invocation -> {
+                ShoppingItem saved = invocation.getArgument(0);
+                saved.setId(62L);
+                return saved;
+            });
+
+        ShoppingItemSuggestionDto result = shoppingItemService.createSuggestion(
+            new ShoppingItemSuggestionCreateDto(
+                "Milk",
+                "2L",
+                null
+            ),
+            user
+        );
+
+        assertEquals(62L, result.id());
+        assertEquals(1, result.voteCount());
+    }
+
+
+    @Test
+    public void givenSuggestionWithVotes_whenFindSuggestions_thenVoterDetailsReturned() {
+        ShoppingItem suggestion = sampleItem(63L, ShoppingItemVisibility.SHARED);
+        suggestion.setSuggested(true);
+        suggestion.getVotedBy().add(user);
+        suggestion.getVotedBy().add(otherUser);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L))
+            .thenReturn(Optional.of(roommate));
+
+        when(shoppingItemRepository.findSuggestionsForHousehold(
+            10L,
+            ShoppingItemStatus.NEEDED
+        )).thenReturn(List.of(suggestion));
+
+        List<ShoppingItemSuggestionDto> result =
+            shoppingItemService.findSuggestions(user);
+
+        assertEquals(1, result.size());
+        assertEquals(2, result.get(0).voteCount());
+        assertEquals(2, result.get(0).voters().size());
+
+        assertTrue(result.get(0).voters().stream()
+            .anyMatch(voter -> voter.userId().equals(1L)));
+
+        assertTrue(result.get(0).voters().stream()
+            .anyMatch(voter -> voter.userId().equals(2L)));
+    }
+
+    @Test
+    public void givenActiveSuggestion_whenPromote_thenBecomesNormalSharedNeededItemAndVotesCleared() {
+        ShoppingItem suggestion = sampleItem(64L, ShoppingItemVisibility.SHARED);
+        suggestion.setSuggested(true);
+        suggestion.getVotedBy().add(user);
+        suggestion.getVotedBy().add(otherUser);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L))
+            .thenReturn(Optional.of(roommate));
+
+        when(shoppingItemRepository.findById(64L))
+            .thenReturn(Optional.of(suggestion));
+
+        when(shoppingItemRepository.save(suggestion))
+            .thenReturn(suggestion);
+
+        ShoppingItemDto result =
+            shoppingItemService.promoteSuggestion(64L, user);
+
+        assertTrue(!suggestion.isSuggested());
+        assertEquals(ShoppingItemVisibility.SHARED, suggestion.getVisibility());
+        assertEquals(ShoppingItemStatus.NEEDED, suggestion.getStatus());
+        assertTrue(suggestion.getVotedBy().isEmpty());
+
+        assertEquals(64L, result.id());
+        assertEquals(ShoppingItemVisibility.SHARED, result.visibility());
+    }
+
+    @Test
+    public void givenNormalItem_whenPromoteSuggestion_thenConflict() {
+        ShoppingItem item = sampleItem(65L, ShoppingItemVisibility.SHARED);
+        item.setSuggested(false);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L))
+            .thenReturn(Optional.of(roommate));
+
+        when(shoppingItemRepository.findById(65L))
+            .thenReturn(Optional.of(item));
+
+        assertThrows(
+            ConflictException.class,
+            () -> shoppingItemService.promoteSuggestion(65L, user)
+        );
+    }
+
+    @Test
+    public void givenSuggestionFromOtherHousehold_whenPromote_thenForbidden() {
+        Household otherHousehold = new Household();
+        otherHousehold.setId(99L);
+
+        ShoppingItem suggestion = sampleItem(66L, ShoppingItemVisibility.SHARED);
+        suggestion.setSuggested(true);
+        suggestion.setHousehold(otherHousehold);
+
+        when(roommateRepository.findByUserIdAndActiveTrue(1L))
+            .thenReturn(Optional.of(roommate));
+
+        when(shoppingItemRepository.findById(66L))
+            .thenReturn(Optional.of(suggestion));
+
+        assertThrows(
+            ForbiddenException.class,
+            () -> shoppingItemService.promoteSuggestion(66L, user)
+        );
+    }
+
+    @Test
+    public void givenOwnActiveSuggestion_whenDeleteSuggestion_thenRepositoryDeletesIt() {
+        ShoppingItem suggestion = sampleItem(67L, ShoppingItemVisibility.SHARED);
+        suggestion.setSuggested(true);
+        suggestion.setCreatedBy(user);
+
+        when(shoppingItemRepository.findById(67L))
+            .thenReturn(Optional.of(suggestion));
+
+        when(roommateRepository.existsByUserIdAndHouseholdIdAndActiveTrue(
+            1L,
+            10L
+        )).thenReturn(true);
+
+        shoppingItemService.deleteSuggestion(67L, user);
+
+        verify(shoppingItemRepository).delete(suggestion);
+    }
+
+    @Test
+    public void givenSuggestionOwnedByAnotherUser_whenDeleteSuggestion_thenForbidden() {
+        ShoppingItem suggestion = sampleItem(68L, ShoppingItemVisibility.SHARED);
+        suggestion.setSuggested(true);
+        suggestion.setCreatedBy(otherUser);
+
+        when(shoppingItemRepository.findById(68L))
+            .thenReturn(Optional.of(suggestion));
+
+        when(roommateRepository.existsByUserIdAndHouseholdIdAndActiveTrue(
+            1L,
+            10L
+        )).thenReturn(true);
+
+        assertThrows(
+            ForbiddenException.class,
+            () -> shoppingItemService.deleteSuggestion(68L, user)
+        );
+    }
+
+    @Test
+    public void givenNormalItem_whenDeleteSuggestion_thenConflict() {
+        ShoppingItem item = sampleItem(69L, ShoppingItemVisibility.SHARED);
+        item.setSuggested(false);
+
+        when(shoppingItemRepository.findById(69L))
+            .thenReturn(Optional.of(item));
+
+        assertThrows(
+            ConflictException.class,
+            () -> shoppingItemService.deleteSuggestion(69L, user)
+        );
+    }
+
 
     private ShoppingItem sampleItem(Long id, ShoppingItemVisibility visibility) {
         ShoppingItem item = new ShoppingItem();

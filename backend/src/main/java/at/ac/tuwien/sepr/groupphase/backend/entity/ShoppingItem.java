@@ -12,9 +12,16 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.UniqueConstraint;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * A single shopping-list entry. Scoped to a {@link Household}. FR-08 adds
@@ -69,11 +76,34 @@ public class ShoppingItem {
     @ManyToOne(fetch = FetchType.LAZY)
     private ApplicationUser targetUser;
 
+    /**
+     * True if this item is only a household suggestion and not yet a normal
+     * shopping-list item. Suggestions are used for FR-10 voting.
+     */
+    @Column(nullable = false)
+    private boolean suggested = false;
+
+    /**
+     * Users who voted for this suggestion. Only active members of the same
+     * household may vote, enforced in the service layer.
+     */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "shopping_item_vote",
+        joinColumns = @JoinColumn(name = "shopping_item_id"),
+        inverseJoinColumns = @JoinColumn(name = "user_id"),
+        uniqueConstraints = @UniqueConstraint(columnNames = {"shopping_item_id", "user_id"})
+    )
+    private Set<ApplicationUser> votedBy = new HashSet<>();
+
     @Column(nullable = false, name = "created_at")
     private LocalDateTime createdAt;
 
     @Column(nullable = false, name = "updated_at")
     private LocalDateTime updatedAt;
+
+
+
 
     @PrePersist
     void onCreate() {
@@ -197,5 +227,21 @@ public class ShoppingItem {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public boolean isSuggested() {
+        return suggested;
+    }
+
+    public void setSuggested(boolean suggested) {
+        this.suggested = suggested;
+    }
+
+    public Set<ApplicationUser> getVotedBy() {
+        return votedBy;
+    }
+
+    public void setVotedBy(Set<ApplicationUser> votedBy) {
+        this.votedBy = votedBy;
     }
 }

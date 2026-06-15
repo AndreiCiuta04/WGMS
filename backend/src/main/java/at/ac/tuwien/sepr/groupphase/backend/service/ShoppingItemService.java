@@ -5,6 +5,8 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemStatusUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionCreateDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 
 import java.util.List;
@@ -121,6 +123,76 @@ public interface ShoppingItemService {
      *     if the user is not allowed to update the shopping item
      */
     ShoppingItemDto updateStatus(Long id, ShoppingItemStatusUpdateDto dto, ApplicationUser currentUser);
+
+
+    /**
+     * Creates a new household shopping suggestion. The creator's vote is counted
+     * automatically.
+     *
+     * @param dto         the suggestion request body
+     * @param currentUser the currently authenticated user
+     * @return the created suggestion
+     */
+    ShoppingItemSuggestionDto createSuggestion(ShoppingItemSuggestionCreateDto dto,
+                                               ApplicationUser currentUser);
+
+    /**
+     * Lists active suggestions for the current user's household, ordered by vote
+     * count and creation date.
+     *
+     * @param currentUser the currently authenticated user
+     * @return active household suggestions
+     */
+    List<ShoppingItemSuggestionDto> findSuggestions(ApplicationUser currentUser);
+
+    /**
+     * Adds the current user's vote to a suggestion.
+     *
+     * @param id          the suggestion id
+     * @param currentUser the currently authenticated user
+     * @return the updated suggestion
+     */
+    ShoppingItemSuggestionDto voteForSuggestion(Long id, ApplicationUser currentUser);
+
+    /**
+     * Removes the current user's vote from a suggestion.
+     *
+     * @param id          the suggestion id
+     * @param currentUser the currently authenticated user
+     * @return the updated suggestion
+     */
+    ShoppingItemSuggestionDto removeVoteFromSuggestion(Long id, ApplicationUser currentUser);
+
+    /**
+     * Promotes an active household suggestion to a normal shared shopping item.
+     * Any active member of the same household may promote the suggestion.
+     *
+     * @param id          suggestion id
+     * @param currentUser currently authenticated user
+     * @return the promoted normal shopping item
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException
+     *     if the suggestion does not exist
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException
+     *     if the user is not an active member of the suggestion's household
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException
+     *     if the item is not an active suggestion
+     */
+    ShoppingItemDto promoteSuggestion(Long id, ApplicationUser currentUser);
+
+    /**
+     * Removes an active shopping-item suggestion.
+     * Only the creator or an administrator may remove it.
+     *
+     * @param id          suggestion id
+     * @param currentUser currently authenticated user
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException
+     *     if the item does not exist
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException
+     *     if the current user may not remove the suggestion
+     * @throws at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException
+     *     if the item is not an active suggestion
+     */
+    void deleteSuggestion(Long id, ApplicationUser currentUser);
 
     /**
      * Deletes a shopping item. Only the creator (or an admin) may delete an item.

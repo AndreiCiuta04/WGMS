@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { ShoppingItemService } from '../../services/shopping-item.service';
+import { AggregatedShoppingItemDto, QUANTITY_UNIT_OPTIONS, QuantityUnit, ShoppingItemDto, ShoppingItemStatus, ShoppingItemSuggestionDto, ShoppingItemVisibility } from '../../dtos/shopping-item';
 import { ConfirmDialogService } from '../../services/confirm-dialog.service';
-import { AggregatedShoppingItemDto, ShoppingItemDto, ShoppingItemStatus, ShoppingItemVisibility } from '../../dtos/shopping-item';
 
 @Component({
   selector: 'app-shopping-item-list',
@@ -16,11 +16,23 @@ export class ShoppingItemListComponent implements OnInit {
   targetedItems: ShoppingItemDto[] = [];
   aggregatedItems: AggregatedShoppingItemDto[] = [];
   historyItems: ShoppingItemDto[] = [];
+  suggestions: ShoppingItemSuggestionDto[] = [];
 
-  currentTab: 'ALL' | 'TARGETED' | 'AGGREGATED' | 'HISTORY' = 'ALL';
+  currentTab: 'ALL' | 'TARGETED' | 'AGGREGATED' | 'SUGGESTIONS' | 'HISTORY' = 'ALL';
   loading = false;
   actionError: string | null = null;
   successMessage: string | null = null;
+
+  suggestionName = '';
+  suggestionQuantityCount: number | null = null;
+  suggestionQuantityAmount: number | null = null;
+  suggestionQuantityUnit: QuantityUnit | null = null;
+  suggestionNotes = '';
+  suggestionSubmitting = false;
+
+  readonly quantityUnitOptions = QUANTITY_UNIT_OPTIONS;
+
+  suggestionActionIds = new Set<number>();
 
   /** Controls visibility of the Bought & Cancelled section */
   completedExpanded = false;
@@ -61,11 +73,15 @@ export class ShoppingItemListComponent implements OnInit {
     return this.currentTab === 'HISTORY';
   }
 
+  get isSuggestionsTab(): boolean {
+    return this.currentTab === 'SUGGESTIONS';
+  }
+
   toggleCompletedExpanded(): void {
     this.completedExpanded = !this.completedExpanded;
   }
 
-  switchTab(tab: 'ALL' | 'TARGETED' | 'AGGREGATED' | 'HISTORY') {
+  switchTab(tab: 'ALL' | 'TARGETED' | 'AGGREGATED' | 'SUGGESTIONS' | 'HISTORY') {
     this.currentTab = tab;
   }
 
@@ -76,13 +92,15 @@ export class ShoppingItemListComponent implements OnInit {
       all: this.shoppingItemService.findAll(),
       targeted: this.shoppingItemService.findTargetedAtMe(),
       aggregated: this.shoppingItemService.findAggregatedHouseholdShoppingList(),
+      suggestions: this.shoppingItemService.findSuggestions(),
       history: this.shoppingItemService.findHouseholdShoppingHistory()
 
     }).subscribe({
-      next: ({ all, targeted, aggregated, history }) => {
+      next: ({ all, targeted, aggregated, suggestions, history }) => {
         this.allItems = all;
         this.targetedItems = targeted;
         this.aggregatedItems = aggregated;
+        this.suggestions = suggestions;
         this.historyItems = history;
         this.loading = false;
       },
@@ -128,6 +146,219 @@ export class ShoppingItemListComponent implements OnInit {
         }
       });
     });
+  }
+
+  createSuggestion(): void {
+    const name = this.suggestionName.trim();
+    const notes = this.suggestionNotes.trim();
+
+    if (!name) {
+      this.actionError = 'Suggestion name is required.';
+      return;
+    }
+
+    const quantity = this.buildSuggestionQuantity();
+
+    if (
+      (this.suggestionQuantityCount != null
+        || this.suggestionQuantityAmount != null
+        || this.suggestionQuantityUnit != null)
+      && quantity == null
+    ) {
+      this.actionError =
+        'Quantity amount and unit must be provided together.';
+      return;
+    }
+
+    this.actionError = null;
+    this.suggestionSubmitting = true;
+
+    this.shoppingItemService.createSuggestion({
+      name,
+      quantity,
+      notes: notes || null
+    }).subscribe({
+      next: () => {
+        this.suggestionName = '';
+        this.suggestionQuantityCount = null;
+        this.suggestionQuantityAmount = null;
+        this.suggestionQuantityUnit = null;
+        this.suggestionNotes = '';
+        this.suggestionSubmitting = false;
+        this.showSuccess('Suggestion saved and your vote recorded.');
+        this.loadItems();
+        this.currentTab = 'SUGGESTIONS';
+      },
+      error: (err) => {
+        console.error('Error creating shopping item suggestion', err);
+        this.actionError = this.extractError(err, 'Failed to create suggestion.');
+        this.suggestionSubmitting = false;
+      }
+    });
+  }
+
+  private buildSuggestionQuantity(): string | null {
+    const count = this.suggestionQuantityCount;
+    const amount = this.suggestionQuantityAmount;
+    const unit = this.suggestionQuantityUnit;
+
+    const nothingEntered =
+      count == null && amount == null && unit == null;
+
+    if (nothingEntered) {
+      return null;
+    }
+
+    if (amount == null || unit == null) {
+      return null;
+    }
+
+    const unitSymbol = this.quantityUnitSymbol(unit);
+    const measuredQuantity = `${amount} ${unitSymbol}`;
+
+    return count != null
+      ? `${count} x ${measuredQuantity}`
+      : measuredQuantity;
+  }
+
+  private quantityUnitSymbol(unit: QuantityUnit): string {
+    switch (unit) {
+      case QuantityUnit.MILLILITER:
+        return 'ml';
+      case QuantityUnit.LITER:
+        return 'L';
+      case QuantityUnit.GRAM:
+        return 'g';
+      case QuantityUnit.KILOGRAM:
+        return 'kg';
+      case QuantityUnit.PIECE:
+        return 'piece';
+      case QuantityUnit.PACK:
+        return 'pack';
+    }
+  }
+
+  voteForSuggestion(suggestion: ShoppingItemSuggestionDto): void {
+    if (this.isSuggestionActionPending(suggestion.id)) {
+      return;
+    }
+
+    this.actionError = null;
+    this.suggestionActionIds.add(suggestion.id);
+
+    this.shoppingItemService.voteForSuggestion(suggestion.id).subscribe({
+      next: () => {
+        this.suggestionActionIds.delete(suggestion.id);
+        this.showSuccess('Vote added.');
+        this.loadItems();
+      },
+      error: (err) => {
+        this.suggestionActionIds.delete(suggestion.id);
+        console.error('Error voting for suggestion', err);
+        this.actionError = this.extractError(err, 'Failed to vote for suggestion.');
+      }
+    });
+  }
+
+  removeVoteFromSuggestion(suggestion: ShoppingItemSuggestionDto): void {
+    if (this.isSuggestionActionPending(suggestion.id)) {
+      return;
+    }
+
+    this.actionError = null;
+    this.suggestionActionIds.add(suggestion.id);
+
+    this.shoppingItemService.removeVoteFromSuggestion(suggestion.id).subscribe({
+      next: () => {
+        this.suggestionActionIds.delete(suggestion.id);
+        this.showSuccess('Vote removed.');
+        this.loadItems();
+      },
+      error: (err) => {
+        this.suggestionActionIds.delete(suggestion.id);
+        console.error('Error removing suggestion vote', err);
+        this.actionError = this.extractError(err, 'Failed to remove vote.');
+      }
+    });
+  }
+
+  promoteSuggestion(suggestion: ShoppingItemSuggestionDto): void {
+    if (this.isSuggestionActionPending(suggestion.id)) {
+      return;
+    }
+
+    const confirmed = confirm(
+      `Add "${suggestion.name}" to the shared household shopping list?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.actionError = null;
+    this.suggestionActionIds.add(suggestion.id);
+
+    this.shoppingItemService.promoteSuggestion(suggestion.id).subscribe({
+      next: () => {
+        this.suggestionActionIds.delete(suggestion.id);
+        this.showSuccess('Suggestion added to the household shopping list.');
+        this.loadItems();
+      },
+      error: (err) => {
+        this.suggestionActionIds.delete(suggestion.id);
+        console.error('Error promoting shopping suggestion', err);
+        this.actionError = this.extractError(
+          err,
+          'Failed to add the suggestion to the shopping list.'
+        );
+      }
+    });
+  }
+
+  deleteSuggestion(suggestion: ShoppingItemSuggestionDto): void {
+    if (this.isSuggestionActionPending(suggestion.id)) {
+      return;
+    }
+
+    const confirmed = confirm(
+      `Are you sure you want to delete the suggestion "${suggestion.name}"?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.actionError = null;
+    this.suggestionActionIds.add(suggestion.id);
+
+    this.shoppingItemService.deleteSuggestion(suggestion.id).subscribe({
+      next: () => {
+        this.suggestionActionIds.delete(suggestion.id);
+        this.showSuccess('Suggestion deleted.');
+        this.loadItems();
+      },
+      error: (err) => {
+        this.suggestionActionIds.delete(suggestion.id);
+        console.error('Error deleting shopping suggestion', err);
+        this.actionError = this.extractError(
+          err,
+          'Failed to delete the suggestion.'
+        );
+      }
+    });
+  }
+
+  isSuggestionActionPending(id: number): boolean {
+    return this.suggestionActionIds.has(id);
+  }
+
+  isPopularSuggestion(suggestion: ShoppingItemSuggestionDto): boolean {
+    return suggestion.voteCount >= 2;
+  }
+
+  voterDisplayName(voter: ShoppingItemSuggestionDto['voters'][number]): string {
+    const fullName = `${voter.firstName ?? ''} ${voter.lastName ?? ''}`.trim();
+    return fullName || voter.email;
   }
 
   private updateStatus(item: ShoppingItemDto, status: ShoppingItemStatus, label: string, successMsg: string) {

@@ -6,6 +6,8 @@ import {
   ShoppingItemCreateDto,
   ShoppingItemDto,
   ShoppingItemStatusUpdateDto,
+  ShoppingItemSuggestionCreateDto,
+  ShoppingItemSuggestionDto,
   ShoppingItemUpdateDto
 } from '../dtos/shopping-item';
 
@@ -50,6 +52,33 @@ export class ShoppingItemService {
 
   updateStatus(id: number, statusDto: ShoppingItemStatusUpdateDto): Observable<ShoppingItemDto> {
     return this.http.patch<ShoppingItemDto>(`${this.baseUri}/${id}/status`, statusDto);
+  }
+
+  createSuggestion(suggestion: ShoppingItemSuggestionCreateDto): Observable<ShoppingItemSuggestionDto> {
+    return this.http.post<ShoppingItemSuggestionDto>(`${this.baseUri}/suggestions`, suggestion);
+  }
+
+  findSuggestions(): Observable<ShoppingItemSuggestionDto[]> {
+    return this.http.get<ShoppingItemSuggestionDto[]>(`${this.baseUri}/suggestions`);
+  }
+
+  voteForSuggestion(id: number): Observable<ShoppingItemSuggestionDto> {
+    return this.http.post<ShoppingItemSuggestionDto>(`${this.baseUri}/suggestions/${id}/votes`, null);
+  }
+
+  removeVoteFromSuggestion(id: number): Observable<ShoppingItemSuggestionDto> {
+    return this.http.delete<ShoppingItemSuggestionDto>(`${this.baseUri}/suggestions/${id}/votes`);
+  }
+
+  promoteSuggestion(id: number): Observable<ShoppingItemDto> {
+    return this.http.post<ShoppingItemDto>(
+      `${this.baseUri}/suggestions/${id}/promote`,
+      null
+    );
+  }
+
+  deleteSuggestion(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUri}/suggestions/${id}`);
   }
 
   delete(id: number): Observable<void> {

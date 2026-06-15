@@ -162,7 +162,7 @@ public class ShoppingItemRepositoryTest {
         save("Other household", householdB, userB, null, ShoppingItemVisibility.SHARED, LocalDateTime.now());
 
         List<ShoppingItem> result = shoppingItemRepository
-            .findAllByHouseholdIdAndVisibilityAndStatusOrderByCreatedAtDesc(
+            .findAllByHouseholdIdAndVisibilityAndStatusAndSuggestedFalseOrderByCreatedAtDesc(
                 householdA.getId(),
                 ShoppingItemVisibility.SHARED,
                 ShoppingItemStatus.NEEDED
@@ -191,7 +191,7 @@ public class ShoppingItemRepositoryTest {
         markStatusAndUpdatedAt(otherHousehold, ShoppingItemStatus.BOUGHT, base.plusHours(2));
 
         List<ShoppingItem> result = shoppingItemRepository
-            .findAllByHouseholdIdAndStatusInOrderByUpdatedAtDesc(
+            .findAllByHouseholdIdAndSuggestedFalseAndStatusInOrderByUpdatedAtDesc(
                 householdA.getId(),
                 List.of(ShoppingItemStatus.BOUGHT, ShoppingItemStatus.CANCELLED)
             );
@@ -201,6 +201,87 @@ public class ShoppingItemRepositoryTest {
         assertEquals("Bought old", result.get(1).getName());
         assertTrue(result.stream().allMatch(item -> item.getHousehold().getId().equals(householdA.getId())));
         assertTrue(result.stream().noneMatch(item -> item.getStatus() == ShoppingItemStatus.NEEDED));
+    }
+
+    @Test
+    public void findSuggestionsForHousehold_returnsOnlyNeededSuggestionsForHousehold() {
+        ShoppingItem suggestion = save("Suggested milk", householdA, userA, null, ShoppingItemVisibility.SHARED, LocalDateTime.now());
+        suggestion.setSuggested(true);
+        suggestion.getVotedBy().add(userA);
+        shoppingItemRepository.save(suggestion);
+
+        ShoppingItem normalShared = save("Normal shared", householdA, userA, null, ShoppingItemVisibility.SHARED, LocalDateTime.now());
+        normalShared.setSuggested(false);
+        shoppingItemRepository.save(normalShared);
+
+        ShoppingItem boughtSuggestion = save("Bought suggestion", householdA, userA, null, ShoppingItemVisibility.SHARED, LocalDateTime.now());
+        boughtSuggestion.setSuggested(true);
+        boughtSuggestion.setStatus(ShoppingItemStatus.BOUGHT);
+        shoppingItemRepository.save(boughtSuggestion);
+
+        ShoppingItem otherHouseholdSuggestion = save("Other household suggestion", householdB, userB, null, ShoppingItemVisibility.SHARED, LocalDateTime.now());
+        otherHouseholdSuggestion.setSuggested(true);
+        shoppingItemRepository.save(otherHouseholdSuggestion);
+
+        List<ShoppingItem> result = shoppingItemRepository.findSuggestionsForHousehold(
+            householdA.getId(),
+            ShoppingItemStatus.NEEDED
+        );
+
+        assertEquals(1, result.size());
+        assertEquals("Suggested milk", result.get(0).getName());
+    }
+
+    @Test
+    public void findVisibleItems_excludesSuggestions() {
+        ShoppingItem normalShared = save("Normal shared", householdA, userA, null, ShoppingItemVisibility.SHARED, LocalDateTime.now());
+        normalShared.setSuggested(false);
+        shoppingItemRepository.save(normalShared);
+
+        ShoppingItem suggestion = save("Suggestion", householdA, userA, null, ShoppingItemVisibility.SHARED, LocalDateTime.now());
+        suggestion.setSuggested(true);
+        shoppingItemRepository.save(suggestion);
+
+        List<ShoppingItem> result = shoppingItemRepository.findVisibleItems(
+            householdA.getId(),
+            userA.getId(),
+            ShoppingItemVisibility.SHARED
+        );
+
+        assertEquals(1, result.size());
+        assertEquals("Normal shared", result.get(0).getName());
+    }
+
+    @Test
+    public void findAllBySuggestedFalse_returnsOnlyNormalShoppingItems() {
+        ShoppingItem normal = save(
+            "Normal item",
+            householdA,
+            userA,
+            null,
+            ShoppingItemVisibility.SHARED,
+            LocalDateTime.now()
+        );
+        normal.setSuggested(false);
+        shoppingItemRepository.save(normal);
+
+        ShoppingItem suggestion = save(
+            "Suggested item",
+            householdA,
+            userA,
+            null,
+            ShoppingItemVisibility.SHARED,
+            LocalDateTime.now()
+        );
+        suggestion.setSuggested(true);
+        shoppingItemRepository.save(suggestion);
+
+        List<ShoppingItem> result =
+            shoppingItemRepository.findAllBySuggestedFalseOrderByCreatedAtDesc();
+
+        assertEquals(1, result.size());
+        assertEquals("Normal item", result.get(0).getName());
+        assertTrue(!result.get(0).isSuggested());
     }
 
     private void markStatusAndUpdatedAt(ShoppingItem item, ShoppingItemStatus status, LocalDateTime updatedAt) {

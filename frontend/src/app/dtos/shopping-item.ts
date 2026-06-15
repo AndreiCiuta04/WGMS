@@ -139,3 +139,33 @@ export interface AggregatedShoppingItemDto {
   itemCount: number;
   sourceItems: AggregatedShoppingItemSourceDto[];
 }
+
+export interface ShoppingItemSuggestionCreateDto {
+  name: string;
+  quantity?: string | null;
+  notes?: string | null;
+}
+
+export interface ShoppingItemSuggestionVoterDto {
+  userId: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
+export interface ShoppingItemSuggestionDto {
+  id: number;
+  name: string;
+  quantity?: string | null;
+  notes?: string | null;
+  householdId: number;
+  createdById: number;
+  createdByEmail: string;
+  createdByFirstName: string;
+  createdByLastName: string;
+  voteCount: number;
+  votedByCurrentUser: boolean;
+  voters: ShoppingItemSuggestionVoterDto[];
+  createdAt: string;
+  updatedAt: string;
+}

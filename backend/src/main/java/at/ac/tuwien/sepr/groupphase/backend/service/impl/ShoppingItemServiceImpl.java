@@ -6,6 +6,9 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemStatusUpdat
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemSourceDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionCreateDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionVoterDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.mapper.ShoppingItemMapper;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
@@ -32,14 +35,21 @@ import java.lang.invoke.MethodHandles;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Locale;
+import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class ShoppingItemServiceImpl implements ShoppingItemService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+    private static final Pattern SUGGESTION_QUANTITY_PATTERN = Pattern.compile(
+        "^(?:(\\d+)\\s*[x×]\\s*)?(\\d+(?:[.,]\\d+)?)\\s*([a-zA-Z]+)$"
+    );
     private final ShoppingItemRepository shoppingItemRepository;
     private final RoommateRepository roommateRepository;
     private final UserService userService;
@@ -88,7 +98,7 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         LOGGER.debug("Find visible shopping items for user {}", currentUser.getEmail());
 
         if (Boolean.TRUE.equals(currentUser.getAdmin())) {
-            return shoppingItemMapper.entityToDto(shoppingItemRepository.findAll());
+            return shoppingItemMapper.entityToDto(shoppingItemRepository.findAllBySuggestedFalseOrderByCreatedAtDesc());
         }
 
         Roommate roommate = requireActiveRoommate(currentUser);
@@ -166,7 +176,7 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         Roommate roommate = requireActiveRoommate(currentUser);
 
         List<ShoppingItem> sharedNeededItems = shoppingItemRepository
-            .findAllByHouseholdIdAndVisibilityAndStatusOrderByCreatedAtDesc(
+            .findAllByHouseholdIdAndVisibilityAndStatusAndSuggestedFalseOrderByCreatedAtDesc(
                 roommate.getHousehold().getId(),
                 ShoppingItemVisibility.SHARED,
                 ShoppingItemStatus.NEEDED
@@ -197,11 +207,165 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         Roommate roommate = requireActiveRoommate(currentUser);
 
         return shoppingItemMapper.entityToDto(
-            shoppingItemRepository.findAllByHouseholdIdAndStatusInOrderByUpdatedAtDesc(
+            shoppingItemRepository.findAllByHouseholdIdAndSuggestedFalseAndStatusInOrderByUpdatedAtDesc(
                 roommate.getHousehold().getId(),
                 List.of(ShoppingItemStatus.BOUGHT, ShoppingItemStatus.CANCELLED)
             )
         );
+    }
+
+    @Override
+    @Transactional
+    public ShoppingItemSuggestionDto createSuggestion(ShoppingItemSuggestionCreateDto dto,
+                                                      ApplicationUser currentUser) {
+        LOGGER.debug("Create shopping item suggestion {} for user {}",
+            dto.name(), currentUser.getEmail());
+
+        Roommate roommate = requireActiveRoommate(currentUser);
+        Long householdId = roommate.getHousehold().getId();
+
+        List<ShoppingItem> activeSuggestions =
+            shoppingItemRepository.findSuggestionsForHousehold(
+                householdId,
+                ShoppingItemStatus.NEEDED
+            );
+
+        String normalizedName = normalize(dto.name());
+        SuggestionQuantity suggestionQuantity =
+            parseSuggestionQuantity(dto.quantity());
+
+        ShoppingItem duplicate = activeSuggestions.stream()
+            .filter(item -> normalize(item.getName()).equals(normalizedName))
+            .filter(suggestionQuantity::matches)
+            .findFirst()
+            .orElse(null);
+
+        if (duplicate != null) {
+            boolean alreadyVoted = duplicate.getVotedBy().stream()
+                .anyMatch(voter -> voter.getId().equals(currentUser.getId()));
+
+            if (!alreadyVoted) {
+                duplicate.getVotedBy().add(currentUser);
+                duplicate = shoppingItemRepository.save(duplicate);
+            }
+
+            return toSuggestionDto(duplicate, currentUser);
+        }
+
+        ShoppingItem item = new ShoppingItem();
+        item.setName(cleanDisplayValue(dto.name()));
+        item.setQuantityCount(suggestionQuantity.count());
+        item.setQuantityAmount(suggestionQuantity.amount());
+        item.setQuantityUnit(suggestionQuantity.unit());
+        item.setNotes(cleanDisplayValue(dto.notes()));
+        item.setStatus(ShoppingItemStatus.NEEDED);
+        item.setVisibility(ShoppingItemVisibility.SHARED);
+        item.setHousehold(roommate.getHousehold());
+        item.setCreatedBy(currentUser);
+        item.setTargetUser(null);
+        item.setSuggested(true);
+        item.getVotedBy().add(currentUser);
+
+        return toSuggestionDto(shoppingItemRepository.save(item), currentUser);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ShoppingItemSuggestionDto> findSuggestions(ApplicationUser currentUser) {
+        LOGGER.debug("Find shopping item suggestions for user {}", currentUser.getEmail());
+
+        Roommate roommate = requireActiveRoommate(currentUser);
+
+        return shoppingItemRepository.findSuggestionsForHousehold(
+                roommate.getHousehold().getId(),
+                ShoppingItemStatus.NEEDED
+            ).stream()
+            .filter(item -> canViewWithinHousehold(item, currentUser))
+            .map(item -> toSuggestionDto(item, currentUser))
+            .toList();
+    }
+
+    @Override
+    @Transactional
+    public ShoppingItemSuggestionDto voteForSuggestion(Long id, ApplicationUser currentUser) {
+        LOGGER.debug("Vote for shopping item suggestion {} by user {}", id, currentUser.getEmail());
+
+        ShoppingItem item = loadAndAuthorizeSuggestion(id, currentUser);
+
+        boolean alreadyVoted = item.getVotedBy().stream()
+            .anyMatch(user -> user.getId().equals(currentUser.getId()));
+
+        if (!alreadyVoted) {
+            item.getVotedBy().add(currentUser);
+        }
+
+        return toSuggestionDto(shoppingItemRepository.save(item), currentUser);
+    }
+
+    @Override
+    @Transactional
+    public ShoppingItemSuggestionDto removeVoteFromSuggestion(Long id, ApplicationUser currentUser) {
+        LOGGER.debug("Remove vote from shopping item suggestion {} by user {}",
+            id, currentUser.getEmail());
+
+        ShoppingItem item = loadAndAuthorizeSuggestion(id, currentUser);
+
+        item.getVotedBy().removeIf(user -> user.getId().equals(currentUser.getId()));
+
+        return toSuggestionDto(shoppingItemRepository.save(item), currentUser);
+    }
+
+    @Override
+    @Transactional
+    public ShoppingItemDto promoteSuggestion(Long id, ApplicationUser currentUser) {
+        LOGGER.debug("Promote shopping item suggestion {} by user {}",
+            id, currentUser.getEmail());
+
+        ShoppingItem item = loadAndAuthorizeSuggestion(id, currentUser);
+
+        item.setSuggested(false);
+        item.setVisibility(ShoppingItemVisibility.SHARED);
+        item.setStatus(ShoppingItemStatus.NEEDED);
+        item.setTargetUser(null);
+
+        /*
+         * Votes apply only while the item is a suggestion. Once promoted, clearing
+         * the relation prevents obsolete vote records from remaining attached to a
+         * normal shopping item.
+         */
+        item.getVotedBy().clear();
+
+        return shoppingItemMapper.entityToDto(
+            shoppingItemRepository.save(item)
+        );
+    }
+
+    @Override
+    @Transactional
+    public void deleteSuggestion(Long id, ApplicationUser currentUser) {
+        LOGGER.debug("Delete shopping item suggestion {} by user {}",
+            id, currentUser.getEmail());
+
+        ShoppingItem item = shoppingItemRepository.findById(id)
+            .orElseThrow(() -> new NotFoundException(
+                "Shopping item suggestion with id " + id + " not found."));
+
+        if (!item.isSuggested()) {
+            throw new ConflictException(
+                "Shopping item with id " + id + " is not a suggestion.");
+        }
+
+        if (item.getStatus() != ShoppingItemStatus.NEEDED) {
+            throw new ConflictException(
+                "Only active shopping item suggestions can be removed.");
+        }
+
+        if (!canManage(item, currentUser)) {
+            throw new ForbiddenException(
+                "You are not allowed to remove this shopping item suggestion.");
+        }
+
+        shoppingItemRepository.delete(item);
     }
 
     // ------------------------------------------------------------------------
@@ -350,6 +514,189 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         );
     }
 
+    private ShoppingItem loadAndAuthorizeSuggestion(Long id, ApplicationUser currentUser) {
+        Roommate roommate = requireActiveRoommate(currentUser);
+
+        ShoppingItem item = shoppingItemRepository.findById(id)
+            .orElseThrow(() -> new NotFoundException(
+                "Shopping item suggestion with id " + id + " not found."));
+
+        if (!item.isSuggested()) {
+            throw new ConflictException("Shopping item with id " + id + " is not a suggestion.");
+        }
+
+        if (!item.getHousehold().getId().equals(roommate.getHousehold().getId())) {
+            throw new ForbiddenException("You are not allowed to access this shopping item suggestion.");
+        }
+
+        if (item.getStatus() != ShoppingItemStatus.NEEDED) {
+            throw new ConflictException("Only active shopping item suggestions can be voted on.");
+        }
+
+        if (!canViewWithinHousehold(item, currentUser)) {
+            throw new ForbiddenException("You are not allowed to access this shopping item suggestion.");
+        }
+
+        return item;
+    }
+
+    private ShoppingItemSuggestionDto toSuggestionDto(ShoppingItem item,
+                                                      ApplicationUser currentUser) {
+        boolean votedByCurrentUser = item.getVotedBy().stream()
+            .anyMatch(user -> user.getId().equals(currentUser.getId()));
+
+        List<ShoppingItemSuggestionVoterDto> voters = item.getVotedBy().stream()
+            .sorted(
+                Comparator.comparing(
+                    ApplicationUser::getFirstName,
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
+                ).thenComparing(
+                    ApplicationUser::getLastName,
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
+                ).thenComparing(
+                    ApplicationUser::getEmail,
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
+                )
+            )
+            .map(user -> new ShoppingItemSuggestionVoterDto(
+                user.getId(),
+                user.getEmail(),
+                user.getFirstName(),
+                user.getLastName()
+            ))
+            .toList();
+
+        return new ShoppingItemSuggestionDto(
+            item.getId(),
+            item.getName(),
+            formatSuggestionQuantity(item),
+            item.getNotes(),
+            item.getHousehold().getId(),
+            item.getCreatedBy().getId(),
+            item.getCreatedBy().getEmail(),
+            item.getCreatedBy().getFirstName(),
+            item.getCreatedBy().getLastName(),
+            voters.size(),
+            votedByCurrentUser,
+            voters,
+            item.getCreatedAt(),
+            item.getUpdatedAt()
+        );
+    }
+
+    private boolean canViewWithinHousehold(ShoppingItem item,
+                                           ApplicationUser currentUser) {
+        if (Boolean.TRUE.equals(currentUser.getAdmin())) {
+            return true;
+        }
+        if (item.getCreatedBy().getId().equals(currentUser.getId())) {
+            return true;
+        }
+        if (item.getTargetUser() != null
+            && item.getTargetUser().getId().equals(currentUser.getId())) {
+            return true;
+        }
+        return item.getVisibility() == ShoppingItemVisibility.SHARED;
+    }
+
+
+    private SuggestionQuantity parseSuggestionQuantity(String value) {
+        String cleaned = cleanDisplayValue(value);
+
+        if (cleaned == null) {
+            return new SuggestionQuantity(null, null, null);
+        }
+
+        Matcher matcher = SUGGESTION_QUANTITY_PATTERN.matcher(cleaned);
+
+        if (!matcher.matches()) {
+            throw new ValidationException(
+                "Quantity must use a format such as '2 L', "
+                    + "'1 pack', or '5 x 3 L'."
+            );
+        }
+
+        Integer count = matcher.group(1) == null
+            ? null
+            : Integer.valueOf(matcher.group(1));
+
+        BigDecimal amount =
+            new BigDecimal(matcher.group(2).replace(',', '.'));
+
+        QuantityUnit unit = parseQuantityUnit(matcher.group(3));
+
+        return new SuggestionQuantity(count, amount, unit);
+    }
+
+    private QuantityUnit parseQuantityUnit(String value) {
+        return switch (value.toLowerCase(Locale.ROOT)) {
+            case "ml", "milliliter", "milliliters" ->
+                QuantityUnit.MILLILITER;
+
+            case "l", "liter", "liters", "litre", "litres" ->
+                QuantityUnit.LITER;
+
+            case "g", "gram", "grams" ->
+                QuantityUnit.GRAM;
+
+            case "kg", "kilogram", "kilograms" ->
+                QuantityUnit.KILOGRAM;
+
+            case "pc", "pcs", "piece", "pieces" ->
+                QuantityUnit.PIECE;
+
+            case "pack", "packs" ->
+                QuantityUnit.PACK;
+
+            default -> throw new ValidationException(
+                "Unsupported quantity unit: " + value
+            );
+        };
+    }
+
+    private String formatSuggestionQuantity(ShoppingItem item) {
+        if (item.getQuantityCount() == null
+            && item.getQuantityAmount() == null
+            && item.getQuantityUnit() == null) {
+            return null;
+        }
+
+        StringBuilder result = new StringBuilder();
+
+        if (item.getQuantityCount() != null) {
+            result.append(item.getQuantityCount()).append(" x ");
+        }
+
+        if (item.getQuantityAmount() != null) {
+            result.append(
+                item.getQuantityAmount()
+                    .stripTrailingZeros()
+                    .toPlainString()
+            );
+        }
+
+        if (item.getQuantityUnit() != null) {
+            if (result.length() > 0) {
+                result.append(' ');
+            }
+
+            result.append(quantityUnitLabel(item.getQuantityUnit()));
+        }
+
+        return result.toString();
+    }
+
+    private String quantityUnitLabel(QuantityUnit unit) {
+        return switch (unit) {
+            case MILLILITER -> "ml";
+            case LITER -> "L";
+            case GRAM -> "g";
+            case KILOGRAM -> "kg";
+            case PIECE -> "piece";
+            case PACK -> "pack";
+        };
+    }
+
     private String normalize(String value) {
         if (value == null) {
             return "";
@@ -357,10 +704,34 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         return value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
     }
 
+
+
     /** Strips trailing zeros so amounts like 3 and 3.0 aggregate as equal. */
     private BigDecimal normalizeAmount(BigDecimal value) {
         return value == null ? null : value.stripTrailingZeros();
     }
 
     private record AggregationKey(String normalizedName, Integer count, BigDecimal amount, QuantityUnit unit) {}
+
+    private record SuggestionQuantity(
+        Integer count,
+        BigDecimal amount,
+        QuantityUnit unit
+    ) {
+
+        private boolean matches(ShoppingItem item) {
+            return Objects.equals(count, item.getQuantityCount())
+                && Objects.equals(
+                normalizeAmount(amount),
+                normalizeAmount(item.getQuantityAmount())
+            )
+                && unit == item.getQuantityUnit();
+        }
+
+        private static BigDecimal normalizeAmount(BigDecimal value) {
+            return value == null
+                ? null
+                : value.stripTrailingZeros();
+        }
+    }
 }

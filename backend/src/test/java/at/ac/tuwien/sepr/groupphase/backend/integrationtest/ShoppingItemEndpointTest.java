@@ -7,6 +7,8 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemStatusUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionCreateDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
@@ -464,6 +466,453 @@ public class ShoppingItemEndpointTest implements TestData {
             item.status() == ShoppingItemStatus.BOUGHT || item.status() == ShoppingItemStatus.CANCELLED));
     }
 
+    @Test
+    public void givenUserInHousehold_whenCreateSuggestion_then201AndCreatorVoteCounted() throws Exception {
+        ShoppingItemSuggestionCreateDto dto = new ShoppingItemSuggestionCreateDto(
+            "Dishwasher tabs",
+            "1 pack",
+            "We are almost out"
+        );
+
+        MvcResult result = mockMvc.perform(post(SHOPPING_ITEM_BASE_URI + "/suggestions")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("usera@test.com", USER_ROLES))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(dto)))
+            .andReturn();
+
+        assertEquals(HttpStatus.CREATED.value(), result.getResponse().getStatus());
+
+        ShoppingItemSuggestionDto suggestion = jsonMapper.readValue(
+            result.getResponse().getContentAsString(),
+            ShoppingItemSuggestionDto.class
+        );
+
+        assertNotNull(suggestion.id());
+        assertEquals("Dishwasher tabs", suggestion.name());
+        assertEquals(household.getId(), suggestion.householdId());
+        assertEquals("usera@test.com", suggestion.createdByEmail());
+        assertEquals(1, suggestion.voteCount());
+        assertTrue(suggestion.votedByCurrentUser());
+
+        ShoppingItem saved = shoppingItemRepository.findById(suggestion.id()).orElseThrow();
+        assertTrue(saved.isSuggested());
+        assertEquals(ShoppingItemVisibility.SHARED, saved.getVisibility());
+        assertEquals(ShoppingItemStatus.NEEDED, saved.getStatus());
+    }
+
+    @Test
+    public void givenSuggestionInHousehold_whenMembersListSuggestions_thenOnlySameHouseholdSuggestionsReturned() throws Exception {
+        ShoppingItem suggestion = seedSuggestion("Olive oil", userA, household);
+        seedSuggestion("Other WG item", userC, otherHousehold);
+
+        MvcResult sameHouseholdResult = mockMvc.perform(get(SHOPPING_ITEM_BASE_URI + "/suggestions")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userb@test.com", USER_ROLES)))
+            .andReturn();
+
+        assertEquals(HttpStatus.OK.value(), sameHouseholdResult.getResponse().getStatus());
+
+        ShoppingItemSuggestionDto[] sameHouseholdSuggestions = jsonMapper.readValue(
+            sameHouseholdResult.getResponse().getContentAsString(),
+            ShoppingItemSuggestionDto[].class
+        );
+
+        assertEquals(1, sameHouseholdSuggestions.length);
+        assertEquals(suggestion.getId(), sameHouseholdSuggestions[0].id());
+        assertEquals("Olive oil", sameHouseholdSuggestions[0].name());
+
+        MvcResult otherHouseholdResult = mockMvc.perform(get(SHOPPING_ITEM_BASE_URI + "/suggestions")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userc@test.com", USER_ROLES)))
+            .andReturn();
+
+        ShoppingItemSuggestionDto[] otherHouseholdSuggestions = jsonMapper.readValue(
+            otherHouseholdResult.getResponse().getContentAsString(),
+            ShoppingItemSuggestionDto[].class
+        );
+
+        assertEquals(1, otherHouseholdSuggestions.length);
+        assertEquals("Other WG item", otherHouseholdSuggestions[0].name());
+    }
+
+    @Test
+    public void givenSuggestion_whenOtherHouseholdMemberVotes_thenVoteCountIncreases() throws Exception {
+        ShoppingItem suggestion = seedSuggestion("Kitchen sponge", userA, household);
+
+        MvcResult result = mockMvc.perform(post(SHOPPING_ITEM_BASE_URI + "/suggestions/" + suggestion.getId() + "/votes")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userb@test.com", USER_ROLES)))
+            .andReturn();
+
+        assertEquals(HttpStatus.OK.value(), result.getResponse().getStatus());
+
+        ShoppingItemSuggestionDto dto = jsonMapper.readValue(
+            result.getResponse().getContentAsString(),
+            ShoppingItemSuggestionDto.class
+        );
+
+        assertEquals(2, dto.voteCount());
+        assertTrue(dto.votedByCurrentUser());
+    }
+
+    @Test
+    public void givenSuggestion_whenSameUserVotesTwice_thenVoteCountDoesNotIncreaseTwice() throws Exception {
+        ShoppingItem suggestion = seedSuggestion("Garbage bags", userA, household);
+
+        mockMvc.perform(post(SHOPPING_ITEM_BASE_URI + "/suggestions/" + suggestion.getId() + "/votes")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userb@test.com", USER_ROLES)))
+            .andReturn();
+
+        MvcResult secondVote = mockMvc.perform(post(SHOPPING_ITEM_BASE_URI + "/suggestions/" + suggestion.getId() + "/votes")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userb@test.com", USER_ROLES)))
+            .andReturn();
+
+        assertEquals(HttpStatus.OK.value(), secondVote.getResponse().getStatus());
+
+        ShoppingItemSuggestionDto dto = jsonMapper.readValue(
+            secondVote.getResponse().getContentAsString(),
+            ShoppingItemSuggestionDto.class
+        );
+
+        assertEquals(2, dto.voteCount());
+    }
+
+    @Test
+    public void givenSuggestionWithVote_whenUserRemovesVote_thenVoteCountDecreases() throws Exception {
+        ShoppingItem suggestion = seedSuggestion("Soap", userA, household);
+        suggestion.getVotedBy().add(userB);
+        shoppingItemRepository.saveAndFlush(suggestion);
+
+        MvcResult result = mockMvc.perform(delete(SHOPPING_ITEM_BASE_URI + "/suggestions/" + suggestion.getId() + "/votes")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userb@test.com", USER_ROLES)))
+            .andReturn();
+
+        assertEquals(HttpStatus.OK.value(), result.getResponse().getStatus());
+
+        ShoppingItemSuggestionDto dto = jsonMapper.readValue(
+            result.getResponse().getContentAsString(),
+            ShoppingItemSuggestionDto.class
+        );
+
+        assertEquals(1, dto.voteCount());
+        assertTrue(!dto.votedByCurrentUser());
+    }
+
+    @Test
+    public void givenSuggestionFromOtherHousehold_whenUserVotes_then403() throws Exception {
+        ShoppingItem suggestion = seedSuggestion("Other WG item", userC, otherHousehold);
+
+        MvcResult result = mockMvc.perform(post(SHOPPING_ITEM_BASE_URI + "/suggestions/" + suggestion.getId() + "/votes")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("usera@test.com", USER_ROLES)))
+            .andReturn();
+
+        assertEquals(HttpStatus.FORBIDDEN.value(), result.getResponse().getStatus());
+    }
+
+    @Test
+    public void givenNormalShoppingItem_whenUserVotesAsSuggestion_then409() throws Exception {
+        ShoppingItem normalItem = seedItem("Normal milk", userA, ShoppingItemVisibility.SHARED, null);
+
+        MvcResult result = mockMvc.perform(post(SHOPPING_ITEM_BASE_URI + "/suggestions/" + normalItem.getId() + "/votes")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userb@test.com", USER_ROLES)))
+            .andReturn();
+
+        assertEquals(HttpStatus.CONFLICT.value(), result.getResponse().getStatus());
+    }
+
+    @Test
+    public void givenSuggestion_whenGetNormalShoppingItems_thenSuggestionNotReturned() throws Exception {
+        seedSuggestion("Suggested item", userA, household);
+        seedItem("Normal shared item", userA, ShoppingItemVisibility.SHARED, null);
+
+        MvcResult result = mockMvc.perform(get(SHOPPING_ITEM_BASE_URI)
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userb@test.com", USER_ROLES)))
+            .andReturn();
+
+        assertEquals(HttpStatus.OK.value(), result.getResponse().getStatus());
+
+        ShoppingItemDto[] items = jsonMapper.readValue(
+            result.getResponse().getContentAsString(),
+            ShoppingItemDto[].class
+        );
+
+        assertEquals(1, items.length);
+        assertEquals("Normal shared item", items[0].name());
+    }
+
+    @Test
+    public void givenSuggestion_whenGetAggregatedShoppingList_thenSuggestionNotReturned() throws Exception {
+        seedSuggestion("Suggested shared item", userA, household);
+        seedItem("Normal shared item", userA, ShoppingItemVisibility.SHARED, null);
+
+        MvcResult result = mockMvc.perform(get(SHOPPING_ITEM_BASE_URI + "/aggregated")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("usera@test.com", USER_ROLES)))
+            .andReturn();
+
+        assertEquals(HttpStatus.OK.value(), result.getResponse().getStatus());
+
+        AggregatedShoppingItemDto[] items = jsonMapper.readValue(
+            result.getResponse().getContentAsString(),
+            AggregatedShoppingItemDto[].class
+        );
+
+        assertEquals(1, items.length);
+        assertEquals("Normal shared item", items[0].name());
+    }
+
+    @Test
+    public void givenEquivalentSuggestion_whenCreateAgain_thenExistingSuggestionReturnedAndVoteAdded() throws Exception {
+        ShoppingItem existing = seedSuggestion(" Milk ", userA, household);
+        existing.setQuantityAmount(new BigDecimal("2"));
+        existing.setQuantityUnit(QuantityUnit.LITER);
+        shoppingItemRepository.saveAndFlush(existing);
+
+        ShoppingItemSuggestionCreateDto dto =
+            new ShoppingItemSuggestionCreateDto(
+                "milk",
+                "2l",
+                "This should not overwrite original data"
+            );
+
+        MvcResult result = mockMvc.perform(
+                post(SHOPPING_ITEM_BASE_URI + "/suggestions")
+                    .header(
+                        securityProperties.getAuthHeader(),
+                        jwtTokenizer.getAuthToken(
+                            "userb@test.com",
+                            USER_ROLES
+                        )
+                    )
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(jsonMapper.writeValueAsString(dto))
+            )
+            .andReturn();
+
+        assertEquals(
+            HttpStatus.CREATED.value(),
+            result.getResponse().getStatus()
+        );
+
+        ShoppingItemSuggestionDto response = jsonMapper.readValue(
+            result.getResponse().getContentAsString(),
+            ShoppingItemSuggestionDto.class
+        );
+
+        assertEquals(existing.getId(), response.id());
+        assertEquals(2, response.voteCount());
+        assertTrue(response.votedByCurrentUser());
+        assertEquals(1, shoppingItemRepository.findSuggestionsForHousehold(
+            household.getId(),
+            ShoppingItemStatus.NEEDED
+        ).size());
+    }
+
+    @Test
+    public void givenSuggestionWithTwoVotes_whenGetSuggestions_thenVoterDetailsReturned() throws Exception {
+        ShoppingItem suggestion =
+            seedSuggestion("Coffee", userA, household);
+
+        suggestion.getVotedBy().add(userB);
+        shoppingItemRepository.saveAndFlush(suggestion);
+
+        MvcResult result = mockMvc.perform(
+                get(SHOPPING_ITEM_BASE_URI + "/suggestions")
+                    .header(
+                        securityProperties.getAuthHeader(),
+                        jwtTokenizer.getAuthToken(
+                            "usera@test.com",
+                            USER_ROLES
+                        )
+                    )
+            )
+            .andReturn();
+
+        assertEquals(
+            HttpStatus.OK.value(),
+            result.getResponse().getStatus()
+        );
+
+        ShoppingItemSuggestionDto[] response = jsonMapper.readValue(
+            result.getResponse().getContentAsString(),
+            ShoppingItemSuggestionDto[].class
+        );
+
+        assertEquals(1, response.length);
+        assertEquals(2, response[0].voteCount());
+        assertEquals(2, response[0].voters().size());
+
+        assertTrue(response[0].voters().stream()
+            .anyMatch(voter ->
+                voter.email().equals("usera@test.com")
+            ));
+
+        assertTrue(response[0].voters().stream()
+            .anyMatch(voter ->
+                voter.email().equals("userb@test.com")
+            ));
+    }
+
+    @Test
+    public void givenPromotedSuggestion_whenGetAggregatedList_thenItemAppears() throws Exception {
+        ShoppingItem suggestion =
+            seedSuggestion("Rice", userA, household);
+
+        mockMvc.perform(
+            post(
+                SHOPPING_ITEM_BASE_URI
+                    + "/suggestions/"
+                    + suggestion.getId()
+                    + "/promote"
+            )
+                .header(
+                    securityProperties.getAuthHeader(),
+                    jwtTokenizer.getAuthToken(
+                        "userb@test.com",
+                        USER_ROLES
+                    )
+                )
+        ).andReturn();
+
+        MvcResult result = mockMvc.perform(
+                get(SHOPPING_ITEM_BASE_URI + "/aggregated")
+                    .header(
+                        securityProperties.getAuthHeader(),
+                        jwtTokenizer.getAuthToken(
+                            "usera@test.com",
+                            USER_ROLES
+                        )
+                    )
+            )
+            .andReturn();
+
+        AggregatedShoppingItemDto[] response = jsonMapper.readValue(
+            result.getResponse().getContentAsString(),
+            AggregatedShoppingItemDto[].class
+        );
+
+        assertEquals(1, response.length);
+        assertEquals("Rice", response[0].name());
+    }
+
+    @Test
+    public void givenSuggestionFromOtherHousehold_whenPromote_then403() throws Exception {
+        ShoppingItem suggestion =
+            seedSuggestion("Other WG item", userC, otherHousehold);
+
+        MvcResult result = mockMvc.perform(
+                post(
+                    SHOPPING_ITEM_BASE_URI
+                        + "/suggestions/"
+                        + suggestion.getId()
+                        + "/promote"
+                )
+                    .header(
+                        securityProperties.getAuthHeader(),
+                        jwtTokenizer.getAuthToken(
+                            "usera@test.com",
+                            USER_ROLES
+                        )
+                    )
+            )
+            .andReturn();
+
+        assertEquals(
+            HttpStatus.FORBIDDEN.value(),
+            result.getResponse().getStatus()
+        );
+    }
+
+    @Test
+    public void givenOwnSuggestion_whenDeleteSuggestion_then204AndRemoved() throws Exception {
+        ShoppingItem suggestion =
+            seedSuggestion("Remove me", userA, household);
+
+        MvcResult result = mockMvc.perform(
+                delete(
+                    SHOPPING_ITEM_BASE_URI
+                        + "/suggestions/"
+                        + suggestion.getId()
+                )
+                    .header(
+                        securityProperties.getAuthHeader(),
+                        jwtTokenizer.getAuthToken(
+                            "usera@test.com",
+                            USER_ROLES
+                        )
+                    )
+            )
+            .andReturn();
+
+        assertEquals(
+            HttpStatus.NO_CONTENT.value(),
+            result.getResponse().getStatus()
+        );
+
+        assertTrue(
+            shoppingItemRepository.findById(suggestion.getId()).isEmpty()
+        );
+    }
+
+    @Test
+    public void givenSuggestionOwnedByOtherMember_whenDeleteSuggestion_then403() throws Exception {
+        ShoppingItem suggestion =
+            seedSuggestion("Protected suggestion", userA, household);
+
+        MvcResult result = mockMvc.perform(
+                delete(
+                    SHOPPING_ITEM_BASE_URI
+                        + "/suggestions/"
+                        + suggestion.getId()
+                )
+                    .header(
+                        securityProperties.getAuthHeader(),
+                        jwtTokenizer.getAuthToken(
+                            "userb@test.com",
+                            USER_ROLES
+                        )
+                    )
+            )
+            .andReturn();
+
+        assertEquals(
+            HttpStatus.FORBIDDEN.value(),
+            result.getResponse().getStatus()
+        );
+
+        assertTrue(
+            shoppingItemRepository.findById(suggestion.getId()).isPresent()
+        );
+    }
+
+    @Test
+    public void givenNormalItem_whenDeleteThroughSuggestionEndpoint_then409() throws Exception {
+        ShoppingItem item = seedItem(
+            "Normal item",
+            userA,
+            ShoppingItemVisibility.SHARED,
+            null
+        );
+
+        MvcResult result = mockMvc.perform(
+                delete(
+                    SHOPPING_ITEM_BASE_URI
+                        + "/suggestions/"
+                        + item.getId()
+                )
+                    .header(
+                        securityProperties.getAuthHeader(),
+                        jwtTokenizer.getAuthToken(
+                            "usera@test.com",
+                            USER_ROLES
+                        )
+                    )
+            )
+            .andReturn();
+
+        assertEquals(
+            HttpStatus.CONFLICT.value(),
+            result.getResponse().getStatus()
+        );
+    }
+
+
     private ShoppingItem seedItem(String name, ApplicationUser creator, ShoppingItemVisibility visibility, ApplicationUser target) {
         return seedItemInHousehold(name, household, creator, visibility, target);
     }
@@ -477,6 +926,18 @@ public class ShoppingItemEndpointTest implements TestData {
         item.setStatus(ShoppingItemStatus.NEEDED);
         item.setVisibility(visibility);
         item.setTargetUser(target);
+        return shoppingItemRepository.save(item);
+    }
+
+    private ShoppingItem seedSuggestion(String name, ApplicationUser creator, Household household) {
+        ShoppingItem item = new ShoppingItem();
+        item.setName(name);
+        item.setHousehold(household);
+        item.setCreatedBy(creator);
+        item.setStatus(ShoppingItemStatus.NEEDED);
+        item.setVisibility(ShoppingItemVisibility.SHARED);
+        item.setSuggested(true);
+        item.getVotedBy().add(creator);
         return shoppingItemRepository.save(item);
     }
 }
