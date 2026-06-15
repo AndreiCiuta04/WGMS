@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
+  FairChoreOverdueReminderDto,
   FairChoreRecommendationDto,
   TaskCreateDto,
   TaskDetailDto,
@@ -53,6 +54,13 @@ export class TaskService {
     return this.http.get<FairChoreRecommendationDto>(`${this.baseUri}/fair-balancing/recommendation`, {
       params: queryParams
     });
+  }
+
+  sendOverdueReminder(roommateId: number): Observable<FairChoreOverdueReminderDto> {
+    return this.http.post<FairChoreOverdueReminderDto>(
+      `${this.baseUri}/fair-balancing/overdue-reminders/${roommateId}`,
+      {}
+    );
   }
 
   findOne(id: number): Observable<TaskDetailDto> {

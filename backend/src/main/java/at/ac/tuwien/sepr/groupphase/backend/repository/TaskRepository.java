@@ -1,13 +1,14 @@
 package at.ac.tuwien.sepr.groupphase.backend.repository;
 
 import at.ac.tuwien.sepr.groupphase.backend.entity.Task;
+import at.ac.tuwien.sepr.groupphase.backend.entity.TaskStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import at.ac.tuwien.sepr.groupphase.backend.entity.TaskStatus;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -46,6 +47,13 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findByHousehold_IdAndAssignedTo_IdOrderByDueDateAscCreatedAtDesc(
         Long householdId,
         Long assignedToId
+    );
+
+    long countByHousehold_IdAndAssignedTo_IdAndStatusInAndDueDateBefore(
+        Long householdId,
+        Long assignedToId,
+        Collection<TaskStatus> statuses,
+        LocalDate dueDate
     );
 
     @EntityGraph(attributePaths = {"household", "createdBy", "assignedTo", "cleaningSchedule"})

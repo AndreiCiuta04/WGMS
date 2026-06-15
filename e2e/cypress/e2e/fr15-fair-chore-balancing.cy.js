@@ -1,8 +1,9 @@
-const backendUrl = 'http://localhost:8080/api/v1';
+const backendUrl = Cypress.env('backendUrl') || 'http://localhost:8080/api/v1';
 const password = 'Password123!';
 const fr15SeedPassword = 'password';
 const fr15MainTenantEmail = 'maintenant.fr15@example.com';
 const fr15LightWorkerEmail = 'roommate.light@example.com';
+const fr15HeavyWorkerEmail = 'roommate.heavy@example.com';
 
 function uniqueEmail(prefix) {
   return `${prefix}.${Date.now()}.${Math.floor(Math.random() * 100000)}@test.com`;
@@ -71,13 +72,13 @@ describe('FR-15 Fair Chore Balancing E2E', () => {
       expect(lightWorker.fairnessScore).to.eq(1);
 
       expect(heavyWorker).to.include({
-        completedTasks: 5,
-        openTasks: 1,
-        overdueTasks: 0,
-        fairnessBucket: 'NO_OVERDUE_AVAILABLE',
+        completedTasks: 0,
+        openTasks: 0,
+        overdueTasks: 5,
+        fairnessBucket: 'HAS_OVERDUE',
         candidate: false
       });
-      expect(heavyWorker.fairnessScore).to.eq(5.75);
+      expect(heavyWorker.fairnessScore).to.eq(10);
 
       expect(mediumWorker).to.include({
         completedTasks: 3,
@@ -91,6 +92,11 @@ describe('FR-15 Fair Chore Balancing E2E', () => {
 
     cy.contains('Light Worker').should('be.visible');
     cy.contains(fr15LightWorkerEmail).should('be.visible');
+    cy.get('[data-cy="fair-chore-suggestion"]')
+      .should('not.contain', 'NO_OVERDUE_AVAILABLE')
+      .and('not.contain', 'NO_OVERDUE_OVERLOADED')
+      .and('not.contain', 'HAS_OVERDUE')
+      .and('not.contain', 'Bucket');
 
     cy.get('[data-cy="fair-chore-use-suggestion"]').click();
     cy.get('#assignedToEmail').should('have.value', fr15LightWorkerEmail);
@@ -117,6 +123,77 @@ describe('FR-15 Fair Chore Balancing E2E', () => {
           Authorization: `Bearer ${token}`
         }
       }).its('status').should('eq', 204);
+    });
+  });
+
+  it('lets the Main Tenant send an overdue reminder from the fair chore stats', () => {
+    cy.loginUser(fr15MainTenantEmail, fr15SeedPassword);
+
+    cy.intercept('GET', '**/api/v1/tasks/fair-balancing/recommendation*').as('fairRecommendation');
+    cy.intercept('POST', '**/api/v1/tasks/fair-balancing/overdue-reminders/*').as('sendReminder');
+
+    cy.visit('/#/tasks/create');
+    cy.wait('@fairRecommendation').then(({ response }) => {
+      expect(response.statusCode).to.eq(200);
+      const heavyWorker = response.body.stats.find((stat) => stat.email === fr15HeavyWorkerEmail);
+      const mediumWorker = response.body.stats.find((stat) => stat.email === 'roommate.medium@example.com');
+      expect(heavyWorker.overdueTasks).to.eq(5);
+      expect(mediumWorker.overdueTasks).to.eq(1);
+    });
+
+    cy.get('[data-cy="fair-chore-suggestion"]')
+      .should('not.contain', 'NO_OVERDUE_AVAILABLE')
+      .and('not.contain', 'NO_OVERDUE_OVERLOADED')
+      .and('not.contain', 'HAS_OVERDUE')
+      .and('not.contain', 'Bucket');
+
+    cy.contains('[data-cy="fair-chore-stat-row"]', 'Medium Worker')
+      .within(() => {
+        cy.get('[data-cy="send-overdue-reminder"]').should('not.exist');
+      });
+
+    cy.contains('[data-cy="fair-chore-stat-row"]', 'Heavy Worker')
+      .within(() => {
+        cy.get('[data-cy="send-overdue-reminder"]').should('be.visible').click();
+      });
+
+    cy.wait('@sendReminder').then(({ response }) => {
+      expect(response.statusCode).to.eq(200);
+      expect(response.body.targetDisplayName).to.eq('Heavy Worker');
+      expect(response.body.overdueTasks).to.eq(5);
+    });
+    cy.get('[data-cy="overdue-reminder-success"]').should('contain', 'Reminder sent to Heavy Worker.');
+
+    cy.logoutUser();
+    cy.loginUser(fr15HeavyWorkerEmail, fr15SeedPassword);
+    cy.get('[data-cy="notification-bell"]').click();
+    cy.get('[data-cy="notification-panel"]').contains('Overdue task reminder').should('be.visible');
+    cy.get('[data-cy="notification-panel"]').contains('5 overdue household tasks').should('be.visible');
+  });
+
+  it('hides overdue reminder action for normal roommates and rejects manual calls', () => {
+    let heavyRoommateId;
+
+    cy.loginUser(fr15LightWorkerEmail, fr15SeedPassword);
+    cy.intercept('GET', '**/api/v1/tasks/fair-balancing/recommendation*').as('fairRecommendation');
+
+    cy.visit('/#/tasks/create');
+    cy.wait('@fairRecommendation').then(({ response }) => {
+      expect(response.statusCode).to.eq(200);
+      heavyRoommateId = response.body.stats.find((stat) => stat.email === fr15HeavyWorkerEmail).roommateId;
+    });
+
+    cy.get('[data-cy="send-overdue-reminder"]').should('not.exist');
+
+    cy.window().its('localStorage.authToken').then((token) => {
+      cy.request({
+        method: 'POST',
+        url: `${backendUrl}/tasks/fair-balancing/overdue-reminders/${heavyRoommateId}`,
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        failOnStatusCode: false
+      }).its('status').should('eq', 403);
     });
   });
 

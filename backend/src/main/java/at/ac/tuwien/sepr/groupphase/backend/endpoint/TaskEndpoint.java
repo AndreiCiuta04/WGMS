@@ -1,6 +1,7 @@
 package at.ac.tuwien.sepr.groupphase.backend.endpoint;
 
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreRecommendationDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreOverdueReminderDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskDetailDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskStatusUpdateDto;
@@ -69,6 +70,20 @@ public class TaskEndpoint {
             taskTitle,
             dueDate,
             cleaningScheduleId
+        );
+    }
+
+    @Secured("ROLE_USER")
+    @PostMapping(value = "/fair-balancing/overdue-reminders/{roommateId}")
+    @Operation(summary = "Send an overdue task reminder to a roommate", security = @SecurityRequirement(name = "apiKey"))
+    public FairChoreOverdueReminderDto sendFairBalancingOverdueReminder(
+        @PathVariable(name = "roommateId") Long roommateId,
+        Authentication authentication
+    ) {
+        LOGGER.info("POST /api/v1/tasks/fair-balancing/overdue-reminders/{}", roommateId);
+        return fairChoreBalancingService.sendOverdueReminder(
+            getCurrentUserEmail(authentication),
+            roommateId
         );
     }
 

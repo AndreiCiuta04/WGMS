@@ -95,7 +95,7 @@ public class DemoDataGenerator implements ApplicationRunner {
         if (userRepository.findUserByEmail(FR15_MAIN_TENANT_EMAIL) == null) {
             generateFr15FairChoreDemoData();
         } else {
-            LOGGER.info("FR-15 fair chore demo data already exists. Skipping generation.");
+            resetFr15FairChoreDemoData();
         }
     }
 
@@ -136,6 +136,36 @@ public class DemoDataGenerator implements ApplicationRunner {
 
         LOGGER.info("FR-15 demo data generated successfully.");
         LOGGER.info("FR-15 login account: maintenant.fr15@example.com");
+        LOGGER.info("FR-15 expected recommendation in the task form: Light Worker");
+    }
+
+    private void resetFr15FairChoreDemoData() {
+        ApplicationUser mainTenant = userRepository.findUserByEmail(FR15_MAIN_TENANT_EMAIL);
+        if (mainTenant == null) {
+            generateFr15FairChoreDemoData();
+            return;
+        }
+
+        Roommate mainTenantRoommate = roommateRepository.findByUserIdAndActiveTrue(mainTenant.getId()).orElse(null);
+        if (mainTenantRoommate == null) {
+            generateFr15FairChoreDemoData();
+            return;
+        }
+
+        Household household = mainTenantRoommate.getHousehold();
+        Fr15Users users = createFr15Users();
+        ensureFr15Roommate(users.mainTenant(), household, HouseholdRole.MAIN_TENANT, LocalDate.now().minusMonths(6));
+        ensureFr15Roommate(users.heavyWorker(), household, HouseholdRole.ROOMMATE, LocalDate.now().minusMonths(5));
+        ensureFr15Roommate(users.mediumWorker(), household, HouseholdRole.ROOMMATE, LocalDate.now().minusMonths(4));
+        ensureFr15Roommate(users.lightWorker(), household, HouseholdRole.ROOMMATE, LocalDate.now().minusMonths(3));
+
+        entityManager.flush();
+        entityManager.createQuery("delete from Task task where task.household.id = :householdId")
+            .setParameter("householdId", household.getId())
+            .executeUpdate();
+        createFr15FairnessTasks(household, users);
+
+        LOGGER.info("FR-15 fair chore demo data already exists. Reset deterministic task seed.");
         LOGGER.info("FR-15 expected recommendation in the task form: Light Worker");
     }
 
@@ -427,6 +457,17 @@ public class DemoDataGenerator implements ApplicationRunner {
         createRoommate(users.lightWorker(), household, HouseholdRole.ROOMMATE, LocalDate.now().minusMonths(3));
     }
 
+    private Roommate ensureFr15Roommate(ApplicationUser user, Household household, HouseholdRole role, LocalDate joinedDate) {
+        return roommateRepository.findByUserIdAndHouseholdId(user.getId(), household.getId())
+            .map(existingRoommate -> {
+                existingRoommate.setRole(role);
+                existingRoommate.setActive(true);
+                existingRoommate.setJoinedAt(joinedDate.atTime(10, 0));
+                return roommateRepository.save(existingRoommate);
+            })
+            .orElseGet(() -> createRoommate(user, household, role, joinedDate));
+    }
+
     private void createFr15FairnessTasks(Household household, Fr15Users users) {
         LocalDate today = LocalDate.now();
 
@@ -437,11 +478,10 @@ public class DemoDataGenerator implements ApplicationRunner {
         createTask(household, "FR-15 Anna open chore", "Open non-overdue task for the main tenant.",
             today.plusDays(2), TaskStatus.OPEN, users.mainTenant(), users.mainTenant(), null, 2);
 
-        // Heavy Worker: 5 completed tasks in the 30-day window and 1 open non-overdue task.
-        // Expected score: 5 * 1.0 + 1 * 0.75 = 5.75, Bucket A.
-        createFr15CompletedTasks(household, users.mainTenant(), users.heavyWorker(), "FR-15 Heavy completed chore", 5, 3);
-        createTask(household, "FR-15 Heavy open chore", "Open non-overdue task for the heavy-burden roommate.",
-            today.plusDays(3), TaskStatus.OPEN, users.mainTenant(), users.heavyWorker(), null, 2);
+        // Heavy Worker: 5 current overdue tasks. This crosses the overdue reminder threshold while
+        // keeping Heavy Worker outside the available recommendation group.
+        // Expected score: 5 * 2.0 = 10.0, Bucket C.
+        createFr15OverdueTasks(household, users.mainTenant(), users.heavyWorker(), "FR-15 Heavy overdue chore", 5, 1);
 
         // Medium Worker: 3 completed tasks in the 30-day window and 1 overdue task.
         // Expected score: 3 * 1.0 + 1 * 2.0 = 5.0, Bucket C.
@@ -470,6 +510,21 @@ public class DemoDataGenerator implements ApplicationRunner {
             int daysAgo = firstDaysAgo + i;
             createTask(household, titlePrefix + " " + (i + 1), "Completed FR-15 scoring task.",
                 today.minusDays(daysAgo), TaskStatus.DONE, createdBy, assignedTo, null, daysAgo);
+        }
+    }
+
+    private void createFr15OverdueTasks(Household household,
+                                        ApplicationUser createdBy,
+                                        ApplicationUser assignedTo,
+                                        String titlePrefix,
+                                        int count,
+                                        int firstDaysAgo) {
+        LocalDate today = LocalDate.now();
+        for (int i = 0; i < count; i++) {
+            int daysAgo = firstDaysAgo + i;
+            createTask(household, titlePrefix + " " + (i + 1), "Overdue FR-15 reminder threshold task.",
+                today.minusDays(daysAgo), i % 2 == 0 ? TaskStatus.OPEN : TaskStatus.IN_PROGRESS,
+                createdBy, assignedTo, null, daysAgo);
         }
     }
 

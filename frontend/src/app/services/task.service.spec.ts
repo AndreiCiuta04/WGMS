@@ -80,6 +80,27 @@ describe('TaskService', () => {
     });
   });
 
+  it('should send POST to fair balancing overdue reminder endpoint', () => {
+    service.sendOverdueReminder(12).subscribe(response => {
+      expect(response).toEqual({
+        targetRoommateId: 12,
+        targetDisplayName: 'Heavy Worker',
+        overdueTasks: 5,
+        message: 'Reminder sent to Heavy Worker.'
+      });
+    });
+
+    const request = httpTestingController.expectOne(`${backendUri}/tasks/fair-balancing/overdue-reminders/12`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({});
+    request.flush({
+      targetRoommateId: 12,
+      targetDisplayName: 'Heavy Worker',
+      overdueTasks: 5,
+      message: 'Reminder sent to Heavy Worker.'
+    });
+  });
+
   it('should send POST to create task with body', () => {
     const body: TaskCreateDto = {
       title: 'Clean kitchen',

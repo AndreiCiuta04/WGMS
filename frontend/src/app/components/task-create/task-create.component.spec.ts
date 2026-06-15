@@ -19,7 +19,11 @@ describe('TaskCreateComponent', () => {
   let router: jasmine.SpyObj<Router>;
 
   beforeEach(async () => {
-    taskService = jasmine.createSpyObj<TaskService>('TaskService', ['create', 'getFairBalancingRecommendation']);
+    taskService = jasmine.createSpyObj<TaskService>('TaskService', [
+      'create',
+      'getFairBalancingRecommendation',
+      'sendOverdueReminder'
+    ]);
     householdService = jasmine.createSpyObj<HouseholdService>('HouseholdService', ['getMyHousehold', 'getMembers']);
     router = jasmine.createSpyObj<Router>('Router', ['navigate']);
 
@@ -27,6 +31,12 @@ describe('TaskCreateComponent', () => {
     householdService.getMembers.and.returnValue(of([roommate()]));
     taskService.create.and.returnValue(of(task()));
     taskService.getFairBalancingRecommendation.and.returnValue(of(recommendation()));
+    taskService.sendOverdueReminder.and.returnValue(of({
+      targetRoommateId: 2,
+      targetDisplayName: 'Suggested Roommate',
+      overdueTasks: 5,
+      message: 'Reminder sent to Suggested Roommate.'
+    }));
 
     await TestBed.configureTestingModule({
       declarations: [TaskCreateComponent],
@@ -75,9 +85,11 @@ describe('TaskCreateComponent', () => {
     expect(card?.textContent).toContain('Fair chore suggestion');
     expect(recommendationText?.textContent).toContain('Suggested Roommate');
     expect(recommendationText?.textContent).toContain('suggested@example.com');
-    expect(reason?.textContent).toContain('Lower scores mean less recent chore burden.');
+    expect(reason?.textContent).toContain('Open and overdue tasks are included');
     expect(stats?.textContent).toContain('Suggested Roommate');
-    expect(stats?.textContent).toContain('candidate');
+    expect(stats?.textContent).toContain('Suggested');
+    expect(stats?.textContent).not.toContain('NO_OVERDUE_AVAILABLE');
+    expect(stats?.textContent).not.toContain('Bucket');
   });
 
   it('should handle fair chore suggestion loading errors gracefully', () => {
@@ -125,6 +137,77 @@ describe('TaskCreateComponent', () => {
 
     component.taskForm.patchValue({ assignedToEmail: 'roommate@example.com' });
     expect(component.taskForm.get('assignedToEmail')?.value).toBe('roommate@example.com');
+  });
+
+  it('should show overdue reminder action to main tenant for roommate with at least five overdue tasks', () => {
+    taskService.getFairBalancingRecommendation.and.returnValue(of(recommendation({
+      stats: [roommateStat({ overdueTasks: 5 })]
+    })));
+
+    fixture.detectChanges();
+
+    const reminderButton = (fixture.nativeElement as HTMLElement)
+      .querySelector('[data-cy="send-overdue-reminder"]') as HTMLButtonElement | null;
+
+    expect(component.isMainTenant).toBeTrue();
+    expect(reminderButton).not.toBeNull();
+    expect(reminderButton?.textContent).toContain('Send reminder');
+  });
+
+  it('should not show overdue reminder action when overdue task count is below threshold', () => {
+    taskService.getFairBalancingRecommendation.and.returnValue(of(recommendation({
+      stats: [roommateStat({ overdueTasks: 4 })]
+    })));
+
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('[data-cy="send-overdue-reminder"]')).toBeNull();
+  });
+
+  it('should not show overdue reminder action to normal roommates', () => {
+    householdService.getMyHousehold.and.returnValue(of(household({ currentUserRole: 'ROOMMATE' })));
+    taskService.getFairBalancingRecommendation.and.returnValue(of(recommendation({
+      stats: [roommateStat({ overdueTasks: 5 })]
+    })));
+
+    fixture.detectChanges();
+
+    expect(component.isMainTenant).toBeFalse();
+    expect((fixture.nativeElement as HTMLElement).querySelector('[data-cy="send-overdue-reminder"]')).toBeNull();
+  });
+
+  it('should call backend and show success when overdue reminder is sent', () => {
+    taskService.getFairBalancingRecommendation.and.returnValue(of(recommendation({
+      stats: [roommateStat({ overdueTasks: 5 })]
+    })));
+
+    fixture.detectChanges();
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('[data-cy="send-overdue-reminder"]')
+      ?.click();
+    fixture.detectChanges();
+
+    expect(taskService.sendOverdueReminder).toHaveBeenCalledOnceWith(2);
+    expect((fixture.nativeElement as HTMLElement).querySelector('[data-cy="overdue-reminder-success"]')?.textContent)
+      .toContain('Reminder sent to Suggested Roommate.');
+    expect(component.wasReminderSent(2)).toBeTrue();
+  });
+
+  it('should show clear error when overdue reminder is rejected', () => {
+    taskService.getFairBalancingRecommendation.and.returnValue(of(recommendation({
+      stats: [roommateStat({ overdueTasks: 5 })]
+    })));
+    taskService.sendOverdueReminder.and.returnValue(throwError(() => ({ status: 400 })));
+
+    fixture.detectChanges();
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('[data-cy="send-overdue-reminder"]')
+      ?.click();
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('[data-cy="overdue-reminder-error"]')?.textContent)
+      .toContain('no longer has enough overdue tasks');
+    expect(component.wasReminderSent(2)).toBeFalse();
   });
 
   it('should block service call when title is empty', () => {
@@ -280,21 +363,24 @@ function recommendation(overrides: Partial<FairChoreRecommendationDto> = {}): Fa
     historyDays: 30,
     algorithm: 'HISTORY_BUCKET_SCORE_SEEDED_TIE',
     reason: 'Lower scores mean less recent chore burden.',
-    stats: [
-      {
-        roommateId: 2,
-        userId: 2,
-        displayName: 'Suggested Roommate',
-        email: 'suggested@example.com',
-        completedTasks: 0,
-        openTasks: 0,
-        overdueTasks: 0,
-        fairnessBucket: 'NO_OVERDUE_AVAILABLE',
-        fairnessScore: 0,
-        candidate: true,
-        recommended: true
-      }
-    ],
+    stats: [roommateStat()],
+    ...overrides
+  };
+}
+
+function roommateStat(overrides: Partial<FairChoreRecommendationDto['stats'][number]> = {}): FairChoreRecommendationDto['stats'][number] {
+  return {
+    roommateId: 2,
+    userId: 2,
+    displayName: 'Suggested Roommate',
+    email: 'suggested@example.com',
+    completedTasks: 0,
+    openTasks: 0,
+    overdueTasks: 0,
+    fairnessBucket: 'NO_OVERDUE_AVAILABLE',
+    fairnessScore: 0,
+    candidate: true,
+    recommended: true,
     ...overrides
   };
 }

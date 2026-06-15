@@ -4,8 +4,10 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepositor
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestDbCleaner;
 import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreOverdueReminderDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreRecommendationDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreRoommateStatsDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.NotificationDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskDetailDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskStatusUpdateDto;
@@ -13,6 +15,8 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
+import at.ac.tuwien.sepr.groupphase.backend.entity.Notification;
+import at.ac.tuwien.sepr.groupphase.backend.entity.NotificationType;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Task;
 import at.ac.tuwien.sepr.groupphase.backend.entity.TaskStatus;
@@ -39,6 +43,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.json.JsonMapper;
 
 
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 
@@ -98,6 +103,10 @@ public class TaskEndpointTest implements TestData {
     private ApplicationUser outsider;
     private Household household;
     private Household otherHousehold;
+    private Roommate mainTenantMembership;
+    private Roommate roommateMembership;
+    private Roommate secondRoommateMembership;
+    private Roommate outsiderMembership;
 
     @BeforeEach
     public void beforeEach() {
@@ -116,10 +125,10 @@ public class TaskEndpointTest implements TestData {
         household = saveHousehold(TEST_HOUSEHOLD_NAME, mainTenant);
         otherHousehold = saveHousehold(OTHER_HOUSEHOLD_NAME, outsider);
 
-        saveRoommate(mainTenant, household, HouseholdRole.MAIN_TENANT);
-        saveRoommate(roommate, household, HouseholdRole.ROOMMATE);
-        saveRoommate(secondRoommate, household, HouseholdRole.ROOMMATE);
-        saveRoommate(outsider, otherHousehold, HouseholdRole.MAIN_TENANT);
+        mainTenantMembership = saveRoommate(mainTenant, household, HouseholdRole.MAIN_TENANT);
+        roommateMembership = saveRoommate(roommate, household, HouseholdRole.ROOMMATE);
+        secondRoommateMembership = saveRoommate(secondRoommate, household, HouseholdRole.ROOMMATE);
+        outsiderMembership = saveRoommate(outsider, otherHousehold, HouseholdRole.MAIN_TENANT);
     }
 
     @Test
@@ -175,6 +184,130 @@ public class TaskEndpointTest implements TestData {
             .andReturn();
 
         assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus());
+    }
+
+    @Test
+    public void givenNoToken_whenSendFairBalancingOverdueReminder_then403() throws Exception {
+        MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI + "/fair-balancing/overdue-reminders/{roommateId}",
+                roommateMembership.getId()))
+            .andReturn();
+
+        assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus());
+    }
+
+    @Test
+    public void givenMainTenantAndFiveOverdueTasks_whenSendFairBalancingOverdueReminder_then200AndNotificationIsListed() throws Exception {
+        saveOverdueTasks(roommate, 5);
+
+        MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI + "/fair-balancing/overdue-reminders/{roommateId}",
+                roommateMembership.getId())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        MockHttpServletResponse response = mvcResult.getResponse();
+        FairChoreOverdueReminderDto reminder = jsonMapper.readValue(response.getContentAsString(), FairChoreOverdueReminderDto.class);
+
+        List<Notification> notifications = notificationRepository.findAllByRecipientIdOrderByCreatedAtDesc(roommate.getId());
+
+        MvcResult listResult = this.mockMvc.perform(get(BASE_URI + "/notifications")
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+        List<NotificationDto> listedNotifications = Arrays.asList(
+            jsonMapper.readValue(listResult.getResponse().getContentAsString(), NotificationDto[].class)
+        );
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
+            () -> assertEquals(roommateMembership.getId(), reminder.targetRoommateId()),
+            () -> assertEquals("Normal Roommate", reminder.targetDisplayName()),
+            () -> assertEquals(5L, reminder.overdueTasks()),
+            () -> assertTrue(reminder.message().contains("Reminder sent")),
+            () -> assertEquals(1, notifications.size()),
+            () -> assertEquals(NotificationType.OVERDUE_TASK_REMINDER, notifications.get(0).getType()),
+            () -> assertTrue(notifications.get(0).getMessage().contains("5 overdue household tasks")),
+            () -> assertEquals(HttpStatus.OK.value(), listResult.getResponse().getStatus()),
+            () -> assertTrue(listedNotifications.stream()
+                .anyMatch(notification -> notification.getType() == NotificationType.OVERDUE_TASK_REMINDER
+                    && notification.getMessage().contains("5 overdue household tasks")))
+        );
+    }
+
+    @Test
+    public void givenNormalRoommate_whenSendFairBalancingOverdueReminder_then403AndNoNotification() throws Exception {
+        saveOverdueTasks(secondRoommate, 5);
+
+        MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI + "/fair-balancing/overdue-reminders/{roommateId}",
+                secondRoommateMembership.getId())
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus()),
+            () -> assertTrue(notificationRepository.findAllByRecipientIdOrderByCreatedAtDesc(secondRoommate.getId()).isEmpty())
+        );
+    }
+
+    @Test
+    public void givenTargetBelowReminderThreshold_whenSendFairBalancingOverdueReminder_then400AndNoNotification() throws Exception {
+        saveOverdueTasks(roommate, 4);
+
+        MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI + "/fair-balancing/overdue-reminders/{roommateId}",
+                roommateMembership.getId())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.BAD_REQUEST.value(), mvcResult.getResponse().getStatus()),
+            () -> assertTrue(notificationRepository.findAllByRecipientIdOrderByCreatedAtDesc(roommate.getId()).isEmpty())
+        );
+    }
+
+    @Test
+    public void givenTargetFromOtherHousehold_whenSendFairBalancingOverdueReminder_then403AndNoNotification() throws Exception {
+        saveOverdueTasks(otherHousehold, outsider, outsider, 5);
+
+        MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI + "/fair-balancing/overdue-reminders/{roommateId}",
+                outsiderMembership.getId())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus()),
+            () -> assertTrue(notificationRepository.findAllByRecipientIdOrderByCreatedAtDesc(outsider.getId()).isEmpty())
+        );
+    }
+
+    @Test
+    public void givenOtherHouseholdOverdueTaskForSameUser_whenSendFairBalancingOverdueReminder_thenOtherHouseholdTaskDoesNotCount() throws Exception {
+        saveOverdueTasks(roommate, 4);
+        saveOverdueTasks(otherHousehold, outsider, roommate, 1);
+
+        MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI + "/fair-balancing/overdue-reminders/{roommateId}",
+                roommateMembership.getId())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.BAD_REQUEST.value(), mvcResult.getResponse().getStatus()),
+            () -> assertTrue(notificationRepository.findAllByRecipientIdOrderByCreatedAtDesc(roommate.getId()).isEmpty())
+        );
+    }
+
+    @Test
+    public void givenFakeOverdueCountInRequestBody_whenSendFairBalancingOverdueReminder_thenBackendCountIsUsed() throws Exception {
+        saveOverdueTasks(roommate, 4);
+
+        MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI + "/fair-balancing/overdue-reminders/{roommateId}",
+                roommateMembership.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"overdueTasks\": 99, \"householdId\": " + otherHousehold.getId() + "}")
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.BAD_REQUEST.value(), mvcResult.getResponse().getStatus()),
+            () -> assertTrue(notificationRepository.findAllByRecipientIdOrderByCreatedAtDesc(roommate.getId()).isEmpty())
+        );
     }
 
     @Test
@@ -600,6 +733,19 @@ public class TaskEndpointTest implements TestData {
         task.setCreatedBy(creator);
         task.setAssignedTo(assignee);
         return taskRepository.save(task);
+    }
+
+    private void saveOverdueTasks(ApplicationUser assignee, int count) {
+        saveOverdueTasks(household, mainTenant, assignee, count);
+    }
+
+    private void saveOverdueTasks(Household taskHousehold, ApplicationUser creator, ApplicationUser assignee, int count) {
+        for (int i = 0; i < count; i++) {
+            Task task = saveTask(taskHousehold, creator, assignee, "Overdue reminder task " + i);
+            task.setDueDate(LocalDate.now().minusDays(i + 1L));
+            task.setStatus(i % 2 == 0 ? TaskStatus.OPEN : TaskStatus.IN_PROGRESS);
+            taskRepository.save(task);
+        }
     }
 
     private void saveOpenTasks(ApplicationUser assignee, int count) {

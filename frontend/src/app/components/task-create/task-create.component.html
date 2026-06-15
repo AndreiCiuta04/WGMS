@@ -14,7 +14,7 @@
         }
 
         <form [formGroup]="taskForm" (ngSubmit)="onSubmit()">
-          
+
           <div class="form-group mb-3">
             <label for="title" class="font-weight-bold">Title *</label>
             <input type="text" id="title" class="form-control" formControlName="title" placeholder="e.g. Clean the kitchen">
@@ -44,7 +44,7 @@
                 }
               </div>
             </div>
-            
+
             <div class="col-md-6">
               <div class="form-group">
                 <label for="assignedToEmail" class="font-weight-bold">Assign To *</label>
@@ -62,7 +62,7 @@
           </div>
 
           <div class="fair-chore-suggestion mb-3" data-cy="fair-chore-suggestion">
-            <div class="d-flex justify-content-between align-items-start gap-3">
+            <div class="fair-chore-header">
               <div>
                 <h5 class="mb-1">Fair chore suggestion</h5>
                 @if (recommendationLoading) {
@@ -70,16 +70,19 @@
                 } @else if (recommendationError) {
                   <p class="mb-0 text-muted" data-cy="fair-chore-suggestion-error">{{ recommendationError }}</p>
                 } @else if (recommendation) {
-                  <p class="mb-1" data-cy="fair-chore-recommendation">
-                    <strong>{{ recommendation.recommendedDisplayName }}</strong>
-                    <span class="text-muted">({{ recommendation.recommendedEmail }})</span>
+                  <div class="fair-chore-summary" data-cy="fair-chore-recommendation">
+                    <span class="fair-chore-summary-label">Suggested:</span>
+                    <span class="fair-chore-summary-name">{{ recommendation.recommendedDisplayName }}</span>
+                    <span class="fair-chore-summary-email">{{ recommendation.recommendedEmail }}</span>
+                  </div>
+                  <p class="fair-chore-help mb-0 text-muted" data-cy="fair-chore-reason">
+                    Lower scores mean less recent chore burden. Open and overdue tasks are included in the suggestion.
                   </p>
-                  <p class="mb-0 text-muted" data-cy="fair-chore-reason">{{ recommendation.reason }}</p>
                 } @else {
                   <p class="mb-0 text-muted" data-cy="fair-chore-suggestion-empty">No suggestion available.</p>
                 }
               </div>
-              <div class="d-flex gap-2">
+              <div class="fair-chore-actions">
                 <button
                   type="button"
                   class="btn btn-outline-secondary btn-sm"
@@ -98,37 +101,73 @@
               </div>
             </div>
 
+            @if (overdueReminderSuccess) {
+              <div class="alert alert-success py-2 mt-3 mb-0" data-cy="overdue-reminder-success" role="status">
+                {{ overdueReminderSuccess }}
+              </div>
+            }
+
+            @if (overdueReminderError) {
+              <div class="alert alert-danger py-2 mt-3 mb-0" data-cy="overdue-reminder-error" role="alert">
+                {{ overdueReminderError }}
+              </div>
+            }
+
             @if (recommendation?.stats?.length) {
-              <div class="table-responsive mt-3">
-                <table class="table table-sm mb-0" data-cy="fair-chore-stats">
-                  <thead>
-                    <tr>
-                      <th>Roommate</th>
-                      <th>Done</th>
-                      <th>Open</th>
-                      <th>Overdue</th>
-                      <th>Bucket</th>
-                      <th>Score</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (stat of recommendation?.stats; track stat.roommateId) {
-                      <tr [class.table-primary]="stat.recommended">
-                        <td>
-                          {{ stat.displayName }}
-                          @if (stat.candidate) {
-                            <span class="badge bg-secondary ms-1">candidate</span>
+              <div class="fair-chore-stats mt-3" data-cy="fair-chore-stats">
+                @for (stat of recommendation?.stats; track stat.roommateId) {
+                  <div class="fair-chore-stat-row" [class.recommended]="stat.recommended" data-cy="fair-chore-stat-row">
+                    <div class="fair-chore-person">
+                      <div class="fair-chore-name">
+                        <span>{{ stat.displayName }}</span>
+                        @if (stat.recommended) {
+                          <span class="badge bg-primary-subtle text-primary">Suggested</span>
+                        } @else if (stat.candidate) {
+                          <span class="badge bg-secondary-subtle text-secondary">Candidate</span>
+                        }
+                      </div>
+                      <div class="fair-chore-email text-muted">{{ stat.email }}</div>
+                    </div>
+
+                    <div class="fair-chore-stat-content">
+                      <div class="fair-chore-metrics" aria-label="Fair chore statistics">
+                        <div class="fair-chore-metric">
+                          <span>Done</span>
+                          <strong>{{ stat.completedTasks }}</strong>
+                        </div>
+                        <div class="fair-chore-metric">
+                          <span>Open</span>
+                          <strong>{{ stat.openTasks }}</strong>
+                        </div>
+                        <div class="fair-chore-metric" [class.has-overdue]="stat.overdueTasks > 0">
+                          <span>Overdue</span>
+                          <strong>{{ stat.overdueTasks }}</strong>
+                        </div>
+                        <div class="fair-chore-metric">
+                          <span>Score</span>
+                          <strong>{{ stat.fairnessScore | number:'1.0-2' }}</strong>
+                        </div>
+                      </div>
+
+                      @if (canSendOverdueReminder(stat)) {
+                        <button
+                          type="button"
+                          class="btn btn-outline-primary btn-sm fair-chore-reminder-button"
+                          data-cy="send-overdue-reminder"
+                          [disabled]="isSendingReminder(stat.roommateId) || wasReminderSent(stat.roommateId)"
+                          (click)="sendOverdueReminder(stat)">
+                          @if (wasReminderSent(stat.roommateId)) {
+                            Sent
+                          } @else if (isSendingReminder(stat.roommateId)) {
+                            Sending...
+                          } @else {
+                            Send reminder
                           }
-                        </td>
-                        <td>{{ stat.completedTasks }}</td>
-                        <td>{{ stat.openTasks }}</td>
-                        <td>{{ stat.overdueTasks }}</td>
-                        <td>{{ stat.fairnessBucket }}</td>
-                        <td>{{ stat.fairnessScore }}</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
               </div>
             }
           </div>
@@ -136,7 +175,7 @@
           <div class="d-flex justify-content-end mt-4">
             <button type="submit" class="btn btn-primary px-5">Create Task</button>
           </div>
-          
+
         </form>
       </div>
     </div>

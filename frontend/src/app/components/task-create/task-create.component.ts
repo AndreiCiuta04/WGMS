@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { TaskService } from '../../services/task.service';
 import { HouseholdService } from '../../services/household.service';
 import { Roommate } from '../../dtos/roommate';
-import { FairChoreRecommendationDto, TaskCreateDto } from '../../dtos/task';
+import { FairChoreRecommendationDto, FairChoreRoommateStatsDto, TaskCreateDto } from '../../dtos/task';
 
 @Component({
   selector: 'app-task-create',
@@ -22,6 +22,11 @@ export class TaskCreateComponent implements OnInit {
   recommendation?: FairChoreRecommendationDto;
   recommendationLoading = false;
   recommendationError = '';
+  isMainTenant = false;
+  overdueReminderSuccess = '';
+  overdueReminderError = '';
+  sendingReminderRoommateIds = new Set<number>();
+  reminderSentRoommateIds = new Set<number>();
 
   constructor(
     private formBuilder: FormBuilder,
@@ -53,6 +58,8 @@ export class TaskCreateComponent implements OnInit {
           this.errorMessage = 'You need to create or join a household before creating tasks.';
           return;
         }
+
+        this.isMainTenant = household.currentUserRole === 'MAIN_TENANT';
 
         this.householdService.getMembers(household.id).subscribe({
           next: members => this.roommates = members,
@@ -98,6 +105,41 @@ export class TaskCreateComponent implements OnInit {
 
     this.taskForm.patchValue({
       assignedToEmail: this.recommendation.recommendedEmail
+    });
+  }
+
+  canSendOverdueReminder(stat: FairChoreRoommateStatsDto): boolean {
+    return this.isMainTenant && stat.overdueTasks >= 5;
+  }
+
+  isSendingReminder(roommateId: number): boolean {
+    return this.sendingReminderRoommateIds.has(roommateId);
+  }
+
+  wasReminderSent(roommateId: number): boolean {
+    return this.reminderSentRoommateIds.has(roommateId);
+  }
+
+  sendOverdueReminder(stat: FairChoreRoommateStatsDto): void {
+    if (!this.canSendOverdueReminder(stat) || this.isSendingReminder(stat.roommateId)) {
+      return;
+    }
+
+    this.overdueReminderSuccess = '';
+    this.overdueReminderError = '';
+    this.sendingReminderRoommateIds.add(stat.roommateId);
+
+    this.taskService.sendOverdueReminder(stat.roommateId).subscribe({
+      next: reminder => {
+        this.sendingReminderRoommateIds.delete(stat.roommateId);
+        this.reminderSentRoommateIds.add(stat.roommateId);
+        this.overdueReminderSuccess = reminder.message || `Reminder sent to ${stat.displayName}.`;
+      },
+      error: err => {
+        console.error('Error sending overdue reminder', err);
+        this.sendingReminderRoommateIds.delete(stat.roommateId);
+        this.overdueReminderError = this.buildReminderErrorMessage(err);
+      }
     });
   }
 
@@ -155,5 +197,19 @@ export class TaskCreateComponent implements OnInit {
     }
 
     return errorMsg;
+  }
+
+  private buildReminderErrorMessage(err: any): string {
+    if (err?.status === 403) {
+      return 'Only the Main Tenant can send overdue reminders for this household.';
+    }
+    if (err?.status === 400) {
+      return 'Reminder was not sent because this roommate no longer has enough overdue tasks.';
+    }
+    if (err?.status === 404) {
+      return 'Reminder was not sent because this roommate is no longer available.';
+    }
+
+    return this.buildErrorMessage(err, 'Could not send overdue reminder. Please try again.');
   }
 }

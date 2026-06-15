@@ -21,6 +21,11 @@ public interface RoommateRepository extends JpaRepository<Roommate, Long> {
 
     boolean existsByUserIdAndHouseholdIdAndActiveTrue(Long userId, Long householdId);
 
+    Optional<Roommate> findByUserIdAndHouseholdId(
+        Long userId,
+        Long householdId
+    );
+
     Optional<Roommate> findByUserIdAndHouseholdIdAndActiveTrue(
         Long userId,
         Long householdId

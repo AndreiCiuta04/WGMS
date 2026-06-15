@@ -1,6 +1,7 @@
 package at.ac.tuwien.sepr.groupphase.backend.service;
 
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreRecommendationDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreOverdueReminderDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.CleaningSchedule;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
@@ -26,6 +27,11 @@ public interface FairChoreBalancingService {
         Household household,
         CleaningSchedule cleaningSchedule,
         LocalDate nextDueDate
+    );
+
+    FairChoreOverdueReminderDto sendOverdueReminder(
+        String currentUserEmail,
+        Long targetRoommateId
     );
 
     ApplicationUser findRecommendedAssigneeForSchedule(

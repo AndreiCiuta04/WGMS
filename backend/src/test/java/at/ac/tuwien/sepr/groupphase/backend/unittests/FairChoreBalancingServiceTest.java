@@ -1,17 +1,21 @@
 package at.ac.tuwien.sepr.groupphase.backend.unittests;
 
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreOverdueReminderDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreRecommendationDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreRoommateStatsDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
+import at.ac.tuwien.sepr.groupphase.backend.entity.NotificationType;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Task;
 import at.ac.tuwien.sepr.groupphase.backend.entity.TaskStatus;
+import at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.ValidationException;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.FairChoreBalancingService;
+import at.ac.tuwien.sepr.groupphase.backend.service.NotificationService;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
 import at.ac.tuwien.sepr.groupphase.backend.service.impl.FairChoreBalancingServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,7 +41,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -56,6 +63,9 @@ public class FairChoreBalancingServiceTest {
     @Mock
     private TaskRepository taskRepository;
 
+    @Mock
+    private NotificationService notificationService;
+
     private FairChoreBalancingService service;
 
     private ApplicationUser mainTenant;
@@ -70,7 +80,7 @@ public class FairChoreBalancingServiceTest {
 
     @BeforeEach
     public void setUp() {
-        service = new FairChoreBalancingServiceImpl(userService, roommateRepository, taskRepository);
+        service = new FairChoreBalancingServiceImpl(userService, roommateRepository, taskRepository, notificationService);
 
         mainTenant = user(1L, MAIN_TENANT_EMAIL, "Main", "Tenant");
         roommate = user(2L, ROOMMATE_EMAIL, "Normal", "Roommate");
@@ -79,6 +89,7 @@ public class FairChoreBalancingServiceTest {
         household = household(1L, TEST_HOUSEHOLD_NAME, mainTenant);
         otherHousehold = household(2L, "Other WG", inactiveUser);
         mainTenantMembership = membership(1L, mainTenant, household, true);
+        mainTenantMembership.setRole(HouseholdRole.MAIN_TENANT);
         roommateMembership = membership(2L, roommate, household, true);
         secondRoommateMembership = membership(3L, secondRoommate, household, true);
     }
@@ -321,6 +332,110 @@ public class FairChoreBalancingServiceTest {
         assertThrows(ValidationException.class, () -> service.recommendAssignee(MAIN_TENANT_EMAIL, 366, "Kitchen", LocalDate.now(), null));
     }
 
+    @Test
+    public void givenMainTenantAndFiveOverdueTasks_whenSendOverdueReminder_thenNotificationIsTriggered() {
+        givenReminderActor(mainTenant, mainTenantMembership);
+        givenReminderTarget(roommateMembership, 5L);
+
+        FairChoreOverdueReminderDto reminder = service.sendOverdueReminder(MAIN_TENANT_EMAIL, roommateMembership.getId());
+
+        assertAll(
+            () -> assertEquals(roommateMembership.getId(), reminder.targetRoommateId()),
+            () -> assertEquals("Normal Roommate", reminder.targetDisplayName()),
+            () -> assertEquals(5L, reminder.overdueTasks()),
+            () -> assertTrue(reminder.message().contains("Reminder sent"))
+        );
+        verify(notificationService).triggerNotification(
+            eq(roommate),
+            contains("5 overdue household tasks"),
+            eq(NotificationType.OVERDUE_TASK_REMINDER),
+            eq(roommateMembership.getId())
+        );
+    }
+
+    @Test
+    public void givenMainTenantAndMoreThanFiveOverdueTasks_whenSendOverdueReminder_thenNotificationIsTriggered() {
+        givenReminderActor(mainTenant, mainTenantMembership);
+        givenReminderTarget(roommateMembership, 6L);
+
+        FairChoreOverdueReminderDto reminder = service.sendOverdueReminder(MAIN_TENANT_EMAIL, roommateMembership.getId());
+
+        assertEquals(6L, reminder.overdueTasks());
+        verify(notificationService).triggerNotification(
+            eq(roommate),
+            contains("6 overdue household tasks"),
+            eq(NotificationType.OVERDUE_TASK_REMINDER),
+            eq(roommateMembership.getId())
+        );
+    }
+
+    @Test
+    public void givenMainTenantAndOnlyFourOverdueTasks_whenSendOverdueReminder_thenValidationException() {
+        givenReminderActor(mainTenant, mainTenantMembership);
+        givenReminderTarget(roommateMembership, 4L);
+
+        assertThrows(ValidationException.class, () -> service.sendOverdueReminder(MAIN_TENANT_EMAIL, roommateMembership.getId()));
+        verify(notificationService, never()).triggerNotification(any(), any(), any(), any());
+    }
+
+    @Test
+    public void givenNormalRoommate_whenSendOverdueReminder_thenForbiddenException() {
+        givenReminderActor(roommate, roommateMembership);
+
+        assertThrows(ForbiddenException.class, () -> service.sendOverdueReminder(ROOMMATE_EMAIL, secondRoommateMembership.getId()));
+        verify(notificationService, never()).triggerNotification(any(), any(), any(), any());
+    }
+
+    @Test
+    public void givenTargetFromAnotherHousehold_whenSendOverdueReminder_thenForbiddenException() {
+        Roommate otherHouseholdMembership = membership(6L, inactiveUser, otherHousehold, true);
+        givenReminderActor(mainTenant, mainTenantMembership);
+        when(roommateRepository.findByIdAndHouseholdIdAndActiveTrue(otherHouseholdMembership.getId(), household.getId()))
+            .thenReturn(Optional.empty());
+
+        assertThrows(ForbiddenException.class, () -> service.sendOverdueReminder(MAIN_TENANT_EMAIL, otherHouseholdMembership.getId()));
+        verify(notificationService, never()).triggerNotification(any(), any(), any(), any());
+    }
+
+    @Test
+    public void givenInactiveTargetRoommate_whenSendOverdueReminder_thenForbiddenException() {
+        Roommate inactiveMembership = membership(4L, inactiveUser, household, false);
+        givenReminderActor(mainTenant, mainTenantMembership);
+        when(roommateRepository.findByIdAndHouseholdIdAndActiveTrue(inactiveMembership.getId(), household.getId()))
+            .thenReturn(Optional.empty());
+
+        assertThrows(ForbiddenException.class, () -> service.sendOverdueReminder(MAIN_TENANT_EMAIL, inactiveMembership.getId()));
+        verify(notificationService, never()).triggerNotification(any(), any(), any(), any());
+    }
+
+    @Test
+    public void givenAnonymizedTargetRoommate_whenSendOverdueReminder_thenForbiddenException() {
+        ApplicationUser anonymized = user(5L, "anon@test.com", "Anon", "User");
+        anonymized.setAnonymized(true);
+        Roommate anonymizedMembership = membership(5L, anonymized, household, true);
+        givenReminderActor(mainTenant, mainTenantMembership);
+        when(roommateRepository.findByIdAndHouseholdIdAndActiveTrue(anonymizedMembership.getId(), household.getId()))
+            .thenReturn(Optional.of(anonymizedMembership));
+
+        assertThrows(ForbiddenException.class, () -> service.sendOverdueReminder(MAIN_TENANT_EMAIL, anonymizedMembership.getId()));
+        verify(notificationService, never()).triggerNotification(any(), any(), any(), any());
+    }
+
+    @Test
+    public void givenOnlyFourCurrentHouseholdOverdueTasks_whenSendOverdueReminder_thenOtherHouseholdTasksDoNotCount() {
+        givenReminderActor(mainTenant, mainTenantMembership);
+        givenReminderTarget(roommateMembership, 4L);
+
+        assertThrows(ValidationException.class, () -> service.sendOverdueReminder(MAIN_TENANT_EMAIL, roommateMembership.getId()));
+        verify(taskRepository).countByHousehold_IdAndAssignedTo_IdAndStatusInAndDueDateBefore(
+            eq(household.getId()),
+            eq(roommate.getId()),
+            eq(List.of(TaskStatus.OPEN, TaskStatus.IN_PROGRESS)),
+            eq(LocalDate.now())
+        );
+        verify(notificationService, never()).triggerNotification(any(), any(), any(), any());
+    }
+
     private void givenCurrentHouseholdTasks(List<Task> tasks) {
         givenCurrentHouseholdData(List.of(mainTenantMembership, roommateMembership, secondRoommateMembership), tasks);
     }
@@ -335,6 +450,22 @@ public class FairChoreBalancingServiceTest {
             eq(TaskStatus.DONE),
             any(LocalDateTime.class)
         )).thenReturn(tasks);
+    }
+
+    private void givenReminderActor(ApplicationUser user, Roommate membership) {
+        when(userService.findApplicationUserByEmail(user.getEmail())).thenReturn(user);
+        when(roommateRepository.findByUserIdAndActiveTrue(user.getId())).thenReturn(Optional.of(membership));
+    }
+
+    private void givenReminderTarget(Roommate targetMembership, long overdueTasks) {
+        when(roommateRepository.findByIdAndHouseholdIdAndActiveTrue(targetMembership.getId(), household.getId()))
+            .thenReturn(Optional.of(targetMembership));
+        when(taskRepository.countByHousehold_IdAndAssignedTo_IdAndStatusInAndDueDateBefore(
+            eq(household.getId()),
+            eq(targetMembership.getUser().getId()),
+            eq(List.of(TaskStatus.OPEN, TaskStatus.IN_PROGRESS)),
+            eq(LocalDate.now())
+        )).thenReturn(overdueTasks);
     }
 
     private FairChoreRoommateStatsDto stat(FairChoreRecommendationDto recommendation, String email) {

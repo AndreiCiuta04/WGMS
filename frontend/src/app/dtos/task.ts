@@ -60,3 +60,10 @@ export interface FairChoreRecommendationDto {
   reason: string;
   stats: FairChoreRoommateStatsDto[];
 }
+
+export interface FairChoreOverdueReminderDto {
+  targetRoommateId: number;
+  targetDisplayName: string;
+  overdueTasks: number;
+  message: string;
+}

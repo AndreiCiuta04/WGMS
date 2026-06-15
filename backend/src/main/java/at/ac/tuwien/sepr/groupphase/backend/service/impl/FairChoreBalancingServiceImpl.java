@@ -1,10 +1,13 @@
 package at.ac.tuwien.sepr.groupphase.backend.service.impl;
 
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreOverdueReminderDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreRecommendationDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreRoommateStatsDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.CleaningSchedule;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
+import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
+import at.ac.tuwien.sepr.groupphase.backend.entity.NotificationType;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Task;
 import at.ac.tuwien.sepr.groupphase.backend.entity.TaskStatus;
@@ -14,6 +17,7 @@ import at.ac.tuwien.sepr.groupphase.backend.exception.ValidationException;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.FairChoreBalancingService;
+import at.ac.tuwien.sepr.groupphase.backend.service.NotificationService;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,19 +37,23 @@ public class FairChoreBalancingServiceImpl implements FairChoreBalancingService 
     private static final double COMPLETED_TASK_WEIGHT = 1.0d;
     private static final double OPEN_TASK_WEIGHT = 0.75d;
     private static final double OVERDUE_TASK_WEIGHT = 2.0d;
+    private static final long OVERDUE_REMINDER_THRESHOLD = 5L;
 
     private final UserService userService;
     private final RoommateRepository roommateRepository;
     private final TaskRepository taskRepository;
+    private final NotificationService notificationService;
 
     public FairChoreBalancingServiceImpl(
         UserService userService,
         RoommateRepository roommateRepository,
-        TaskRepository taskRepository
+        TaskRepository taskRepository,
+        NotificationService notificationService
     ) {
         this.userService = userService;
         this.roommateRepository = roommateRepository;
         this.taskRepository = taskRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -84,6 +92,51 @@ public class FairChoreBalancingServiceImpl implements FairChoreBalancingService 
             + nextDueDate;
 
         return calculateRecommendation(household, DEFAULT_HISTORY_DAYS, seed);
+    }
+
+    @Override
+    @Transactional
+    public FairChoreOverdueReminderDto sendOverdueReminder(String currentUserEmail, Long targetRoommateId) {
+        ApplicationUser currentUser = userService.findApplicationUserByEmail(currentUserEmail);
+        Roommate currentRoommate = roommateRepository.findByUserIdAndActiveTrue(currentUser.getId())
+            .orElseThrow(() -> new ForbiddenException("User does not belong to an active household."));
+
+        if (currentRoommate.getRole() != HouseholdRole.MAIN_TENANT) {
+            throw new ForbiddenException("Only the Main Tenant may send overdue task reminders.");
+        }
+
+        Long householdId = currentRoommate.getHousehold().getId();
+        Roommate targetRoommate = roommateRepository.findByIdAndHouseholdIdAndActiveTrue(targetRoommateId, householdId)
+            .orElseThrow(() -> new ForbiddenException("Target roommate is not an active member of your household."));
+
+        ApplicationUser targetUser = targetRoommate.getUser();
+        if (targetUser == null || targetUser.isAnonymized()) {
+            throw new ForbiddenException("Target roommate is not available for reminders.");
+        }
+
+        long overdueTasks = countCurrentOverdueTasks(householdId, targetUser.getId());
+        if (overdueTasks < OVERDUE_REMINDER_THRESHOLD) {
+            throw new ValidationException("Target roommate has fewer than 5 overdue tasks.");
+        }
+
+        String notificationMessage = String.format(
+            "Overdue task reminder: You currently have %d overdue household tasks. Please review your assigned tasks.",
+            overdueTasks
+        );
+
+        notificationService.triggerNotification(
+            targetUser,
+            notificationMessage,
+            NotificationType.OVERDUE_TASK_REMINDER,
+            targetRoommate.getId()
+        );
+
+        return new FairChoreOverdueReminderDto(
+            targetRoommate.getId(),
+            displayName(targetUser),
+            overdueTasks,
+            "Reminder sent to " + displayName(targetUser) + "."
+        );
     }
 
     @Override
@@ -207,6 +260,15 @@ public class FairChoreBalancingServiceImpl implements FairChoreBalancingService 
             "Lower scores mean less recent chore burden. The suggestion is selected from the best available bucket ("
                 + selectedBucket.displayName + ") and only exact minimum-score ties use a stable seed.",
             statsDtos
+        );
+    }
+
+    private long countCurrentOverdueTasks(Long householdId, Long assignedToUserId) {
+        return taskRepository.countByHousehold_IdAndAssignedTo_IdAndStatusInAndDueDateBefore(
+            householdId,
+            assignedToUserId,
+            List.of(TaskStatus.OPEN, TaskStatus.IN_PROGRESS),
+            LocalDate.now()
         );
     }
 
