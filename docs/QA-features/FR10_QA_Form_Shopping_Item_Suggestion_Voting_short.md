@@ -18,37 +18,43 @@ Users should receive useful shopping item suggestions based on the structured ca
 
 ## Checklist
 
-- [ ] Suggestions are shown in the intended shopping input/search location.
-- [ ] Suggestions are based on valid shopping item data, not hardcoded demo-only behavior unless documented.
-- [ ] Suggestions do not show cancelled/deleted/private items that should not be visible.
-- [ ] Suggestions respect item visibility: personal, targeted, shared.
-- [ ] Empty suggestion state is handled cleanly.
-- [ ] Selecting a suggestion fills or creates the intended shopping item correctly.
+- [x] Suggestions are shown in the intended shopping input/search location.
+- [x] Only active suggestions are returned; suggestions use NEEDED status.
+- [x] Suggestions are isolated by household.
+- [x] Suggestions do not show cancelled/deleted/private items that should not be visible.
+- [x] A household member can create a suggestion through the suggestion form.
+- [x] Suggestions respect item visibility: personal, targeted, shared.
+- [x] Empty suggestion state is handled cleanly.
+- [x] A suggestion can be promoted to a regular shopping item.
 
 ## Test coverage required
 
 ### Backend
 
-- [ ] Service/repository test for returning suggestions.
-- [ ] Test excludes items outside the current household.
-- [ ] Test excludes invisible/private/targeted items for the wrong user.
-- [ ] Test handles empty suggestion results.
+- [x] Service/repository test for returning suggestions.
+- [x] Test excludes items outside the current household.
+- [x] Test excludes invisible/private/targeted items for the wrong user.
+- [x] Test handles empty suggestion results.
+- [x] Equivalent suggestion merging test.
+- [x] Promotion test.
+- [x] Normal shopping items are not treated as suggestions.
+
 
 ### Frontend
 
-- [ ] Component test renders suggestions.
-- [ ] Component test selects a suggestion.
-- [ ] Component test shows empty state.
+- [x] Component test renders suggestions.
+- [x] Component test selects a suggestion.
+- [x] Component test shows empty state.
 
 ### E2E
 
-- [ ] User creates or searches shopping item and sees suggestions.
-- [ ] User selects suggestion and item appears in shopping list.
-- [ ] Test uses unique household/user data and can run repeatedly.
+- [x] User creates a shopping suggestion and sees it in the Suggestions tab.
+- [x] User promotes a suggestion and sees it in the normal shopping list.
+- [x] Test uses unique household/user data and can run repeatedly.
 
 ## Status
 
-- [ ] Passed
+- [x] Passed
 - [ ] Partially passed
 - [ ] Failed
 
@@ -57,9 +63,18 @@ Users should receive useful shopping item suggestions based on the structured ca
 ```text
 Evidence:
 Backend tests:
+- givenUserInHousehold_whenCreateSuggestion_thenSuggestionCreatedWithCreatorVote 
+- givenUserInHousehold_whenFindSuggestions_thenRepositoryUsesHouseholdAndNeededStatus 
+- givenSuggestionInHousehold_whenMembersListSuggestions_thenOnlySameHouseholdSuggestionsReturned 
+- givenEquivalentSuggestionFromOtherUser_whenCreateSuggestion_thenExistingSuggestionReturnedAndVoteAdded 
+- givenNoEquivalentSuggestionInCurrentHousehold_whenCreateSuggestion_thenCreatesNewSuggestion 
+- givenPromotedSuggestion_whenGetAggregatedList_thenItemAppears
 Frontend tests:
+
 E2E tests:
 Manual QA:
+- Suggestions are created manually in the Suggestions tab.
+- Creator automatically receives the first vote.
 ```
 
 ---
@@ -72,37 +87,42 @@ Users should be able to vote for suggested shopping items if the implemented des
 
 ## Checklist
 
-- [ ] Authenticated users can vote for a suggestion.
-- [ ] Vote count updates correctly in UI.
-- [ ] User cannot vote multiple times unless intentionally allowed.
-- [ ] User can undo/remove vote if this is part of the implementation.
-- [ ] Voting is household-scoped.
-- [ ] Voting does not mark an item as bought automatically.
-- [ ] Voting does not break existing mark/unmark bought behavior.
+- [x] Authenticated household users can vote for a suggestion.
+- [x] Vote count is included in the backend response.
+- [x] One user cannot add more than one vote.
+- [x] A user can remove their vote.
+- [x] Voting is household-scoped.
+- [x] Voting does not mark an item as bought.
+- [x] Suggestions remain NEEDED until promoted or otherwise changed.
+- [x] Voting is separate from normal mark-bought behavior.
+- [x] Voter details are returned.
+- [x] The creator automatically votes for their own suggestion.
 
 ## Test coverage required
 
 ### Backend
 
-- [ ] Vote creation/update test.
-- [ ] Duplicate vote handling test.
-- [ ] Cross-household vote rejection test.
-- [ ] Unauthenticated vote rejection test.
+- [x] Vote creation/update test.
+- [x] Duplicate vote handling test.
+- [x] Cross-household vote rejection test.
+- [x] Explicit unauthenticated vote integration test.
+- [x] Vote removal test.
+- [x] Voter-details test.
 
 ### Frontend
 
-- [ ] Vote button/action test.
-- [ ] Vote count update test.
-- [ ] Error state test for failed vote.
+- [x] Vote button/action test.
+- [x] Vote count update test.
+- [x] Error state test for failed vote.
 
 ### E2E
 
-- [ ] Two users in same WG vote and see updated result.
-- [ ] User from another WG cannot influence the suggestion/vote.
+- [x] Two users in same WG vote and see updated result.
+- [x] User from another WG cannot influence the suggestion/vote.
 
 ## Status
 
-- [ ] Passed
+- [x] Passed
 - [ ] Partially passed
 - [ ] Failed
 
@@ -111,6 +131,13 @@ Users should be able to vote for suggested shopping items if the implemented des
 ```text
 Evidence:
 Backend tests:
+- givenSuggestion_whenVoteForSuggestion_thenCurrentUserAddedToVotes 
+- givenAlreadyVotedSuggestion_whenVoteForSuggestion_thenVoteCountDoesNotIncrease 
+- givenVotedSuggestion_whenRemoveVote_thenCurrentUserRemoved 
+- givenSuggestionFromOtherHousehold_whenVoteForSuggestion_thenForbidden 
+- givenSuggestion_whenOtherHouseholdMemberVotes_thenVoteCountIncreases 
+- givenSuggestion_whenSameUserVotesTwice_thenVoteCountDoesNotIncreaseTwice 
+- givenSuggestionWithTwoVotes_whenGetSuggestions_thenVoterDetailsReturned
 Frontend tests:
 E2E tests:
 Manual QA:
@@ -126,23 +153,23 @@ FR10 must not break FR07, FR08, or FR09 shopping workflows.
 
 ## Checklist
 
-- [ ] Existing shopping item creation still works.
-- [ ] Personal, targeted, and shared visibility still work.
-- [ ] Mark/unmark bought still works.
-- [ ] Aggregated household shopping list still works.
-- [ ] Shopping history still works.
-- [ ] Existing shopping E2E tests still pass.
+- [x] Existing shopping item creation still works.
+- [x] Personal, targeted, and shared visibility still work.
+- [x] Mark/unmark bought still works.
+- [x] Aggregated household shopping list still works.
+- [x] Shopping history still works.
+- [x] Existing shopping E2E tests still pass.
 
 ## Test coverage required
 
-- [ ] Regression test for normal shopping item creation.
-- [ ] Regression test for targeted/shared visibility.
-- [ ] Regression test for mark/unmark bought.
-- [ ] Regression test for aggregated/history view.
+- [x] Regression test for normal shopping item creation.
+- [x] Regression test for targeted/shared visibility.
+- [x] Regression test for mark/unmark bought.
+- [x] Regression test for aggregated/history view.
 
 ## Status
 
-- [ ] Passed
+- [x] Passed
 - [ ] Partially passed
 - [ ] Failed
 
@@ -164,43 +191,43 @@ FR10 must satisfy the shared NFRs without duplicating the full general checklist
 
 ### NFR-01 Security & Access Control
 
-- [ ] Requires authentication.
-- [ ] Backend derives acting user from JWT/authentication context.
-- [ ] Household isolation is enforced in backend.
-- [ ] Role/visibility rules are not only hidden in the frontend.
+- [x] Requires authentication.
+- [x] Backend derives acting user from JWT/authentication context.
+- [x] Household isolation is enforced in backend.
+- [x] Role/visibility rules are not only hidden in the frontend.
 
 ### NFR-02 Data Privacy / GDPR
 
-- [ ] Suggestions/votes expose only necessary shopping data.
-- [ ] No personal data from other WGs is exposed.
-- [ ] Logs do not contain private shopping content unnecessarily.
+- [x] Suggestions/votes expose only necessary shopping data.
+- [x] No personal data from other WGs is exposed.
+- [x] Logs do not contain private shopping content unnecessarily.
 
 ### NFR-03 Reliability
 
-- [ ] Suggestions/votes persist correctly after refresh.
-- [ ] Feature works after backend restart with documented seed/database setup.
-- [ ] Failed vote/suggestion requests do not corrupt item state.
+- [x] Suggestions/votes persist correctly after refresh.
+- [x] Feature works after backend restart with documented seed/database setup.
+- [x] Failed vote/suggestion requests do not corrupt item state.
 
 ### NFR-04 Usability & Compatibility
 
-- [ ] Suggestion/voting flow is understandable without external explanation.
-- [ ] Works on desktop reference viewport.
-- [ ] Smoke-tested on mobile reference viewport or documented limitation.
+- [x] Suggestion/voting flow is understandable without external explanation.
+- [x] Works on desktop reference viewport.
+- [x] Smoke-tested on mobile reference viewport or documented limitation.
 
 ### NFR-05 Maintainability
 
-- [ ] Logic is in service/repository layer, not only frontend.
-- [ ] DTOs are clear and do not expose unnecessary entity fields.
-- [ ] No unrelated refactoring/log files committed.
+- [x] Logic is in service/repository layer, not only frontend.
+- [x] DTOs are clear and do not expose unnecessary entity fields.
+- [x] No unrelated refactoring/log files committed.
 
 ### NFR-06 Auditability
 
-- [ ] Important vote/suggestion actions have timestamp/responsible user where implemented.
-- [ ] If no audit log exists for this extended feature, limitation is documented.
+- [x] Important vote/suggestion actions have timestamp/responsible user where implemented.
+- [x] If no audit log exists for this extended feature, limitation is documented.
 
 ## Status
 
-- [ ] Passed
+- [x] Passed
 - [ ] Partially passed
 - [ ] Failed
 
@@ -216,13 +243,13 @@ NFR evidence:
 
 | Area | Status | Evidence |
 |---|---|---|
-| Suggestions | [ ] Pass [ ] Partial [ ] Fail | |
-| Voting | [ ] Pass [ ] Partial [ ] Fail [ ] Not implemented | |
-| Shopping regression | [ ] Pass [ ] Partial [ ] Fail | |
-| Backend tests | [ ] Pass [ ] Partial [ ] Fail | |
-| Frontend tests | [ ] Pass [ ] Partial [ ] Fail | |
-| E2E tests | [ ] Pass [ ] Partial [ ] Fail | |
-| Shared NFRs | [ ] Pass [ ] Partial [ ] Fail | |
+| Suggestions | [x] Pass [ ] Partial [ ] Fail | |
+| Voting | [x] Pass [ ] Partial [ ] Fail [ ] Not implemented | |
+| Shopping regression | [x] Pass [ ] Partial [ ] Fail | |
+| Backend tests | [x] Pass [ ] Partial [ ] Fail | |
+| Frontend tests | [x] Pass [ ] Partial [ ] Fail | |
+| E2E tests | [x] Pass [ ] Partial [ ] Fail | |
+| Shared NFRs | [x] Pass [ ] Partial [ ] Fail | |
 
 ## Required verification commands
 
@@ -241,8 +268,8 @@ npx cypress run
 ## QA sign-off
 
 ```text
-Reviewer:
-Date:
-Branch / commit:
-Result:
+Reviewer: Trishch Taras
+Date: 15.06.2026
+Branch / commit: Fr-10/b4f093fdd28cb9c8ddea3a584e889f81991b3f39
+Result:Approved
 ```
