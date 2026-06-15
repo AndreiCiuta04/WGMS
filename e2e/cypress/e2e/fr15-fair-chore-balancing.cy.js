@@ -1,4 +1,17 @@
-const backendUrl = Cypress.env('backendUrl') || 'http://localhost:8080/api/v1';
+function apiUrl() {
+  return cy.env('backendUrl').then((value) => value || 'http://localhost:8080/api/v1');
+}
+
+function apiRequest(options) {
+  return apiUrl().then((baseUrl) => {
+    const path = options.url.startsWith('/') ? options.url : `/${options.url}`;
+    return cy.request({
+      ...options,
+      url: `${baseUrl}${path}`,
+    });
+  });
+}
+
 const password = 'Password123!';
 const fr15SeedPassword = 'password';
 const fr15MainTenantEmail = 'maintenant.fr15@example.com';
@@ -57,7 +70,7 @@ describe('FR-15 Fair Chore Balancing E2E', () => {
         openTasks: 1,
         overdueTasks: 0,
         fairnessBucket: 'NO_OVERDUE_AVAILABLE',
-        candidate: false
+        candidate: false,
       });
       expect(annaFair.fairnessScore).to.eq(2.75);
 
@@ -67,7 +80,7 @@ describe('FR-15 Fair Chore Balancing E2E', () => {
         overdueTasks: 0,
         fairnessBucket: 'NO_OVERDUE_AVAILABLE',
         candidate: true,
-        recommended: true
+        recommended: true,
       });
       expect(lightWorker.fairnessScore).to.eq(1);
 
@@ -76,7 +89,7 @@ describe('FR-15 Fair Chore Balancing E2E', () => {
         openTasks: 0,
         overdueTasks: 5,
         fairnessBucket: 'HAS_OVERDUE',
-        candidate: false
+        candidate: false,
       });
       expect(heavyWorker.fairnessScore).to.eq(10);
 
@@ -85,7 +98,7 @@ describe('FR-15 Fair Chore Balancing E2E', () => {
         openTasks: 0,
         overdueTasks: 1,
         fairnessBucket: 'HAS_OVERDUE',
-        candidate: false
+        candidate: false,
       });
       expect(mediumWorker.fairnessScore).to.eq(5);
     });
@@ -116,12 +129,12 @@ describe('FR-15 Fair Chore Balancing E2E', () => {
     cy.contains(fr15LightWorkerEmail).should('be.visible');
 
     cy.window().its('localStorage.authToken').then((token) => {
-      cy.request({
+      apiRequest({
         method: 'DELETE',
-        url: `${backendUrl}/tasks/${createdTaskId}`,
+        url: `/tasks/${createdTaskId}`,
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       }).its('status').should('eq', 204);
     });
   });
@@ -186,13 +199,13 @@ describe('FR-15 Fair Chore Balancing E2E', () => {
     cy.get('[data-cy="send-overdue-reminder"]').should('not.exist');
 
     cy.window().its('localStorage.authToken').then((token) => {
-      cy.request({
+      apiRequest({
         method: 'POST',
-        url: `${backendUrl}/tasks/fair-balancing/overdue-reminders/${heavyRoommateId}`,
+        url: `/tasks/fair-balancing/overdue-reminders/${heavyRoommateId}`,
         headers: {
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        failOnStatusCode: false
+        failOnStatusCode: false,
       }).its('status').should('eq', 403);
     });
   });
@@ -229,18 +242,18 @@ describe('FR-15 Fair Chore Balancing E2E', () => {
     cy.loginUser(fr15MainTenantEmail, fr15SeedPassword);
 
     cy.window().its('localStorage.authToken').then((token) => {
-      cy.request({
+      apiRequest({
         method: 'POST',
-        url: `${backendUrl}/tasks`,
+        url: '/tasks',
         headers: {
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: {
           title,
           description: 'Created to verify task completion undo evidence',
           dueDate,
-          assignedToEmail: fr15MainTenantEmail
-        }
+          assignedToEmail: fr15MainTenantEmail,
+        },
       }).then((response) => {
         expect(response.status).to.eq(201);
         createdTaskId = response.body.id;
@@ -267,12 +280,12 @@ describe('FR-15 Fair Chore Balancing E2E', () => {
     });
 
     cy.window().its('localStorage.authToken').then((token) => {
-      cy.request({
+      apiRequest({
         method: 'GET',
-        url: `${backendUrl}/tasks/fair-balancing/recommendation?taskTitle=Undo%20Evidence&dueDate=${dueDate}`,
+        url: `/tasks/fair-balancing/recommendation?taskTitle=Undo%20Evidence&dueDate=${dueDate}`,
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       }).then((response) => {
         expect(response.status).to.eq(200);
         const annaFair = response.body.stats.find((stat) => stat.email === fr15MainTenantEmail);
@@ -280,12 +293,12 @@ describe('FR-15 Fair Chore Balancing E2E', () => {
         expect(annaFair.openTasks).to.eq(2);
       });
 
-      cy.request({
+      apiRequest({
         method: 'DELETE',
-        url: `${backendUrl}/tasks/${createdTaskId}`,
+        url: `/tasks/${createdTaskId}`,
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       }).its('status').should('eq', 204);
     });
   });
@@ -334,20 +347,20 @@ describe('FR-15 Fair Chore Balancing E2E', () => {
     });
 
     cy.window().its('localStorage.authToken').then((token) => {
-      cy.request({
+      apiRequest({
         method: 'DELETE',
-        url: `${backendUrl}/tasks/${generatedTaskId}`,
+        url: `/tasks/${generatedTaskId}`,
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       }).its('status').should('eq', 204);
 
-      cy.request({
+      apiRequest({
         method: 'DELETE',
-        url: `${backendUrl}/cleaning-schedules/${scheduleId}`,
+        url: `/cleaning-schedules/${scheduleId}`,
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       }).its('status').should('eq', 204);
     });
   });
@@ -358,13 +371,13 @@ describe('FR-15 Fair Chore Balancing E2E', () => {
       firstName: 'Fair',
       lastName: 'Owner',
       email: uniqueEmail('fair.owner'),
-      password
+      password,
     };
     const roommate = {
       firstName: 'Fair',
       lastName: 'Roommate',
       email: uniqueEmail('fair.roommate'),
-      password
+      password,
     };
     const dueDate = futureDateIso(4);
     const suggestedTaskTitle = `Fair Suggested Task ${runId}`;
@@ -372,7 +385,7 @@ describe('FR-15 Fair Chore Balancing E2E', () => {
     cy.registerUser(owner);
     cy.createHousehold({
       name: `Fair WG ${runId}`,
-      address: 'Fair Test Street 1'
+      address: 'Fair Test Street 1',
     });
 
     cy.createInvitation({ invitedEmail: roommate.email }).then((inviteUrl) => {
@@ -391,18 +404,18 @@ describe('FR-15 Fair Chore Balancing E2E', () => {
 
       cy.window().its('localStorage.authToken').then((token) => {
         for (let index = 0; index < 3; index++) {
-          cy.request({
+          apiRequest({
             method: 'POST',
-            url: `${backendUrl}/tasks`,
+            url: '/tasks',
             headers: {
-              Authorization: `Bearer ${token}`
+              Authorization: `Bearer ${token}`,
             },
             body: {
               title: `Owner burden ${runId} ${index}`,
               description: 'Task history for fair balancing',
               dueDate,
-              assignedToEmail: owner.email
-            }
+              assignedToEmail: owner.email,
+            },
           }).its('status').should('eq', 201);
         }
       });
