@@ -1,6 +1,7 @@
 package at.ac.tuwien.sepr.groupphase.backend.integrationtest;
 
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
+import at.ac.tuwien.sepr.groupphase.backend.basetest.TestDbCleaner;
 import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.PaymentCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.PaymentDto;
@@ -16,6 +17,8 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepositor
 import at.ac.tuwien.sepr.groupphase.backend.repository.ExpenseRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ExpenseSplitRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.NotificationRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.NotificationSettingRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
@@ -81,6 +84,12 @@ public class PaymentEndpointTest implements TestData {
     private CleaningScheduleRepository cleaningScheduleRepository;
 
     @Autowired
+    private NotificationRepository notificationRepository;
+
+    @Autowired
+    private NotificationSettingRepository notificationSettingRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -138,6 +147,7 @@ public class PaymentEndpointTest implements TestData {
         cleaningScheduleRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
+        TestDbCleaner.clearNotificationData(notificationRepository, notificationSettingRepository);
         userRepository.deleteAll();
     }
 

@@ -15,6 +15,7 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.TaskService;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
+import at.ac.tuwien.sepr.groupphase.backend.service.NotificationService;
 import at.ac.tuwien.sepr.groupphase.backend.service.impl.SimpleTaskService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,6 +60,9 @@ public class SimpleTaskServiceTest {
     @Mock
     private RoommateRepository roommateRepository;
 
+    @Mock
+    private NotificationService notificationService;
+
     private TaskService taskService;
 
     private ApplicationUser mainTenant;
@@ -73,7 +77,7 @@ public class SimpleTaskServiceTest {
 
     @BeforeEach
     public void setUp() {
-        taskService = new SimpleTaskService(taskRepository, userService, roommateRepository);
+        taskService = new SimpleTaskService(taskRepository, userService, roommateRepository, notificationService);
 
         mainTenant = user(1L, MAIN_TENANT_EMAIL);
         roommate = user(2L, ROOMMATE_EMAIL);

@@ -1,6 +1,8 @@
 package at.ac.tuwien.sepr.groupphase.backend.endpoint;
 
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BalanceDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BillExpensePreviewDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BillExpensePreviewRequestDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.EqualSplitRequestDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseDto;
@@ -58,6 +60,16 @@ public class ExpenseEndpoint {
             equalSplitRequestDto.participantRoommateIds(),
             authentication.getName()
         );
+    }
+
+    @PostMapping("/bill-preview")
+    @PreAuthorize("hasRole('USER')")
+    public BillExpensePreviewDto previewBillExpense(
+        @Valid @RequestBody BillExpensePreviewRequestDto previewRequestDto,
+        Authentication authentication
+    ) {
+        LOGGER.info("POST /api/v1/expenses/bill-preview");
+        return expenseService.previewBillExpense(previewRequestDto, authentication.getName());
     }
 
     @GetMapping

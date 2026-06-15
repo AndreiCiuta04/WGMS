@@ -4,6 +4,8 @@ import { Observable } from 'rxjs';
 import { Globals } from '../global/globals';
 import {
   BalanceDto,
+  BillExpensePreviewDto,
+  BillExpensePreviewRequestDto,
   EqualSplitRequestDto,
   ExpenseCreateDto,
   ExpenseDto,
@@ -42,6 +44,10 @@ export class ExpenseService {
 
   calculateEqualSplits(request: EqualSplitRequestDto): Observable<ExpenseSplitCreateDto[]> {
     return this.http.post<ExpenseSplitCreateDto[]>(`${this.baseUri}/equal-split`, request);
+  }
+
+  previewBillExpense(request: BillExpensePreviewRequestDto): Observable<BillExpensePreviewDto> {
+    return this.http.post<BillExpensePreviewDto>(`${this.baseUri}/bill-preview`, request);
   }
 
   calculateBalances(): Observable<BalanceDto[]> {

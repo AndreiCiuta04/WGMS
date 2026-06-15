@@ -39,3 +39,5 @@ testem.log
 .DS_Store
 Thumbs.db
 
+# Environment files in this project must contain safe defaults only.
+# Put real secrets in local environment variables or deployment config.

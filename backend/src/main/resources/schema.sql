@@ -7,4 +7,7 @@ ALTER TABLE IF EXISTS application_user ADD COLUMN IF NOT EXISTS terms_accepted_a
 ALTER TABLE IF EXISTS application_user ADD COLUMN IF NOT EXISTS terms_version varchar(255);
 ALTER TABLE IF EXISTS application_user ADD COLUMN IF NOT EXISTS privacy_acknowledged_at timestamp;
 ALTER TABLE IF EXISTS application_user ADD COLUMN IF NOT EXISTS privacy_version varchar(255);
-ALTER TABLE IF EXISTS cleaning_schedule ADD COLUMN IF NOT EXISTS fair_balancing_enabled boolean NOT NULL DEFAULT false;
+
+-- FR-10: mark shopping items that are still suggestions.
+ALTER TABLE IF EXISTS shopping_item
+ADD COLUMN IF NOT EXISTS suggested boolean NOT NULL DEFAULT false;

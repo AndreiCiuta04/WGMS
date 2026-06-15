@@ -18,12 +18,20 @@ import java.util.List;
 @Repository
 public interface ShoppingItemRepository extends JpaRepository<ShoppingItem, Long> {
 
-    @Query("SELECT s FROM ShoppingItem s WHERE s.household.id = :householdId AND "
-           + "(s.createdBy.id = :userId OR s.targetUser.id = :userId OR s.visibility = :sharedVisibility) "
+    @Query("SELECT s FROM ShoppingItem s WHERE s.household.id = :householdId "
+           + "AND s.suggested = false "
+           + "AND (s.createdBy.id = :userId OR s.targetUser.id = :userId OR s.visibility = :sharedVisibility) "
            + "ORDER BY s.createdAt DESC")
     List<ShoppingItem> findVisibleItems(@Param("householdId") Long householdId,
                                         @Param("userId") Long userId,
                                         @Param("sharedVisibility") ShoppingItemVisibility sharedVisibility);
+
+    @Query("SELECT s FROM ShoppingItem s WHERE s.household.id = :householdId "
+        + "AND s.suggested = true "
+        + "AND s.status = :status "
+        + "ORDER BY SIZE(s.votedBy) DESC, s.createdAt DESC")
+    List<ShoppingItem> findSuggestionsForHousehold(@Param("householdId") Long householdId,
+                                                   @Param("status") ShoppingItemStatus status);
 
     List<ShoppingItem> findAllByHouseholdIdOrderByCreatedAtDesc(Long householdId);
 
@@ -36,12 +44,14 @@ public interface ShoppingItemRepository extends JpaRepository<ShoppingItem, Long
     List<ShoppingItem> findAllByHouseholdIdAndVisibilityOrderByCreatedAtDesc(
         Long householdId, ShoppingItemVisibility visibility);
 
-    List<ShoppingItem> findAllByHouseholdIdAndVisibilityAndStatusOrderByCreatedAtDesc(
+    List<ShoppingItem> findAllByHouseholdIdAndVisibilityAndStatusAndSuggestedFalseOrderByCreatedAtDesc(
         Long householdId,
         ShoppingItemVisibility visibility,
         ShoppingItemStatus status);
 
-    List<ShoppingItem> findAllByHouseholdIdAndStatusInOrderByUpdatedAtDesc(
+    List<ShoppingItem> findAllByHouseholdIdAndSuggestedFalseAndStatusInOrderByUpdatedAtDesc(
         Long householdId,
         List<ShoppingItemStatus> statuses);
+
+    List<ShoppingItem> findAllBySuggestedFalseOrderByCreatedAtDesc();
 }

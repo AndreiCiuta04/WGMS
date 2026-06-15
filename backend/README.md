@@ -67,6 +67,23 @@ export DB_USERNAME="wgms_user"
 export DB_PASSWORD="replace-with-a-real-database-password"
 ```
 
+Optional email delivery via [Resend](https://resend.com):
+
+The team Resend API key is documented in the **group chat** (not in Git).
+
+Before starting the backend, export:
+
+```bash
+export WGMS_MAIL_PROVIDER=resend
+export RESEND_API_KEY="<key from team wiki>"
+export WGMS_MAIL_FROM="WGMS <noreply@shr8.sbs>"
+mvn spring-boot:run
+```
+
+E2E and CI runs must keep verification disabled (`WGMS_MAIL_VERIFICATION_ENABLED=false`, the default). Real Resend delivery uses the verified `shr8.sbs` sender domain above; Cypress tests still register with fake `@test.com` / `@example.com` addresses.
+
+Without Resend configured, the backend uses the mock mail provider and still persists in-app notifications.
+
 The test profile uses `backend/src/test/resources/application-test.yml` with artificial test-only values so automated tests remain reproducible.
 
 ### Production profile secrets

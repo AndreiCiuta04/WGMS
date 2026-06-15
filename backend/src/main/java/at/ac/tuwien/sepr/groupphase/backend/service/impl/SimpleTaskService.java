@@ -14,6 +14,8 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.TaskService;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
+import at.ac.tuwien.sepr.groupphase.backend.service.NotificationService;
+import at.ac.tuwien.sepr.groupphase.backend.entity.NotificationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -30,15 +32,18 @@ public class SimpleTaskService implements TaskService {
     private final TaskRepository taskRepository;
     private final UserService userService;
     private final RoommateRepository roommateRepository;
+    private final NotificationService notificationService;
 
     public SimpleTaskService(
         TaskRepository taskRepository,
         UserService userService,
-        RoommateRepository roommateRepository
+        RoommateRepository roommateRepository,
+        NotificationService notificationService
     ) {
         this.taskRepository = taskRepository;
         this.userService = userService;
         this.roommateRepository = roommateRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -102,7 +107,18 @@ public class SimpleTaskService implements TaskService {
         task.setCreatedBy(currentUser);
         task.setAssignedTo(assignee);
 
-        return taskRepository.save(task);
+        Task saved = taskRepository.save(task);
+
+        if (!assignee.getId().equals(currentUser.getId())) {
+            notificationService.triggerNotification(
+                assignee,
+                String.format("You have been assigned a new task: %s", task.getTitle()),
+                NotificationType.TASK_ASSIGNED,
+                saved.getId()
+            );
+        }
+
+        return saved;
     }
 
     @Override
@@ -120,12 +136,27 @@ public class SimpleTaskService implements TaskService {
         ApplicationUser assignee = getUserByEmail(taskUpdateDto.assignedToEmail());
         requireAssigneeInSameHousehold(assignee, currentRoommate);
 
+        final ApplicationUser oldAssignee = task.getAssignedTo();
+
         task.setTitle(taskUpdateDto.title());
         task.setDescription(taskUpdateDto.description());
         task.setDueDate(taskUpdateDto.dueDate());
         task.setAssignedTo(assignee);
 
-        return taskRepository.save(task);
+        Task saved = taskRepository.save(task);
+
+        if (oldAssignee == null || !oldAssignee.getId().equals(assignee.getId())) {
+            if (!assignee.getId().equals(currentUser.getId())) {
+                notificationService.triggerNotification(
+                    assignee,
+                    String.format("You have been assigned a task: %s", task.getTitle()),
+                    NotificationType.TASK_ASSIGNED,
+                    saved.getId()
+                );
+            }
+        }
+
+        return saved;
     }
 
     @Override

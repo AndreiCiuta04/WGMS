@@ -2,6 +2,7 @@ package at.ac.tuwien.sepr.groupphase.backend.integrationtest;
 import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepository;
 
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
+import at.ac.tuwien.sepr.groupphase.backend.basetest.TestDbCleaner;
 import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreRecommendationDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreRoommateStatsDto;
@@ -17,6 +18,8 @@ import at.ac.tuwien.sepr.groupphase.backend.entity.Task;
 import at.ac.tuwien.sepr.groupphase.backend.entity.TaskStatus;
 import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.NotificationRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.NotificationSettingRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
 import at.ac.tuwien.sepr.groupphase.backend.security.JwtTokenizer;
@@ -63,6 +66,12 @@ public class TaskEndpointTest implements TestData {
     private TaskRepository taskRepository;
 
     @Autowired
+    private NotificationRepository notificationRepository;
+
+    @Autowired
+    private NotificationSettingRepository notificationSettingRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -96,6 +105,7 @@ public class TaskEndpointTest implements TestData {
         cleaningScheduleRepository.deleteAll();
         roommateRepository.deleteAll();
         householdRepository.deleteAll();
+        TestDbCleaner.clearNotificationData(notificationRepository, notificationSettingRepository);
         userRepository.deleteAll();
 
         mainTenant = saveUser(MAIN_TENANT_EMAIL, "Main", "Tenant");

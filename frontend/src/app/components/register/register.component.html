@@ -13,96 +13,129 @@
       }
 
       <div class="wgms-card">
-        <div class="card-header-clean mb-4">
-          <h2 class="mb-1">Register</h2>
-          <p class="caption">Create your WGMS account to get started</p>
-        </div>
+        @if (!showVerification) {
+          <div class="card-header-clean mb-4">
+            <h2 class="mb-1">Register</h2>
+            <p class="caption">Create your WGMS account to get started</p>
+          </div>
 
-        <form [formGroup]="registerForm" (ngSubmit)="registerUser()">
-          <div class="row">
-            <div class="col-md-6 mb-4">
-              <label for="inputFirstName" class="caption mb-2 d-block">First Name</label>
-              <input type="text" name="firstName" formControlName="firstName" class="form-control" id="inputFirstName"
-                     placeholder="e.g. Anna">
-              @if (submitted && registerForm.controls.firstName.errors) {
+          <form [formGroup]="registerForm" (ngSubmit)="registerUser()">
+            <div class="row">
+              <div class="col-md-6 mb-4">
+                <label for="inputFirstName" class="caption mb-2 d-block">First Name</label>
+                <input type="text" name="firstName" formControlName="firstName" class="form-control" id="inputFirstName"
+                       placeholder="e.g. Anna">
+                @if (submitted && registerForm.controls.firstName.errors) {
+                  <div class="error mt-1">
+                    @if (registerForm.controls.firstName.errors.required) {
+                      <small class="form-text text-danger">First name is required</small>
+                    }
+                  </div>
+                }
+              </div>
+              <div class="col-md-6 mb-4">
+                <label for="inputLastName" class="caption mb-2 d-block">Last Name</label>
+                <input type="text" name="lastName" formControlName="lastName" class="form-control" id="inputLastName"
+                       placeholder="e.g. Berger">
+                @if (submitted && registerForm.controls.lastName.errors) {
+                  <div class="error mt-1">
+                    @if (registerForm.controls.lastName.errors.required) {
+                      <small class="form-text text-danger">Last name is required</small>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label for="inputEmail" class="caption mb-2 d-block">Email address</label>
+              <input type="email" name="email" formControlName="email" class="form-control" id="inputEmail"
+                     placeholder="e.g. anna.berger@tuwien.ac.at">
+              @if (submitted && registerForm.controls.email.errors) {
                 <div class="error mt-1">
-                  @if (registerForm.controls.firstName.errors.required) {
-                    <small class="form-text text-danger">First name is required</small>
+                  @if (registerForm.controls.email.errors.required) {
+                    <small class="form-text text-danger">Email is required</small>
+                  }
+                  @if (registerForm.controls.email.errors.email) {
+                    <small class="form-text text-danger">Please provide a valid email</small>
                   }
                 </div>
               }
             </div>
-            <div class="col-md-6 mb-4">
-              <label for="inputLastName" class="caption mb-2 d-block">Last Name</label>
-              <input type="text" name="lastName" formControlName="lastName" class="form-control" id="inputLastName"
-                     placeholder="e.g. Berger">
-              @if (submitted && registerForm.controls.lastName.errors) {
+
+            <div class="mb-4">
+              <label for="inputPassword" class="caption mb-2 d-block">Password</label>
+              <input type="password" name="password" formControlName="password" class="form-control" id="inputPassword"
+                     placeholder="Minimum 8 characters">
+              @if (submitted && registerForm.controls.password.errors) {
                 <div class="error mt-1">
-                  @if (registerForm.controls.lastName.errors.required) {
-                    <small class="form-text text-danger">Last name is required</small>
+                  @if (registerForm.controls.password.errors.required) {
+                    <small class="form-text text-danger">Password is required</small>
+                  }
+                  @if (registerForm.controls.password.errors.minlength) {
+                    <small class="form-text text-danger">At least 8 characters required</small>
+                  }
+                  @if (registerForm.controls.password.errors.pattern) {
+                    <small class="form-text text-danger">Must contain a number and special character</small>
                   }
                 </div>
               }
             </div>
+
+            <div class="mb-4 form-check">
+              <input type="checkbox" formControlName="termsAccepted" class="form-check-input" id="termsAccepted" data-cy="registration-terms-checkbox">
+              <label for="termsAccepted" class="form-check-label caption">
+                I accept the <a routerLink="/terms" (click)="saveDraft()" data-cy="registration-terms-link">Terms and Conditions</a> and acknowledge the
+                <a routerLink="/privacy" (click)="saveDraft()" data-cy="registration-privacy-link">Privacy/Data Usage information</a>.
+              </label>
+              @if (submitted && registerForm.controls.termsAccepted.errors) {
+                <div class="error mt-1">
+                  <small class="form-text text-danger" data-cy="registration-terms-error">Terms and privacy acknowledgement must be accepted.</small>
+                </div>
+              }
+            </div>
+
+            <div class="text-center">
+              <button type="submit" class="btn btn-primary px-5 py-3 mt-2" [disabled]="registerForm.invalid" data-cy="registration-submit">Register</button>
+            </div>
+          </form>
+
+          <div class="mt-4 pt-4 border-top text-center">
+            <span class="caption">Already have an account? </span>
+            <a routerLink="/login" class="font-weight-bold">Login here</a>
+          </div>
+        } @else {
+          <div class="card-header-clean mb-4">
+            <h2 class="mb-1">Enter Verification Code</h2>
+            <p class="caption text-muted">A 6-digit code has been sent to <strong>{{ verificationEmail }}</strong>.</p>
           </div>
 
-          <div class="mb-4">
-            <label for="inputEmail" class="caption mb-2 d-block">Email address</label>
-            <input type="email" name="email" formControlName="email" class="form-control" id="inputEmail"
-                   placeholder="e.g. anna.berger@tuwien.ac.at">
-            @if (submitted && registerForm.controls.email.errors) {
-              <div class="error mt-1">
-                @if (registerForm.controls.email.errors.required) {
-                  <small class="form-text text-danger">Email is required</small>
-                }
-                @if (registerForm.controls.email.errors.email) {
-                  <small class="form-text text-danger">Please provide a valid email</small>
-                }
-              </div>
-            }
-          </div>
+          @if (verificationError) {
+            <div class="alert alert-danger border-0 rounded-3 mb-4" role="alert">
+              {{ verificationError }}
+            </div>
+          }
 
-          <div class="mb-4">
-            <label for="inputPassword" class="caption mb-2 d-block">Password</label>
-            <input type="password" name="password" formControlName="password" class="form-control" id="inputPassword"
-                   placeholder="Minimum 8 characters">
-            @if (submitted && registerForm.controls.password.errors) {
-              <div class="error mt-1">
-                @if (registerForm.controls.password.errors.required) {
-                  <small class="form-text text-danger">Password is required</small>
-                }
-                @if (registerForm.controls.password.errors.minlength) {
-                  <small class="form-text text-danger">At least 8 characters required</small>
-                }
-                @if (registerForm.controls.password.errors.pattern) {
-                  <small class="form-text text-danger">Must contain a number and special character</small>
-                }
-              </div>
-            }
-          </div>
+          <form class="form" (ngSubmit)="submitVerificationCode()">
+            <div class="form-group mb-4">
+              <label for="verificationCode" class="caption mb-2 d-block">Verification Code</label>
+              <input type="text" name="verificationCode" [(ngModel)]="verificationCode" class="form-control text-center fs-4" id="verificationCode"
+                placeholder="000000" maxlength="6" required style="letter-spacing: 4px; font-weight: bold;">
+            </div>
 
-          <div class="mb-4 form-check">
-            <input type="checkbox" formControlName="termsAccepted" class="form-check-input" id="termsAccepted" data-cy="registration-terms-checkbox">
-            <label for="termsAccepted" class="form-check-label caption">
-              I accept the <a routerLink="/terms" (click)="saveDraft()" data-cy="registration-terms-link">Terms and Conditions</a> and acknowledge the
-              <a routerLink="/privacy" (click)="saveDraft()" data-cy="registration-privacy-link">Privacy/Data Usage information</a>.
-            </label>
-            @if (submitted && registerForm.controls.termsAccepted.errors) {
-              <div class="error mt-1">
-                <small class="form-text text-danger" data-cy="registration-terms-error">Terms and privacy acknowledgement must be accepted.</small>
-              </div>
-            }
-          </div>
+            <div class="text-center">
+              <button type="submit" class="btn btn-primary px-5 py-3" [disabled]="verificationSubmitting || verificationCode.length !== 6">
+                Verify & Login
+              </button>
+            </div>
+          </form>
 
-          <div class="text-center">
-            <button type="submit" class="btn btn-primary px-5 py-3 mt-2" [disabled]="registerForm.invalid" data-cy="registration-submit">Register</button>
+          <div class="mt-4 pt-4 border-top text-center">
+            <button type="button" class="btn btn-link text-decoration-none caption fw-bold p-0 text-success" (click)="showVerification = false">
+              Back to Register
+            </button>
           </div>
-        </form>
-
-        <div class="mt-4 pt-4 border-top text-center">
-          <span class="caption">Already have an account? </span>
-          <a routerLink="/login" class="font-weight-bold">Login here</a>
-        </div>
+        }
       </div>
     </div>
   </div>

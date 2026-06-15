@@ -26,6 +26,7 @@ import {ProfileEditComponent} from './components/profile-edit/profile-edit.compo
 import {PrivacyComponent} from './components/privacy/privacy.component';
 import {TermsComponent} from './components/terms/terms.component';
 import {LegalComponent} from './components/legal/legal.component';
+import {NotificationSettingsComponent} from './components/notification-settings/notification-settings.component';
 
 const routes: Routes = [
   {path: '', pathMatch: 'full', component: HomeComponent},
@@ -52,7 +53,8 @@ const routes: Routes = [
   {path: 'shopping-items/:id/edit', component: ShoppingItemEditComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'cleaning-schedules', component: CleaningScheduleListComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'cleaning-schedules/create', component: CleaningScheduleCreateComponent, canActivate: mapToCanActivate([AuthGuard])},
-  {path: 'cleaning-schedules/:id/edit', component: CleaningScheduleEditComponent, canActivate: mapToCanActivate([AuthGuard])}
+  {path: 'cleaning-schedules/:id/edit', component: CleaningScheduleEditComponent, canActivate: mapToCanActivate([AuthGuard])},
+  {path: 'settings/notifications', component: NotificationSettingsComponent, canActivate: mapToCanActivate([AuthGuard])}
 ];
 
 @NgModule({

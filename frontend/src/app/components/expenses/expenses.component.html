@@ -21,10 +21,85 @@
         <lucide-icon name="receipt-text" [size]="18" [strokeWidth]="1.75"></lucide-icon>
         <h3 class="section-title">{{ editingExpense ? 'Edit Expense' : 'Create Expense' }}</h3>
       </div>
-      @if (editingExpense) {
-        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="resetForm()">Cancel</button>
-      }
+      <div class="section-actions">
+        @if (!editingExpense) {
+          <button type="button" class="btn btn-outline-primary btn-sm" (click)="toggleBillCalculator()">
+            Bill Scanner
+          </button>
+        }
+        @if (editingExpense) {
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="resetForm()">Cancel</button>
+        }
+      </div>
     </div>
+
+    @if (billCalculatorOpen && !editingExpense) {
+      <div class="bill-calculator-panel">
+        <div class="receipt-scan-row">
+          <div>
+            <h4>Scan Receipt</h4>
+            <p class="caption mb-0">Point camera at receipt, then capture. The captured photo is sent to the Google Vision service to read the text.</p>
+          </div>
+          @if (!isCameraActive && !isScanningReceipt) {
+            <button type="button" class="btn btn-outline-primary btn-sm" (click)="startCamera()">Open Camera</button>
+          }
+          @if (isCameraActive) {
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="stopCamera()">Cancel</button>
+          }
+          @if (isScanningReceipt) {
+            <span class="caption scanning-label">Scanning...</span>
+          }
+        </div>
+
+        @if (isCameraActive) {
+          <div class="camera-preview">
+            <video #receiptVideo autoplay playsinline class="camera-video"></video>
+            <button type="button" class="btn btn-primary btn-sm" (click)="captureAndScan()">Capture &amp; Scan</button>
+          </div>
+        }
+
+        <form [formGroup]="billForm" (ngSubmit)="previewBillExpense()">
+          <div class="bill-grid">
+            <div class="form-group description-field">
+              <label for="billDescription">Receipt Title *</label>
+              <input id="billDescription" type="text" class="form-control" formControlName="description" placeholder="e.g. Receipt groceries">
+              @if (billSubmitted && billForm.get('description')?.errors?.['required']) {
+                <small class="text-danger">Receipt title is required.</small>
+              }
+              @if (billSubmitted && billForm.get('description')?.errors?.['maxlength']) {
+                <small class="text-danger">Receipt title cannot be longer than 500 characters.</small>
+              }
+            </div>
+
+            <div class="form-group">
+              <label for="billTotalAmount">Bill Total *</label>
+              <div class="amount-field">
+                <input id="billTotalAmount" type="text" inputmode="decimal" class="form-control" formControlName="totalAmount" placeholder="0,00" (blur)="normalizeBillAmount()">
+                <span class="amount-currency">EUR</span>
+              </div>
+              @if (billSubmitted && billForm.get('totalAmount')?.invalid) {
+                <small class="text-danger">Enter a positive amount.</small>
+              }
+            </div>
+
+            <div class="form-group">
+              <label for="billDate">Bill Date *</label>
+              <input id="billDate" type="date" class="form-control" formControlName="date">
+              @if (billSubmitted && billForm.get('date')?.errors?.['required']) {
+                <small class="text-danger">Bill date is required.</small>
+              }
+            </div>
+          </div>
+
+          <div class="bill-actions">
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="resetBillCalculator()">Clear</button>
+            <button type="submit" class="btn btn-primary btn-sm" [disabled]="isPreviewingBill" [attr.aria-busy]="isPreviewingBill">
+              {{ isPreviewingBill ? 'Preparing...' : 'Generate Review' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    }
 
     <form [formGroup]="expenseForm" (ngSubmit)="submit()">
       <div class="form-grid">
