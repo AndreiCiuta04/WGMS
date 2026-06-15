@@ -18,6 +18,7 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepositor
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.CleaningScheduleService;
+import at.ac.tuwien.sepr.groupphase.backend.service.FairChoreBalancingService;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
 import at.ac.tuwien.sepr.groupphase.backend.service.impl.SimpleCleaningScheduleService;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,6 +71,9 @@ public class SimpleCleaningScheduleServiceTest {
     @Mock
     private RoommateRepository roommateRepository;
 
+    @Mock
+    private FairChoreBalancingService fairChoreBalancingService;
+
     private CleaningScheduleService cleaningScheduleService;
 
     private ApplicationUser mainTenant;
@@ -84,7 +88,13 @@ public class SimpleCleaningScheduleServiceTest {
 
     @BeforeEach
     public void setUp() {
-        cleaningScheduleService = new SimpleCleaningScheduleService(cleaningScheduleRepository, taskRepository, userService, roommateRepository);
+        cleaningScheduleService = new SimpleCleaningScheduleService(
+            cleaningScheduleRepository,
+            taskRepository,
+            userService,
+            roommateRepository,
+            fairChoreBalancingService
+        );
 
         mainTenant = user(1L, MAIN_TENANT_EMAIL);
         roommate = user(2L, ROOMMATE_EMAIL);
@@ -272,6 +282,58 @@ public class SimpleCleaningScheduleServiceTest {
 
         verify(cleaningScheduleRepository).save(schedule);
         verify(taskRepository).save(any(Task.class));
+        verify(fairChoreBalancingService, never()).findRecommendedAssigneeForSchedule(any(), any(), any());
+    }
+
+    @Test
+    public void givenFairBalancingEnabledSchedule_whenGenerateTask_thenRecommendedAssigneeIsUsed() {
+        CleaningSchedule schedule = schedule(1L, household, mainTenant, roommate, TEST_CLEANING_TITLE);
+        schedule.setFairBalancingEnabled(true);
+
+        when(userService.findApplicationUserByEmail(MAIN_TENANT_EMAIL)).thenReturn(mainTenant);
+        when(roommateRepository.findByUserIdAndActiveTrue(mainTenant.getId())).thenReturn(Optional.of(mainTenantMembership));
+        when(cleaningScheduleRepository.findWithRelationsById(schedule.getId())).thenReturn(Optional.of(schedule));
+        when(fairChoreBalancingService.findRecommendedAssigneeForSchedule(household, schedule, TEST_START_DATE)).thenReturn(secondRoommate);
+        when(cleaningScheduleRepository.save(schedule)).thenReturn(schedule);
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Task result = cleaningScheduleService.generateTask(schedule.getId(), MAIN_TENANT_EMAIL, false);
+
+        assertSame(secondRoommate, result.getAssignedTo());
+    }
+
+    @Test
+    public void givenFairBalancingEnabledSchedule_whenRecommendationThrowsExpectedException_thenConfiguredAssigneeIsUsed() {
+        CleaningSchedule schedule = schedule(1L, household, mainTenant, roommate, TEST_CLEANING_TITLE);
+        schedule.setFairBalancingEnabled(true);
+
+        when(userService.findApplicationUserByEmail(MAIN_TENANT_EMAIL)).thenReturn(mainTenant);
+        when(roommateRepository.findByUserIdAndActiveTrue(mainTenant.getId())).thenReturn(Optional.of(mainTenantMembership));
+        when(cleaningScheduleRepository.findWithRelationsById(schedule.getId())).thenReturn(Optional.of(schedule));
+        when(fairChoreBalancingService.findRecommendedAssigneeForSchedule(household, schedule, TEST_START_DATE))
+            .thenThrow(new ConflictException("No fair recommendation available."));
+        when(roommateRepository.existsByUserIdAndHouseholdIdAndActiveTrue(roommate.getId(), household.getId())).thenReturn(true);
+        when(cleaningScheduleRepository.save(schedule)).thenReturn(schedule);
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Task result = cleaningScheduleService.generateTask(schedule.getId(), MAIN_TENANT_EMAIL, false);
+
+        assertSame(roommate, result.getAssignedTo());
+    }
+
+    @Test
+    public void givenFairBalancingEnabledScheduleWithoutFallback_whenRecommendationThrowsExpectedException_thenConflict() {
+        CleaningSchedule schedule = schedule(1L, household, mainTenant, null, TEST_CLEANING_TITLE);
+        schedule.setFairBalancingEnabled(true);
+
+        when(userService.findApplicationUserByEmail(MAIN_TENANT_EMAIL)).thenReturn(mainTenant);
+        when(roommateRepository.findByUserIdAndActiveTrue(mainTenant.getId())).thenReturn(Optional.of(mainTenantMembership));
+        when(cleaningScheduleRepository.findWithRelationsById(schedule.getId())).thenReturn(Optional.of(schedule));
+        when(fairChoreBalancingService.findRecommendedAssigneeForSchedule(household, schedule, TEST_START_DATE))
+            .thenThrow(new ConflictException("No fair recommendation available."));
+
+        assertThrows(ConflictException.class, () -> cleaningScheduleService.generateTask(schedule.getId(), MAIN_TENANT_EMAIL, false));
+        verify(taskRepository, never()).save(any(Task.class));
     }
 
     @Test
@@ -333,7 +395,8 @@ public class SimpleCleaningScheduleServiceTest {
             CleaningFrequency.WEEKLY,
             TEST_START_DATE,
             TEST_END_DATE,
-            assignedToEmail
+            assignedToEmail,
+            false
         );
     }
 
@@ -344,7 +407,8 @@ public class SimpleCleaningScheduleServiceTest {
             CleaningFrequency.BIWEEKLY,
             UPDATED_START_DATE,
             UPDATED_END_DATE,
-            assignedToEmail
+            assignedToEmail,
+            false
         );
     }
 

@@ -53,6 +53,7 @@ public class NotificationServiceImpl implements NotificationService {
         switch (type) {
             case TASK_ASSIGNED -> isEnabled = settings.isNotifyTaskAssigned();
             case TASK_OVERDUE -> isEnabled = settings.isNotifyTaskOverdue();
+            case OVERDUE_TASK_REMINDER -> isEnabled = settings.isNotifyTaskOverdue();
             case EXPENSE_CREATED -> isEnabled = settings.isNotifyExpenseCreated();
             case PAYMENT_RECEIVED -> isEnabled = settings.isNotifyPaymentReceived();
             case CLEANING_REMINDER -> isEnabled = settings.isNotifyCleaningReminder();
@@ -98,6 +99,7 @@ public class NotificationServiceImpl implements NotificationService {
         return switch (type) {
             case TASK_ASSIGNED -> "New task assigned";
             case TASK_OVERDUE -> "Task overdue";
+            case OVERDUE_TASK_REMINDER -> "Overdue task reminder";
             case EXPENSE_CREATED -> "New expense recorded";
             case PAYMENT_RECEIVED -> "Payment received";
             case CLEANING_REMINDER -> "Cleaning reminder";

@@ -14,6 +14,7 @@ import at.ac.tuwien.sepr.groupphase.backend.entity.CleaningSchedule;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
+import at.ac.tuwien.sepr.groupphase.backend.entity.Task;
 import at.ac.tuwien.sepr.groupphase.backend.entity.TaskStatus;
 import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdInvitationRepository;
@@ -192,7 +193,8 @@ public class CleaningScheduleEndpointTest implements TestData {
             createDto.frequency(),
             createDto.startDate(),
             createDto.endDate(),
-            createDto.assignedToEmail()
+            createDto.assignedToEmail(),
+            createDto.fairBalancingEnabled()
         );
 
         MvcResult mvcResult = this.mockMvc.perform(post(CLEANING_SCHEDULE_BASE_URI)
@@ -217,7 +219,8 @@ public class CleaningScheduleEndpointTest implements TestData {
             createDto.frequency(),
             createDto.startDate(),
             TEST_START_DATE.minusDays(1),
-            createDto.assignedToEmail()
+            createDto.assignedToEmail(),
+            createDto.fairBalancingEnabled()
         );
 
         MvcResult mvcResult = this.mockMvc.perform(post(CLEANING_SCHEDULE_BASE_URI)
@@ -380,6 +383,31 @@ public class CleaningScheduleEndpointTest implements TestData {
     }
 
     @Test
+    public void givenFairBalancingEnabledSchedule_whenGenerateTask_then200AndRecommendedAssigneeIsUsed() throws Exception {
+        for (int i = 0; i < 3; i++) {
+            saveTask(household, mainTenant, mainTenant, "Main tenant burden " + i);
+            saveTask(household, mainTenant, roommate, "Roommate burden " + i);
+        }
+        CleaningSchedule schedule = saveSchedule(household, mainTenant, mainTenant, TEST_CLEANING_TITLE, true);
+        schedule.setFairBalancingEnabled(true);
+        cleaningScheduleRepository.save(schedule);
+
+        MvcResult mvcResult = this.mockMvc.perform(post(CLEANING_SCHEDULE_BASE_URI + "/{id}/generate-task", schedule.getId())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andDo(print())
+            .andReturn();
+
+        MockHttpServletResponse response = mvcResult.getResponse();
+        TaskDetailDto taskDetailDto = jsonMapper.readValue(response.getContentAsString(), TaskDetailDto.class);
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
+            () -> assertEquals(SECOND_ROOMMATE_EMAIL, taskDetailDto.assignedToEmail()),
+            () -> assertEquals(schedule.getId(), taskDetailDto.cleaningScheduleId())
+        );
+    }
+
+    @Test
     public void givenInactiveSchedule_whenGenerateTask_then409AndNoTaskIsCreated() throws Exception {
         CleaningSchedule schedule = saveSchedule(household, mainTenant, roommate, TEST_CLEANING_TITLE, false);
 
@@ -437,7 +465,8 @@ public class CleaningScheduleEndpointTest implements TestData {
             CleaningFrequency.WEEKLY,
             TEST_START_DATE,
             TEST_END_DATE,
-            assignedToEmail
+            assignedToEmail,
+            false
         );
     }
 
@@ -448,7 +477,8 @@ public class CleaningScheduleEndpointTest implements TestData {
             CleaningFrequency.BIWEEKLY,
             UPDATED_START_DATE,
             UPDATED_END_DATE,
-            assignedToEmail
+            assignedToEmail,
+            false
         );
     }
 
@@ -496,5 +526,17 @@ public class CleaningScheduleEndpointTest implements TestData {
         schedule.setCreatedBy(creator);
         schedule.setAssignedTo(assignee);
         return cleaningScheduleRepository.save(schedule);
+    }
+
+    private Task saveTask(Household household, ApplicationUser creator, ApplicationUser assignee, String title) {
+        Task task = new Task();
+        task.setHousehold(household);
+        task.setTitle(title);
+        task.setDescription(TEST_CLEANING_DESCRIPTION);
+        task.setDueDate(TEST_START_DATE.plusDays(1));
+        task.setStatus(TaskStatus.OPEN);
+        task.setCreatedBy(creator);
+        task.setAssignedTo(assignee);
+        return taskRepository.save(task);
     }
 }

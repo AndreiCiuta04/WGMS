@@ -108,7 +108,25 @@ describe('CleaningScheduleCreateComponent', () => {
       frequency: CleaningFrequency.WEEKLY,
       startDate: '2026-06-05',
       endDate: '2026-07-05',
-      assignedToEmail: 'roommate@example.com'
+      assignedToEmail: 'roommate@example.com',
+      fairBalancingEnabled: false
+    });
+  });
+
+  it('should include fair balancing opt-in in create payload when checked', () => {
+    fixture.detectChanges();
+    component.scheduleForm.patchValue(validScheduleForm({ fairBalancingEnabled: true }));
+
+    component.onSubmit();
+
+    expect(cleaningScheduleService.create).toHaveBeenCalledOnceWith({
+      title: 'Kitchen rotation',
+      description: 'Clean kitchen surfaces',
+      frequency: CleaningFrequency.WEEKLY,
+      startDate: '2026-06-05',
+      endDate: '2026-07-05',
+      assignedToEmail: 'roommate@example.com',
+      fairBalancingEnabled: true
     });
   });
 
@@ -124,7 +142,8 @@ describe('CleaningScheduleCreateComponent', () => {
       frequency: CleaningFrequency.WEEKLY,
       startDate: '2026-06-05',
       endDate: undefined,
-      assignedToEmail: 'roommate@example.com'
+      assignedToEmail: 'roommate@example.com',
+      fairBalancingEnabled: false
     });
   });
 
@@ -175,6 +194,7 @@ function validScheduleForm(overrides: Partial<{
   startDate: string;
   endDate: string;
   assignedToEmail: string;
+  fairBalancingEnabled: boolean;
 }> = {}) {
   return {
     title: 'Kitchen rotation',
@@ -183,6 +203,7 @@ function validScheduleForm(overrides: Partial<{
     startDate: '2026-06-05',
     endDate: '2026-07-05',
     assignedToEmail: 'roommate@example.com',
+    fairBalancingEnabled: false,
     ...overrides
   };
 }
@@ -222,6 +243,7 @@ function schedule(overrides: Partial<CleaningScheduleDetailDto> = {}): CleaningS
     endDate: '2026-07-05',
     nextDueDate: '2026-06-05',
     active: true,
+    fairBalancingEnabled: false,
     createdByEmail: 'main@example.com',
     assignedToEmail: 'roommate@example.com',
     createdAt: '2026-06-01T00:00:00',

@@ -235,6 +235,7 @@ function schedule(overrides: Partial<CleaningScheduleDetailDto> = {}): CleaningS
     endDate: '2026-07-05',
     nextDueDate: today(),
     active: true,
+    fairBalancingEnabled: false,
     createdByEmail: 'main@example.com',
     assignedToEmail: 'roommate@example.com',
     createdAt: '2026-06-01T00:00:00',

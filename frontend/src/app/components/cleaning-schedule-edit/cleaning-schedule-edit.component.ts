@@ -36,7 +36,8 @@ export class CleaningScheduleEditComponent implements OnInit {
       frequency: ['', [Validators.required]],
       startDate: ['', [Validators.required]],
       endDate: [''],
-      assignedToEmail: ['', [Validators.required, Validators.email]]
+      assignedToEmail: ['', [Validators.required, Validators.email]],
+      fairBalancingEnabled: [false]
     });
   }
 
@@ -86,7 +87,8 @@ export class CleaningScheduleEditComponent implements OnInit {
           frequency: schedule.frequency,
           startDate: schedule.startDate,
           endDate: schedule.endDate || '',
-          assignedToEmail: schedule.assignedToEmail
+          assignedToEmail: schedule.assignedToEmail,
+          fairBalancingEnabled: schedule.fairBalancingEnabled
         });
         this.loading = false;
       },
@@ -122,7 +124,8 @@ export class CleaningScheduleEditComponent implements OnInit {
       frequency: formValue.frequency,
       startDate: formValue.startDate,
       endDate: formValue.endDate || undefined,
-      assignedToEmail: formValue.assignedToEmail
+      assignedToEmail: formValue.assignedToEmail,
+      fairBalancingEnabled: formValue.fairBalancingEnabled
     };
 
     this.cleaningScheduleService.update(this.scheduleId, dto).subscribe({

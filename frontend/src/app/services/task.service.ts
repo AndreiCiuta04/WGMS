@@ -1,7 +1,14 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { TaskCreateDto, TaskDetailDto, TaskStatusUpdateDto, TaskUpdateDto } from '../dtos/task';
+import {
+  FairChoreOverdueReminderDto,
+  FairChoreRecommendationDto,
+  TaskCreateDto,
+  TaskDetailDto,
+  TaskStatusUpdateDto,
+  TaskUpdateDto
+} from '../dtos/task';
 import { Globals } from '../global/globals';
 
 @Injectable({
@@ -23,6 +30,37 @@ export class TaskService {
 
   findAssignedToMe(): Observable<TaskDetailDto[]> {
     return this.http.get<TaskDetailDto[]>(`${this.baseUri}/my`);
+  }
+
+  getFairBalancingRecommendation(params?: {
+    historyDays?: number;
+    taskTitle?: string;
+    dueDate?: string;
+    cleaningScheduleId?: number;
+  }): Observable<FairChoreRecommendationDto> {
+    const queryParams: any = {};
+    if (params?.historyDays) {
+      queryParams.historyDays = params.historyDays;
+    }
+    if (params?.taskTitle) {
+      queryParams.taskTitle = params.taskTitle;
+    }
+    if (params?.dueDate) {
+      queryParams.dueDate = params.dueDate;
+    }
+    if (params?.cleaningScheduleId) {
+      queryParams.cleaningScheduleId = params.cleaningScheduleId;
+    }
+    return this.http.get<FairChoreRecommendationDto>(`${this.baseUri}/fair-balancing/recommendation`, {
+      params: queryParams
+    });
+  }
+
+  sendOverdueReminder(roommateId: number): Observable<FairChoreOverdueReminderDto> {
+    return this.http.post<FairChoreOverdueReminderDto>(
+      `${this.baseUri}/fair-balancing/overdue-reminders/${roommateId}`,
+      {}
+    );
   }
 
   findOne(id: number): Observable<TaskDetailDto> {

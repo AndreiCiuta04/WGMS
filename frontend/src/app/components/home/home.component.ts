@@ -127,6 +127,7 @@ export class HomeComponent implements OnInit {
     switch (type) {
       case 'TASK_ASSIGNED': return 'bi bi-person-check-fill';
       case 'TASK_OVERDUE': return 'bi bi-exclamation-triangle-fill';
+      case 'OVERDUE_TASK_REMINDER': return 'bi bi-exclamation-triangle-fill';
       case 'EXPENSE_CREATED': return 'bi bi-receipt-cutoff';
       case 'PAYMENT_RECEIVED': return 'bi bi-cash-coin';
       case 'CLEANING_REMINDER': return 'bi bi-stars';
@@ -138,6 +139,7 @@ export class HomeComponent implements OnInit {
     switch (type) {
       case 'TASK_ASSIGNED': return 'border-primary text-primary bg-primary-subtle';
       case 'TASK_OVERDUE': return 'border-danger text-danger bg-danger-subtle';
+      case 'OVERDUE_TASK_REMINDER': return 'border-danger text-danger bg-danger-subtle';
       case 'EXPENSE_CREATED': return 'border-warning text-warning bg-warning-subtle';
       case 'PAYMENT_RECEIVED': return 'border-success text-success bg-success-subtle';
       case 'CLEANING_REMINDER': return 'border-info text-info bg-info-subtle';

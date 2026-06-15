@@ -75,7 +75,8 @@ describe('CleaningScheduleService', () => {
       frequency: CleaningFrequency.WEEKLY,
       startDate: '2026-06-05',
       endDate: '2026-07-05',
-      assignedToEmail: 'roommate@example.com'
+      assignedToEmail: 'roommate@example.com',
+      fairBalancingEnabled: false
     };
 
     service.create(body).subscribe(response => {
@@ -95,7 +96,8 @@ describe('CleaningScheduleService', () => {
       frequency: CleaningFrequency.MONTHLY,
       startDate: '2026-06-06',
       endDate: '2026-08-06',
-      assignedToEmail: 'roommate@example.com'
+      assignedToEmail: 'roommate@example.com',
+      fairBalancingEnabled: true
     };
 
     service.update(7, body).subscribe(response => {
@@ -154,6 +156,7 @@ function schedule(overrides: Partial<CleaningScheduleDetailDto> = {}): CleaningS
     endDate: '2026-07-05',
     nextDueDate: '2026-06-05',
     active: true,
+    fairBalancingEnabled: false,
     createdByEmail: 'main@example.com',
     assignedToEmail: 'roommate@example.com',
     createdAt: '2026-06-01T00:00:00',

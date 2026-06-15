@@ -4,6 +4,10 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepositor
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestDbCleaner;
 import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreOverdueReminderDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreRecommendationDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.FairChoreRoommateStatsDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.NotificationDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskDetailDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskStatusUpdateDto;
@@ -11,6 +15,8 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.TaskUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
+import at.ac.tuwien.sepr.groupphase.backend.entity.Notification;
+import at.ac.tuwien.sepr.groupphase.backend.entity.NotificationType;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Task;
 import at.ac.tuwien.sepr.groupphase.backend.entity.TaskStatus;
@@ -37,12 +43,15 @@ import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.json.JsonMapper;
 
 
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -94,6 +103,10 @@ public class TaskEndpointTest implements TestData {
     private ApplicationUser outsider;
     private Household household;
     private Household otherHousehold;
+    private Roommate mainTenantMembership;
+    private Roommate roommateMembership;
+    private Roommate secondRoommateMembership;
+    private Roommate outsiderMembership;
 
     @BeforeEach
     public void beforeEach() {
@@ -112,10 +125,10 @@ public class TaskEndpointTest implements TestData {
         household = saveHousehold(TEST_HOUSEHOLD_NAME, mainTenant);
         otherHousehold = saveHousehold(OTHER_HOUSEHOLD_NAME, outsider);
 
-        saveRoommate(mainTenant, household, HouseholdRole.MAIN_TENANT);
-        saveRoommate(roommate, household, HouseholdRole.ROOMMATE);
-        saveRoommate(secondRoommate, household, HouseholdRole.ROOMMATE);
-        saveRoommate(outsider, otherHousehold, HouseholdRole.MAIN_TENANT);
+        mainTenantMembership = saveRoommate(mainTenant, household, HouseholdRole.MAIN_TENANT);
+        roommateMembership = saveRoommate(roommate, household, HouseholdRole.ROOMMATE);
+        secondRoommateMembership = saveRoommate(secondRoommate, household, HouseholdRole.ROOMMATE);
+        outsiderMembership = saveRoommate(outsider, otherHousehold, HouseholdRole.MAIN_TENANT);
     }
 
     @Test
@@ -163,6 +176,138 @@ public class TaskEndpointTest implements TestData {
             .andReturn();
 
         assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus());
+    }
+
+    @Test
+    public void givenNoToken_whenGetFairBalancingRecommendation_then403() throws Exception {
+        MvcResult mvcResult = this.mockMvc.perform(get(TASK_BASE_URI + "/fair-balancing/recommendation"))
+            .andReturn();
+
+        assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus());
+    }
+
+    @Test
+    public void givenNoToken_whenSendFairBalancingOverdueReminder_then403() throws Exception {
+        MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI + "/fair-balancing/overdue-reminders/{roommateId}",
+                roommateMembership.getId()))
+            .andReturn();
+
+        assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus());
+    }
+
+    @Test
+    public void givenMainTenantAndFiveOverdueTasks_whenSendFairBalancingOverdueReminder_then200AndNotificationIsListed() throws Exception {
+        saveOverdueTasks(roommate, 5);
+
+        MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI + "/fair-balancing/overdue-reminders/{roommateId}",
+                roommateMembership.getId())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        MockHttpServletResponse response = mvcResult.getResponse();
+        FairChoreOverdueReminderDto reminder = jsonMapper.readValue(response.getContentAsString(), FairChoreOverdueReminderDto.class);
+
+        List<Notification> notifications = notificationRepository.findAllByRecipientIdOrderByCreatedAtDesc(roommate.getId());
+
+        MvcResult listResult = this.mockMvc.perform(get(BASE_URI + "/notifications")
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+        List<NotificationDto> listedNotifications = Arrays.asList(
+            jsonMapper.readValue(listResult.getResponse().getContentAsString(), NotificationDto[].class)
+        );
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
+            () -> assertEquals(roommateMembership.getId(), reminder.targetRoommateId()),
+            () -> assertEquals("Normal Roommate", reminder.targetDisplayName()),
+            () -> assertEquals(5L, reminder.overdueTasks()),
+            () -> assertTrue(reminder.message().contains("Reminder sent")),
+            () -> assertEquals(1, notifications.size()),
+            () -> assertEquals(NotificationType.OVERDUE_TASK_REMINDER, notifications.get(0).getType()),
+            () -> assertTrue(notifications.get(0).getMessage().contains("5 overdue household tasks")),
+            () -> assertEquals(HttpStatus.OK.value(), listResult.getResponse().getStatus()),
+            () -> assertTrue(listedNotifications.stream()
+                .anyMatch(notification -> notification.getType() == NotificationType.OVERDUE_TASK_REMINDER
+                    && notification.getMessage().contains("5 overdue household tasks")))
+        );
+    }
+
+    @Test
+    public void givenNormalRoommate_whenSendFairBalancingOverdueReminder_then403AndNoNotification() throws Exception {
+        saveOverdueTasks(secondRoommate, 5);
+
+        MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI + "/fair-balancing/overdue-reminders/{roommateId}",
+                secondRoommateMembership.getId())
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus()),
+            () -> assertTrue(notificationRepository.findAllByRecipientIdOrderByCreatedAtDesc(secondRoommate.getId()).isEmpty())
+        );
+    }
+
+    @Test
+    public void givenTargetBelowReminderThreshold_whenSendFairBalancingOverdueReminder_then400AndNoNotification() throws Exception {
+        saveOverdueTasks(roommate, 4);
+
+        MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI + "/fair-balancing/overdue-reminders/{roommateId}",
+                roommateMembership.getId())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.BAD_REQUEST.value(), mvcResult.getResponse().getStatus()),
+            () -> assertTrue(notificationRepository.findAllByRecipientIdOrderByCreatedAtDesc(roommate.getId()).isEmpty())
+        );
+    }
+
+    @Test
+    public void givenTargetFromOtherHousehold_whenSendFairBalancingOverdueReminder_then403AndNoNotification() throws Exception {
+        saveOverdueTasks(otherHousehold, outsider, outsider, 5);
+
+        MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI + "/fair-balancing/overdue-reminders/{roommateId}",
+                outsiderMembership.getId())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.FORBIDDEN.value(), mvcResult.getResponse().getStatus()),
+            () -> assertTrue(notificationRepository.findAllByRecipientIdOrderByCreatedAtDesc(outsider.getId()).isEmpty())
+        );
+    }
+
+    @Test
+    public void givenOtherHouseholdOverdueTaskForSameUser_whenSendFairBalancingOverdueReminder_thenOtherHouseholdTaskDoesNotCount() throws Exception {
+        saveOverdueTasks(roommate, 4);
+        saveOverdueTasks(otherHousehold, outsider, roommate, 1);
+
+        MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI + "/fair-balancing/overdue-reminders/{roommateId}",
+                roommateMembership.getId())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.BAD_REQUEST.value(), mvcResult.getResponse().getStatus()),
+            () -> assertTrue(notificationRepository.findAllByRecipientIdOrderByCreatedAtDesc(roommate.getId()).isEmpty())
+        );
+    }
+
+    @Test
+    public void givenFakeOverdueCountInRequestBody_whenSendFairBalancingOverdueReminder_thenBackendCountIsUsed() throws Exception {
+        saveOverdueTasks(roommate, 4);
+
+        MvcResult mvcResult = this.mockMvc.perform(post(TASK_BASE_URI + "/fair-balancing/overdue-reminders/{roommateId}",
+                roommateMembership.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"overdueTasks\": 99, \"householdId\": " + otherHousehold.getId() + "}")
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.BAD_REQUEST.value(), mvcResult.getResponse().getStatus()),
+            () -> assertTrue(notificationRepository.findAllByRecipientIdOrderByCreatedAtDesc(roommate.getId()).isEmpty())
+        );
     }
 
     @Test
@@ -229,6 +374,146 @@ public class TaskEndpointTest implements TestData {
     }
 
     @Test
+    public void givenAuthenticatedUser_whenGetFairBalancingRecommendation_thenReturnsCurrentHouseholdStatsOnly() throws Exception {
+        Task doneForRoommate = saveTask(household, mainTenant, roommate, "Completed own WG task");
+        doneForRoommate.setStatus(TaskStatus.DONE);
+        taskRepository.save(doneForRoommate);
+        Task otherHouseholdDoneForCurrentUser = saveTask(
+            otherHousehold,
+            outsider,
+            mainTenant,
+            "Other household task assigned to current user"
+        );
+        otherHouseholdDoneForCurrentUser.setStatus(TaskStatus.DONE);
+        taskRepository.save(otherHouseholdDoneForCurrentUser);
+        saveTask(otherHousehold, outsider, outsider, "Other household task");
+
+        MvcResult mvcResult = this.mockMvc.perform(get(TASK_BASE_URI + "/fair-balancing/recommendation")
+                .param("taskTitle", "Mop floor")
+                .param("dueDate", TEST_TASK_DUE_DATE.toString())
+                .param("householdId", otherHousehold.getId().toString())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        MockHttpServletResponse response = mvcResult.getResponse();
+        FairChoreRecommendationDto recommendation = jsonMapper.readValue(response.getContentAsString(), FairChoreRecommendationDto.class);
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
+            () -> assertNotNull(recommendation.recommendedUserId()),
+            () -> assertEquals("HISTORY_BUCKET_SCORE_SEEDED_TIE", recommendation.algorithm()),
+            () -> assertEquals(3, recommendation.stats().size()),
+            () -> assertEquals(0, recommendation.stats().stream().filter(stats -> OUTSIDER_EMAIL.equals(stats.email())).count()),
+            () -> assertEquals(1, recommendation.stats().stream()
+                .filter(stats -> ROOMMATE_EMAIL.equals(stats.email()))
+                .findFirst()
+                .orElseThrow()
+                .completedTasks()),
+            () -> assertEquals(0, recommendation.stats().stream()
+                .filter(stats -> MAIN_TENANT_EMAIL.equals(stats.email()))
+                .findFirst()
+                .orElseThrow()
+                .completedTasks()),
+            () -> assertTrue(recommendation.stats().stream().allMatch(stats -> stats.fairnessBucket() != null)),
+            () -> assertTrue(response.getContentAsString().contains("fairnessBucket")),
+            () -> assertFalse(response.getContentAsString().contains("Completed own WG task")),
+            () -> assertFalse(response.getContentAsString().contains("Other household task"))
+        );
+    }
+
+    @Test
+    public void givenBucketScenario_whenGetFairBalancingRecommendation_thenReturnsBestBucketAndExactMinimumCandidate() throws Exception {
+        saveOpenTasks(mainTenant, 3);
+        Task overdueForRoommate = saveTask(household, mainTenant, roommate, "Overdue chore");
+        overdueForRoommate.setDueDate(TEST_TASK_DUE_DATE.minusDays(10));
+        taskRepository.save(overdueForRoommate);
+
+        MvcResult mvcResult = this.mockMvc.perform(get(TASK_BASE_URI + "/fair-balancing/recommendation")
+                .param("taskTitle", "Mop floor")
+                .param("dueDate", TEST_TASK_DUE_DATE.toString())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        MockHttpServletResponse response = mvcResult.getResponse();
+        FairChoreRecommendationDto recommendation = jsonMapper.readValue(response.getContentAsString(), FairChoreRecommendationDto.class);
+        FairChoreRoommateStatsDto selected = recommendation.stats().stream()
+            .filter(FairChoreRoommateStatsDto::recommended)
+            .findFirst()
+            .orElseThrow();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
+            () -> assertEquals(SECOND_ROOMMATE_EMAIL, recommendation.recommendedEmail()),
+            () -> assertEquals("NO_OVERDUE_AVAILABLE", selected.fairnessBucket()),
+            () -> assertEquals(0.0d, selected.fairnessScore()),
+            () -> assertTrue(selected.candidate()),
+            () -> assertFalse(recommendation.stats().stream()
+                .filter(stats -> MAIN_TENANT_EMAIL.equals(stats.email()))
+                .findFirst()
+                .orElseThrow()
+                .candidate()),
+            () -> assertFalse(recommendation.stats().stream()
+                .filter(stats -> ROOMMATE_EMAIL.equals(stats.email()))
+                .findFirst()
+                .orElseThrow()
+                .candidate())
+        );
+    }
+
+    @Test
+    public void givenInvalidHistoryDays_whenGetFairBalancingRecommendation_then400() throws Exception {
+        MvcResult mvcResult = this.mockMvc.perform(get(TASK_BASE_URI + "/fair-balancing/recommendation")
+                .param("historyDays", "366")
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), mvcResult.getResponse().getStatus());
+    }
+
+    @Test
+    public void givenSameRequest_whenGetFairBalancingRecommendationTwice_thenSameRecommendation() throws Exception {
+        MvcResult first = this.mockMvc.perform(get(TASK_BASE_URI + "/fair-balancing/recommendation")
+                .param("taskTitle", "Mop floor")
+                .param("dueDate", TEST_TASK_DUE_DATE.toString())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+        MvcResult second = this.mockMvc.perform(get(TASK_BASE_URI + "/fair-balancing/recommendation")
+                .param("taskTitle", "Mop floor")
+                .param("dueDate", TEST_TASK_DUE_DATE.toString())
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        FairChoreRecommendationDto firstRecommendation = jsonMapper.readValue(first.getResponse().getContentAsString(), FairChoreRecommendationDto.class);
+        FairChoreRecommendationDto secondRecommendation = jsonMapper.readValue(second.getResponse().getContentAsString(), FairChoreRecommendationDto.class);
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), first.getResponse().getStatus()),
+            () -> assertEquals(HttpStatus.OK.value(), second.getResponse().getStatus()),
+            () -> assertEquals(firstRecommendation.recommendedUserId(), secondRecommendation.recommendedUserId())
+        );
+    }
+
+    @Test
+    public void givenNoHistory_whenGetFairBalancingRecommendation_thenReturnsValidActiveRoommate() throws Exception {
+        MvcResult mvcResult = this.mockMvc.perform(get(TASK_BASE_URI + "/fair-balancing/recommendation")
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        FairChoreRecommendationDto recommendation = jsonMapper.readValue(
+            mvcResult.getResponse().getContentAsString(),
+            FairChoreRecommendationDto.class
+        );
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals(30, recommendation.historyDays()),
+            () -> assertTrue(recommendation.stats().stream().allMatch(stats -> stats.fairnessScore() == 0.0d)),
+            () -> assertTrue(recommendation.stats().stream().allMatch(stats -> "NO_OVERDUE_AVAILABLE".equals(stats.fairnessBucket()))),
+            () -> assertTrue(recommendation.stats().stream().anyMatch(FairChoreRoommateStatsDto::recommended))
+        );
+    }
+
+    @Test
     public void givenAssignedAndUnassignedTasks_whenFindMyTasks_thenOnlyAssignedTasksAreReturned() throws Exception {
         saveTask(household, mainTenant, roommate, "Assigned to current user");
         saveTask(household, mainTenant, secondRoommate, "Assigned to somebody else");
@@ -279,6 +564,30 @@ public class TaskEndpointTest implements TestData {
             () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
             () -> assertEquals(TaskStatus.DONE, taskDetailDto.status()),
             () -> assertEquals(TaskStatus.DONE, taskRepository.findById(task.getId()).orElseThrow().getStatus())
+        );
+    }
+
+    @Test
+    public void givenDoneTask_whenAssignedUserReopensTask_then200AndStatusReturnsToOpen() throws Exception {
+        Task task = saveTask(household, mainTenant, roommate, TEST_TASK_TITLE);
+        task.setStatus(TaskStatus.DONE);
+        taskRepository.save(task);
+
+        TaskStatusUpdateDto statusUpdateDto = new TaskStatusUpdateDto(TaskStatus.OPEN);
+
+        MvcResult mvcResult = this.mockMvc.perform(patch(TASK_BASE_URI + "/{id}/status", task.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(statusUpdateDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+
+        MockHttpServletResponse response = mvcResult.getResponse();
+        TaskDetailDto taskDetailDto = jsonMapper.readValue(response.getContentAsString(), TaskDetailDto.class);
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), response.getStatus()),
+            () -> assertEquals(TaskStatus.OPEN, taskDetailDto.status()),
+            () -> assertEquals(TaskStatus.OPEN, taskRepository.findById(task.getId()).orElseThrow().getStatus())
         );
     }
 
@@ -424,5 +733,24 @@ public class TaskEndpointTest implements TestData {
         task.setCreatedBy(creator);
         task.setAssignedTo(assignee);
         return taskRepository.save(task);
+    }
+
+    private void saveOverdueTasks(ApplicationUser assignee, int count) {
+        saveOverdueTasks(household, mainTenant, assignee, count);
+    }
+
+    private void saveOverdueTasks(Household taskHousehold, ApplicationUser creator, ApplicationUser assignee, int count) {
+        for (int i = 0; i < count; i++) {
+            Task task = saveTask(taskHousehold, creator, assignee, "Overdue reminder task " + i);
+            task.setDueDate(LocalDate.now().minusDays(i + 1L));
+            task.setStatus(i % 2 == 0 ? TaskStatus.OPEN : TaskStatus.IN_PROGRESS);
+            taskRepository.save(task);
+        }
+    }
+
+    private void saveOpenTasks(ApplicationUser assignee, int count) {
+        for (int i = 0; i < count; i++) {
+            saveTask(household, mainTenant, assignee, "Open burden " + i);
+        }
     }
 }

@@ -15,6 +15,7 @@ public record CleaningScheduleDetailDto(
     LocalDate endDate,
     LocalDate nextDueDate,
     boolean active,
+    boolean fairBalancingEnabled,
     String createdByEmail,
     String assignedToEmail,
     LocalDateTime createdAt,

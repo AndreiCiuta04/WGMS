@@ -52,6 +52,9 @@ public class CleaningSchedule {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Column(nullable = false, name = "fair_balancing_enabled")
+    private boolean fairBalancingEnabled = false;
+
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_user_id", nullable = false)
     private ApplicationUser createdBy;
@@ -180,6 +183,14 @@ public class CleaningSchedule {
         this.active = active;
     }
 
+    public boolean isFairBalancingEnabled() {
+        return fairBalancingEnabled;
+    }
+
+    public void setFairBalancingEnabled(boolean fairBalancingEnabled) {
+        this.fairBalancingEnabled = fairBalancingEnabled;
+    }
+
     public ApplicationUser getCreatedBy() {
         return createdBy;
     }
@@ -223,6 +234,7 @@ public class CleaningSchedule {
             + ", endDate=" + endDate
             + ", nextDueDate=" + nextDueDate
             + ", active=" + active
+            + ", fairBalancingEnabled=" + fairBalancingEnabled
             + ", createdByUserId=" + (createdBy == null ? null : createdBy.getId())
             + ", assignedToUserId=" + (assignedTo == null ? null : assignedTo.getId())
             + ", createdAt=" + createdAt

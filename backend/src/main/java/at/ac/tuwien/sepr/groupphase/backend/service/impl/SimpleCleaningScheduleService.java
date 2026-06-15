@@ -13,10 +13,12 @@ import at.ac.tuwien.sepr.groupphase.backend.entity.TaskStatus;
 import at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException;
+import at.ac.tuwien.sepr.groupphase.backend.exception.ValidationException;
 import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.CleaningScheduleService;
+import at.ac.tuwien.sepr.groupphase.backend.service.FairChoreBalancingService;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,17 +38,20 @@ public class SimpleCleaningScheduleService implements CleaningScheduleService {
     private final TaskRepository taskRepository;
     private final UserService userService;
     private final RoommateRepository roommateRepository;
+    private final FairChoreBalancingService fairChoreBalancingService;
 
     public SimpleCleaningScheduleService(
         CleaningScheduleRepository cleaningScheduleRepository,
         TaskRepository taskRepository,
         UserService userService,
-        RoommateRepository roommateRepository
+        RoommateRepository roommateRepository,
+        FairChoreBalancingService fairChoreBalancingService
     ) {
         this.cleaningScheduleRepository = cleaningScheduleRepository;
         this.taskRepository = taskRepository;
         this.userService = userService;
         this.roommateRepository = roommateRepository;
+        this.fairChoreBalancingService = fairChoreBalancingService;
     }
 
     @Override
@@ -109,6 +114,7 @@ public class SimpleCleaningScheduleService implements CleaningScheduleService {
         cleaningSchedule.setEndDate(cleaningScheduleCreateDto.endDate());
         cleaningSchedule.setNextDueDate(cleaningScheduleCreateDto.startDate());
         cleaningSchedule.setActive(true);
+        cleaningSchedule.setFairBalancingEnabled(Boolean.TRUE.equals(cleaningScheduleCreateDto.fairBalancingEnabled()));
         cleaningSchedule.setCreatedBy(currentUser);
         cleaningSchedule.setAssignedTo(assignee);
 
@@ -136,6 +142,7 @@ public class SimpleCleaningScheduleService implements CleaningScheduleService {
         cleaningSchedule.setStartDate(cleaningScheduleUpdateDto.startDate());
         cleaningSchedule.setEndDate(cleaningScheduleUpdateDto.endDate());
         cleaningSchedule.setAssignedTo(assignee);
+        cleaningSchedule.setFairBalancingEnabled(Boolean.TRUE.equals(cleaningScheduleUpdateDto.fairBalancingEnabled()));
         cleaningSchedule.setNextDueDate(
             normalizeNextDueDate(cleaningSchedule.getNextDueDate(), cleaningScheduleUpdateDto.startDate(), cleaningScheduleUpdateDto.endDate())
         );
@@ -179,7 +186,7 @@ public class SimpleCleaningScheduleService implements CleaningScheduleService {
         task.setDueDate(cleaningSchedule.getNextDueDate());
         task.setStatus(TaskStatus.OPEN);
         task.setCreatedBy(currentUser);
-        task.setAssignedTo(cleaningSchedule.getAssignedTo());
+        task.setAssignedTo(resolveGeneratedTaskAssignee(cleaningSchedule));
         task.setCleaningSchedule(cleaningSchedule);
 
         LocalDate nextDueDate = calculateNextDueDate(cleaningSchedule.getNextDueDate(), cleaningSchedule.getFrequency());
@@ -275,6 +282,48 @@ public class SimpleCleaningScheduleService implements CleaningScheduleService {
 
     private boolean isMainTenant(Roommate roommate) {
         return roommate.getRole() == HouseholdRole.MAIN_TENANT;
+    }
+
+    private ApplicationUser resolveGeneratedTaskAssignee(CleaningSchedule cleaningSchedule) {
+        if (!cleaningSchedule.isFairBalancingEnabled()) {
+            return cleaningSchedule.getAssignedTo();
+        }
+
+        ApplicationUser recommendedAssignee;
+        try {
+            recommendedAssignee = fairChoreBalancingService.findRecommendedAssigneeForSchedule(
+                cleaningSchedule.getHousehold(),
+                cleaningSchedule,
+                cleaningSchedule.getNextDueDate()
+            );
+        } catch (ConflictException | ForbiddenException | NotFoundException | ValidationException e) {
+            LOGGER.warn(
+                "Fair balancing failed for cleaning schedule {}. Falling back to configured assignee if available.",
+                cleaningSchedule.getId(),
+                e
+            );
+            recommendedAssignee = null;
+        }
+
+        if (recommendedAssignee != null) {
+            return recommendedAssignee;
+        }
+
+        ApplicationUser configuredAssignee = cleaningSchedule.getAssignedTo();
+        if (configuredAssignee != null) {
+            boolean configuredAssigneeIsValid = roommateRepository.existsByUserIdAndHouseholdIdAndActiveTrue(
+                configuredAssignee.getId(),
+                cleaningSchedule.getHousehold().getId()
+            );
+
+            if (configuredAssigneeIsValid) {
+                return configuredAssignee;
+            }
+
+            throw new ConflictException("Cleaning schedule fallback assignee is no longer an active member of this household.");
+        }
+
+        throw new ConflictException("Cleaning schedule has no assignee and fair balancing found no recommendation.");
     }
 
     private LocalDate normalizeNextDueDate(LocalDate currentNextDueDate, LocalDate startDate, LocalDate endDate) {
