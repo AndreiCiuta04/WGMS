@@ -3,6 +3,8 @@ import { forkJoin } from 'rxjs';
 import { ShoppingItemService } from '../../services/shopping-item.service';
 import { AggregatedShoppingItemDto, QUANTITY_UNIT_OPTIONS, QuantityUnit, ShoppingItemDto, ShoppingItemStatus, ShoppingItemSuggestionDto, ShoppingItemVisibility } from '../../dtos/shopping-item';
 import { ConfirmDialogService } from '../../services/confirm-dialog.service';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { ShoppingItemQrShareComponent } from '../shopping-item-qr-share/shopping-item-qr-share.component';
 
 @Component({
   selector: 'app-shopping-item-list',
@@ -42,8 +44,19 @@ export class ShoppingItemListComponent implements OnInit {
 
   constructor(
     private shoppingItemService: ShoppingItemService,
-    private confirmDialog: ConfirmDialogService
+    private confirmDialog: ConfirmDialogService,
+    private modalService: NgbModal
   ) { }
+
+  /** Opens the FR-18 share dialog showing a scannable QR code for the item. */
+  openQrShare(item: ShoppingItemDto): void {
+    const modalRef = this.modalService.open(ShoppingItemQrShareComponent, {
+      centered: true,
+      backdrop: true,
+      keyboard: true
+    });
+    (modalRef.componentInstance as ShoppingItemQrShareComponent).item = item;
+  }
 
   ngOnInit(): void {
     this.loadItems();

@@ -1,0 +1,169 @@
+.scan-page {
+  max-width: 560px;
+  margin: 0 auto;
+  padding-bottom: 32px;
+}
+
+.scan-header {
+  margin-bottom: 20px;
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: var(--wgms-forest-green, #346739);
+    text-decoration: none;
+  }
+
+  .back-link:hover {
+    text-decoration: underline;
+  }
+
+  h2 {
+    margin: 0;
+    color: var(--wgms-text-primary, #1F2A1F);
+  }
+
+  .subtitle {
+    display: block;
+    margin-top: 4px;
+    font-size: 15px;
+    color: var(--wgms-text-secondary, #5F6B5F);
+  }
+}
+
+.scanner-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.video-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-width: 420px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #11150F;
+  box-shadow: 0 12px 32px rgba(31, 42, 31, 0.18);
+}
+
+.scan-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Canvas is only used to grab frames for decoding; never shown. */
+.scan-canvas-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Framing reticle to help the user aim. */
+.scan-reticle {
+  position: absolute;
+  inset: 18%;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  border-radius: 16px;
+  box-shadow: 0 0 0 100vmax rgba(17, 21, 15, 0.35);
+  pointer-events: none;
+}
+
+.stage-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  text-align: center;
+  color: #FFFFFF;
+  background: rgba(17, 21, 15, 0.72);
+
+  p {
+    margin: 0;
+    font-size: 15px;
+  }
+}
+
+.scan-hint {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--wgms-text-secondary, #5F6B5F);
+  text-align: center;
+}
+
+.scan-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--wgms-forest-green, #346739);
+
+  p {
+    margin: 0;
+    font-size: 17px;
+    color: var(--wgms-text-primary, #1F2A1F);
+  }
+}
+
+.scan-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.manual-fallback {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 6px 4px;
+  font-size: 14px;
+  color: var(--wgms-forest-green, #346739);
+  cursor: pointer;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+}
+
+.manual-box {
+  margin-top: 12px;
+  padding: 16px;
+  text-align: left;
+  background: var(--wgms-eggwhite-bg, #FBFAF3);
+  border: 1px solid rgba(52, 103, 57, 0.16);
+  border-radius: 12px;
+}
+
+.manual-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--wgms-text-secondary, #5F6B5F);
+}
+
+.manual-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}

@@ -5,6 +5,7 @@ import {
   AggregatedShoppingItemDto,
   ShoppingItemCreateDto,
   ShoppingItemDto,
+  ShoppingItemScanDto,
   ShoppingItemStatusUpdateDto,
   ShoppingItemSuggestionCreateDto,
   ShoppingItemSuggestionDto,
@@ -24,6 +25,15 @@ export class ShoppingItemService {
 
   create(item: ShoppingItemCreateDto): Observable<ShoppingItemDto> {
     return this.http.post<ShoppingItemDto>(this.baseUri, item);
+  }
+
+  /**
+   * FR-18: creates a shopping item from a scanned QR payload. The raw decoded
+   * string is sent untouched; the backend is the sole validator (contract 9.5).
+   */
+  scan(payload: string): Observable<ShoppingItemDto> {
+    const body: ShoppingItemScanDto = { payload };
+    return this.http.post<ShoppingItemDto>(`${this.baseUri}/scan`, body);
   }
 
   findAll(): Observable<ShoppingItemDto[]> {

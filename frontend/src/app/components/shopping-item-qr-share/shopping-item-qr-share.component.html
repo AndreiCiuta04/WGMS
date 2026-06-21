@@ -1,0 +1,29 @@
+<div class="qr-share">
+  <div class="qr-share-header">
+    <h3 class="qr-title">Share via QR</h3>
+    <button type="button" class="close-button" aria-label="Close" (click)="activeModal.dismiss()" data-cy="qr-share-close">
+      <lucide-icon name="circle-x" [size]="20" [strokeWidth]="1.75"></lucide-icon>
+    </button>
+  </div>
+
+  @if (item) {
+    <p class="qr-item-name" data-cy="qr-share-name">
+      {{ item.name }}
+      @if (quantityLabel) { <span class="qr-item-qty">· {{ quantityLabel }}</span> }
+    </p>
+  }
+
+  <div class="qr-canvas-wrap">
+    @if (renderError) {
+      <div class="qr-error" data-cy="qr-share-error">Could not generate a QR code for this item.</div>
+    } @else if (qrDataUrl) {
+      <img [src]="qrDataUrl" alt="QR code for {{ item?.name }}" class="qr-image" data-cy="qr-share-image" />
+    } @else {
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Generating…</span>
+      </div>
+    }
+  </div>
+
+  <p class="qr-hint">Another roommate can open <strong>Shopping &rsaquo; Scan</strong> and point their camera here to add this item.</p>
+</div>

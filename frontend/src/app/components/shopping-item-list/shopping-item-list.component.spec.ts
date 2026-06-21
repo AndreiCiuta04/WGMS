@@ -7,7 +7,8 @@ import { ShoppingItemService } from '../../services/shopping-item.service';
 import { AggregatedShoppingItemDto, QuantityUnit, ShoppingItemDto, ShoppingItemStatus, ShoppingItemSuggestionDto, ShoppingItemVisibility } from '../../dtos/shopping-item';
 import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 import { ShoppingQuantityPipe } from '../../pipes/shopping-quantity.pipe';
-import { LucideAngularModule, ShoppingCart, CircleCheck, CircleX, Pencil, Trash2, RotateCcw } from 'lucide-angular';
+import { LucideAngularModule, ShoppingCart, CircleCheck, CircleX, Pencil, Trash2, RotateCcw, QrCode, ScanLine } from 'lucide-angular';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 
 describe('ShoppingItemListComponent', () => {
   let component: ShoppingItemListComponent;
@@ -156,11 +157,12 @@ describe('ShoppingItemListComponent', () => {
       imports: [
         HttpClientTestingModule,
         RouterModule.forRoot([]),
-        LucideAngularModule.pick({ShoppingCart, CircleCheck, CircleX, Pencil, Trash2, RotateCcw})
+        LucideAngularModule.pick({ShoppingCart, CircleCheck, CircleX, Pencil, Trash2, RotateCcw, QrCode, ScanLine})
       ],
       providers: [
         { provide: ShoppingItemService, useValue: serviceSpy },
-        { provide: ConfirmDialogService, useValue: confirmDialog }
+        { provide: ConfirmDialogService, useValue: confirmDialog },
+        { provide: NgbModal, useValue: jasmine.createSpyObj('NgbModal', ['open']) }
       ]
     }).compileComponents();
 

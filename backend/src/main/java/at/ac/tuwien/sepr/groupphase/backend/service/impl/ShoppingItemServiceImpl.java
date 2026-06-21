@@ -54,6 +54,7 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
     private final RoommateRepository roommateRepository;
     private final UserService userService;
     private final ShoppingItemMapper shoppingItemMapper;
+    private final ShoppingQrPayloadParser qrPayloadParser = new ShoppingQrPayloadParser();
 
     @Autowired
     public ShoppingItemServiceImpl(ShoppingItemRepository shoppingItemRepository,
@@ -90,6 +91,16 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         item.setTargetUser(target);
 
         return shoppingItemMapper.entityToDto(shoppingItemRepository.save(item));
+    }
+
+    @Override
+    @Transactional
+    public ShoppingItemDto createFromScan(String payload, ApplicationUser currentUser) {
+        LOGGER.debug("Create shopping item from scanned QR payload for user {}", currentUser.getEmail());
+        // Backend is the trust boundary: parse + validate the raw payload (contract 9.5),
+        // then reuse the normal create path so household scoping and mapping stay identical.
+        ShoppingItemCreateDto dto = qrPayloadParser.parse(payload);
+        return create(dto, currentUser);
     }
 
     @Override
