@@ -25,6 +25,10 @@ import {CleaningScheduleListComponent} from './components/cleaning-schedule-list
 import {CleaningScheduleCreateComponent} from './components/cleaning-schedule-create/cleaning-schedule-create.component';
 import {CleaningScheduleEditComponent} from './components/cleaning-schedule-edit/cleaning-schedule-edit.component';
 import {HistoryComponent} from './components/history/history.component';
+import {StatisticsComponent} from './components/statistics/statistics.component';
+import {StatisticsLineChartComponent} from './components/statistics/statistics-line-chart/statistics-line-chart.component';
+import {StatisticsDonutChartComponent} from './components/statistics/statistics-donut-chart/statistics-donut-chart.component';
+import {StatisticsBarListComponent} from './components/statistics/statistics-bar-list/statistics-bar-list.component';
 import {SidebarComponent} from './components/sidebar/sidebar.component';
 import {BottomTabBarComponent} from './components/bottom-tab-bar/bottom-tab-bar.component';
 import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
@@ -65,6 +69,10 @@ import {ShoppingQuantityPipe} from './pipes/shopping-quantity.pipe';
     CleaningScheduleCreateComponent,
     CleaningScheduleEditComponent,
     HistoryComponent,
+    StatisticsComponent,
+    StatisticsLineChartComponent,
+    StatisticsDonutChartComponent,
+    StatisticsBarListComponent,
     SidebarComponent,
     BottomTabBarComponent,
     PaymentStatusComponent,

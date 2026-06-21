@@ -1,0 +1,35 @@
+<div class="donut-card">
+  @if (title) {
+    <h4>{{ title }}</h4>
+  }
+
+  @if (!hasData) {
+    <div class="donut-empty-state">{{ emptyText }}</div>
+  } @else {
+    <div class="donut-layout">
+      <svg class="donut-chart" viewBox="0 0 120 120" role="img" [attr.aria-label]="title || 'Distribution chart'">
+        <circle class="donut-bg" cx="60" cy="60" [attr.r]="radius"></circle>
+        @for (slice of slices; track slice.label; let index = $index) {
+          <circle class="donut-slice" [class.donut-slice-secondary]="index % 3 === 1" [class.donut-slice-tertiary]="index % 3 === 2"
+                  cx="60" cy="60" [attr.r]="radius"
+                  [attr.stroke-dasharray]="slice.dashArray"
+                  [attr.stroke-dashoffset]="slice.dashOffset">
+            <title>{{ slice.label }} · {{ slice.value }} · {{ slice.percentage }}%</title>
+          </circle>
+        }
+        <text class="donut-total" x="60" y="56">{{ total }}</text>
+        <text class="donut-caption" x="60" y="72">total</text>
+      </svg>
+
+      <div class="donut-legend">
+        @for (slice of slices; track slice.label; let index = $index) {
+          <div class="donut-legend-row">
+            <span class="donut-dot" [class.donut-dot-secondary]="index % 3 === 1" [class.donut-dot-tertiary]="index % 3 === 2"></span>
+            <span class="donut-label">{{ slice.label }}</span>
+            <span class="donut-value">{{ slice.value }} · {{ slice.percentage }}%</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

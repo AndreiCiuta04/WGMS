@@ -1,0 +1,68 @@
+.bar-list-card {
+  background: #FFFFFF;
+  border: 1px solid rgba(52, 103, 57, 0.12);
+  border-radius: 14px;
+  padding: 16px;
+  min-height: 220px;
+}
+
+h4 {
+  color: #1F2A1F;
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 14px;
+}
+
+.bar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bar-row-labels {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.bar-label {
+  color: #1F2A1F;
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-value {
+  color: #5F6B5F;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.bar-track {
+  background: rgba(31, 42, 31, 0.07);
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  background: linear-gradient(90deg, #346739, #79AE6F);
+  border-radius: 999px;
+  display: block;
+  height: 100%;
+}
+
+.bar-empty-state {
+  align-items: center;
+  color: #5F6B5F;
+  display: flex;
+  font-size: 14px;
+  justify-content: center;
+  min-height: 150px;
+  text-align: center;
+}
