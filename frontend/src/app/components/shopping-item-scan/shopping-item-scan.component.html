@@ -1,0 +1,82 @@
+<div class="wgms-container scan-page">
+
+  <div class="scan-header">
+    <a routerLink="/shopping-items" class="back-link" data-cy="scan-back">&lsaquo; Shopping list</a>
+    <h2>Scan a shopping code</h2>
+    <span class="subtitle">Point your camera at a WGMS item QR code to add it in one tap.</span>
+  </div>
+
+  @if (errorMessage) {
+    <div class="alert alert-danger" role="alert" data-cy="scan-error">{{ errorMessage }}</div>
+  }
+
+  <!-- Camera viewport -->
+  @if (state !== 'success') {
+    <div class="scanner-stage">
+      <div class="video-frame">
+        <video #video class="scan-video" muted autoplay playsinline></video>
+        <canvas #canvas class="scan-canvas-hidden"></canvas>
+        <div class="scan-reticle" aria-hidden="true"></div>
+
+        @if (state === 'submitting') {
+          <div class="stage-overlay" data-cy="scan-submitting">
+            <div class="spinner-border text-light" role="status">
+              <span class="visually-hidden">Adding…</span>
+            </div>
+            <p>Adding item…</p>
+          </div>
+        } @else if (!cameraActive) {
+          <div class="stage-overlay">
+            <lucide-icon name="camera" [size]="32" [strokeWidth]="1.5"></lucide-icon>
+            <p>{{ cameraError || 'Starting camera…' }}</p>
+            @if (cameraError) {
+              <button class="btn btn-light btn-sm" (click)="startCamera()" data-cy="scan-retry-camera">
+                Try camera again
+              </button>
+            }
+          </div>
+        }
+      </div>
+      <p class="scan-hint">On a phone? Open this page on it and allow camera access for the best result.</p>
+    </div>
+  }
+
+  <!-- Success -->
+  @if (state === 'success') {
+    <div class="scan-success" data-cy="scan-success">
+      <lucide-icon name="circle-check" [size]="40" [strokeWidth]="1.75"></lucide-icon>
+      <p>Added <strong>{{ createdName }}</strong> to your list.</p>
+    </div>
+  }
+
+  <!-- Retry after a failed scan -->
+  @if (state === 'error') {
+    <div class="scan-actions">
+      <button class="btn btn-primary" (click)="rescan()" data-cy="scan-rescan">Scan again</button>
+    </div>
+  }
+
+  <!-- Manual fallback (risk R-13: always offer a non-camera path) -->
+  <div class="manual-fallback">
+    <button type="button" class="link-button" (click)="toggleManual()" data-cy="scan-toggle-manual">
+      <lucide-icon name="scan-line" [size]="16" [strokeWidth]="1.75"></lucide-icon>
+      {{ showManual ? 'Hide manual entry' : "Camera won't work? Enter a code or add manually" }}
+    </button>
+
+    @if (showManual) {
+      <div class="manual-box">
+        <label for="manualPayload" class="manual-label">Paste a WGMS shopping code</label>
+        <textarea #manualInput id="manualPayload" class="form-control" rows="3"
+                  data-cy="scan-manual-input"
+                  placeholder='{"type":"wgms.shopping-item","version":1,"name":"Milk","visibility":"SHARED"}'></textarea>
+        <div class="manual-actions">
+          <button class="btn btn-primary btn-sm" (click)="submitManual(manualInput.value)"
+                  data-cy="scan-manual-submit">Add from code</button>
+          <a routerLink="/shopping-items/create" class="btn btn-outline-secondary btn-sm" data-cy="scan-manual-create">
+            Add item manually instead
+          </a>
+        </div>
+      </div>
+    }
+  </div>
+</div>

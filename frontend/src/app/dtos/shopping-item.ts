@@ -169,3 +169,47 @@ export interface ShoppingItemSuggestionDto {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface ShoppingItemScanDto {
+  payload: string;
+}
+
+/** Type tag every WGMS shopping QR carries, so foreign codes are rejected. */
+export const WGMS_SHOPPING_QR_TYPE = 'wgms.shopping-item';
+/** Schema version of the QR payload the backend understands. */
+export const WGMS_SHOPPING_QR_VERSION = 1;
+
+/**
+ * Builds the canonical QR payload string for a shopping item (used by the
+ * "Share via QR" dialog). The shape mirrors exactly what the backend
+ * ShoppingQrPayloadParser validates. A TARGETED item is shared as SHARED, since
+ * a QR cannot carry a household-scoped target user.
+ */
+export function buildShoppingItemQrPayload(item: {
+  name: string;
+  quantityCount?: number | null;
+  quantityAmount?: number | null;
+  quantityUnit?: QuantityUnit | string | null;
+  notes?: string | null;
+  visibility?: ShoppingItemVisibility | string | null;
+}): string {
+  const payload: Record<string, unknown> = {
+    type: WGMS_SHOPPING_QR_TYPE,
+    version: WGMS_SHOPPING_QR_VERSION,
+    name: item.name
+  };
+  if (item.quantityCount != null) {
+    payload['quantityCount'] = item.quantityCount;
+  }
+  if (item.quantityAmount != null) {
+    payload['quantityAmount'] = item.quantityAmount;
+  }
+  if (item.quantityUnit) {
+    payload['quantityUnit'] = item.quantityUnit;
+  }
+  if (item.notes) {
+    payload['notes'] = item.notes;
+  }
+  payload['visibility'] = item.visibility === ShoppingItemVisibility.PERSONAL ? 'PERSONAL' : 'SHARED';
+  return JSON.stringify(payload);
+}

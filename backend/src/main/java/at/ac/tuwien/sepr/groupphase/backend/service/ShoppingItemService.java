@@ -34,6 +34,16 @@ public interface ShoppingItemService {
     ShoppingItemDto create(ShoppingItemCreateDto dto, ApplicationUser currentUser);
 
     /**
+     * Creates a shopping item from a raw scanned QR payload (FR-18, UC-04).
+     * The backend is the sole validator of the scanned payload (contract 9.5).
+     *
+     * @param payload     the raw decoded QR string
+     * @param currentUser the authenticated user
+     * @return the created shopping item
+     */
+    ShoppingItemDto createFromScan(String payload, ApplicationUser currentUser);
+
+    /**
      * Lists items visible to the current user within their household: items they
      * created, items targeted at them, and items marked {@code SHARED}.
      * Admins see every item in the system.

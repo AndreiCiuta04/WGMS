@@ -29,7 +29,9 @@ import {SidebarComponent} from './components/sidebar/sidebar.component';
 import {BottomTabBarComponent} from './components/bottom-tab-bar/bottom-tab-bar.component';
 import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
 import {httpInterceptorProviders} from './interceptors';
-import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw, ReceiptText, HandCoins, Scale, Search, SlidersHorizontal, ChevronDown, Ellipsis} from 'lucide-angular';
+import {ShoppingItemScanComponent} from './components/shopping-item-scan/shopping-item-scan.component';
+import {ShoppingItemQrShareComponent} from './components/shopping-item-qr-share/shopping-item-qr-share.component';
+import {LucideAngularModule, LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw, ReceiptText, HandCoins, Scale, Search, SlidersHorizontal, ChevronDown, Ellipsis, QrCode, ScanLine, Camera} from 'lucide-angular';
 import {PaymentStatusComponent} from './components/payment-status/payment-status.component';
 import {ProfileComponent} from './components/profile/profile.component';
 import {ProfileEditComponent} from './components/profile-edit/profile-edit.component';
@@ -61,6 +63,8 @@ import {ShoppingQuantityPipe} from './pipes/shopping-quantity.pipe';
     ShoppingItemListComponent,
     ShoppingItemCreateComponent,
     ShoppingItemEditComponent,
+    ShoppingItemScanComponent,
+    ShoppingItemQrShareComponent,
     CleaningScheduleListComponent,
     CleaningScheduleCreateComponent,
     CleaningScheduleEditComponent,
@@ -85,7 +89,7 @@ import {ShoppingQuantityPipe} from './pipes/shopping-quantity.pipe';
     ReactiveFormsModule,
     NgbModule,
     FormsModule,
-    LucideAngularModule.pick({LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw, ReceiptText, HandCoins, Scale, Search, SlidersHorizontal, ChevronDown, Ellipsis})],
+    LucideAngularModule.pick({LayoutDashboard, CheckSquare, CalendarCheck, Users, Mail, User, LogOut, Clock, ShoppingCart, ShoppingBag, Trash2, Pencil, CircleCheck, CircleX, RotateCcw, ReceiptText, HandCoins, Scale, Search, SlidersHorizontal, ChevronDown, Ellipsis, QrCode, ScanLine, Camera})],
   providers: [
     httpInterceptorProviders,
     provideHttpClient(withInterceptorsFromDi()),

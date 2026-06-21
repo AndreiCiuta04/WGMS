@@ -4,6 +4,7 @@ import {HomeComponent} from './components/home/home.component';
 import {LoginComponent} from './components/login/login.component';
 import {RegisterComponent} from './components/register/register.component';
 import {AuthGuard} from './guards/auth.guard';
+import {ShoppingItemScanComponent} from './components/shopping-item-scan/shopping-item-scan.component';
 import {MessageComponent} from './components/message/message.component';
 import {HouseholdCreateComponent} from './components/household-create/household-create.component';
 import {HouseholdMembersComponent} from './components/household-members/household-members.component';
@@ -29,7 +30,7 @@ import {LegalComponent} from './components/legal/legal.component';
 import {NotificationSettingsComponent} from './components/notification-settings/notification-settings.component';
 
 const routes: Routes = [
-  {path: '', pathMatch: 'full', component: HomeComponent},
+  {path: '', component: HomeComponent},
   {path: 'login', component: LoginComponent},
   {path: 'register', component: RegisterComponent},
   {path: 'privacy', component: PrivacyComponent},
@@ -50,6 +51,7 @@ const routes: Routes = [
   {path: 'history', component: HistoryComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'shopping-items', component: ShoppingItemListComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'shopping-items/create', component: ShoppingItemCreateComponent, canActivate: mapToCanActivate([AuthGuard])},
+  {path: 'shopping-items/scan', component: ShoppingItemScanComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'shopping-items/:id/edit', component: ShoppingItemEditComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'cleaning-schedules', component: CleaningScheduleListComponent, canActivate: mapToCanActivate([AuthGuard])},
   {path: 'cleaning-schedules/create', component: CleaningScheduleCreateComponent, canActivate: mapToCanActivate([AuthGuard])},

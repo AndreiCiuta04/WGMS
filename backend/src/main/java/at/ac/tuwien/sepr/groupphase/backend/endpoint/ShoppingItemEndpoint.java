@@ -1,6 +1,7 @@
 package at.ac.tuwien.sepr.groupphase.backend.endpoint;
 
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemCreateDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemScanDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemStatusUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemUpdateDto;
@@ -54,6 +55,16 @@ public class ShoppingItemEndpoint {
         LOGGER.info("POST /api/v1/shopping-items");
         ApplicationUser currentUser = userService.findApplicationUserByEmail(authentication.getName());
         return shoppingItemService.create(dto, currentUser);
+    }
+
+    @PostMapping("/scan")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('USER')")
+    public ShoppingItemDto scan(@Valid @RequestBody ShoppingItemScanDto dto,
+                                Authentication authentication) {
+        LOGGER.info("POST /api/v1/shopping-items/scan");
+        ApplicationUser currentUser = userService.findApplicationUserByEmail(authentication.getName());
+        return shoppingItemService.createFromScan(dto.payload(), currentUser);
     }
 
     @GetMapping

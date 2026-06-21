@@ -423,6 +423,9 @@
         @if (neededItems.length > 0) {
           <span class="section-count">{{ neededItems.length }}</span>
         }
+        <a routerLink="/shopping-items/scan" class="btn btn-outline-secondary btn-sm me-2" data-cy="shopping-scan-link">
+          <lucide-icon name="scan-line" [size]="15" [strokeWidth]="2"></lucide-icon> Scan
+        </a>
         <a routerLink="/shopping-items/create" class="btn btn-primary btn-sm">+ Add Item</a>
       </div>
     </div>
@@ -472,6 +475,9 @@
           </button>
           <button class="action-btn muted" (click)="cancelItem(item)" title="Cancel">
             <lucide-icon name="circle-x" [size]="15" [strokeWidth]="2"></lucide-icon>
+          </button>
+          <button class="action-btn" (click)="openQrShare(item)" title="Share via QR" data-cy="shopping-share-qr">
+            <lucide-icon name="qr-code" [size]="14" [strokeWidth]="2"></lucide-icon>
           </button>
           <a [routerLink]="['/shopping-items', item.id, 'edit']" class="action-btn" title="Edit">
             <lucide-icon name="pencil" [size]="14" [strokeWidth]="2"></lucide-icon>
