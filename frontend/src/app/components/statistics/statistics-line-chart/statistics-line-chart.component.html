@@ -1,0 +1,41 @@
+<div class="chart-card">
+  @if (title) {
+    <div class="chart-card-header">
+      <h4>{{ title }}</h4>
+    </div>
+  }
+
+  @if (!hasData) {
+    <div class="chart-empty-state">{{ emptyText }}</div>
+  } @else {
+    <svg class="line-chart" [attr.viewBox]="'0 0 ' + width + ' ' + height" role="img" [attr.aria-label]="title || 'Statistics line chart'">
+      @for (label of yAxisLabels; track label) {
+        <line class="grid-line" [attr.x1]="paddingLeft" [attr.x2]="width - paddingRight" [attr.y1]="yForValue(label)" [attr.y2]="yForValue(label)"></line>
+        <text class="axis-label" x="4" [attr.y]="yForValue(label) + 4">{{ label }}</text>
+      }
+
+      @for (item of renderedSeries; track item.key; let index = $index) {
+        <polyline class="series-line" [class.series-line-secondary]="index > 0" fill="none" [attr.points]="item.path"></polyline>
+        @for (point of item.points; track point.label + '-' + point.value + '-' + $index) {
+          <circle class="series-point" [class.series-point-secondary]="index > 0" [attr.cx]="point.x" [attr.cy]="point.y" r="3">
+            <title>{{ item.label }} · {{ point.label }} · {{ point.value }}</title>
+          </circle>
+        }
+      }
+
+      @if (series.length > 0) {
+        <text class="axis-label x-start" [attr.x]="paddingLeft" [attr.y]="height - 8">{{ xAxisLabel(series[0], 0) }}</text>
+        <text class="axis-label x-end" [attr.x]="width - paddingRight" [attr.y]="height - 8">{{ xAxisLabel(series[0], (series[0].points?.length ?? 1) - 1) }}</text>
+      }
+    </svg>
+
+    <div class="chart-legend">
+      @for (item of renderedSeries; track item.key; let index = $index) {
+        <span class="legend-item">
+          <span class="legend-dot" [class.legend-dot-secondary]="index > 0"></span>
+          {{ item.label }}
+        </span>
+      }
+    </div>
+  }
+</div>

@@ -1,0 +1,184 @@
+<div class="wgms-container history-page statistics-page">
+  <div class="history-header statistics-header">
+    <div>
+      <h2>Statistics</h2>
+      <span class="accent-text">Statistical household history across tasks, expenses, payments and shopping</span>
+    </div>
+  </div>
+
+  <section class="section statistics-filter-section">
+    <div class="section-header statistics-filter-header">
+      <div class="section-title-group">
+        <lucide-icon name="sliders-horizontal" [size]="18" [strokeWidth]="1.75"></lucide-icon>
+        <h3 class="section-title">Statistics controls</h3>
+      </div>
+      <span class="filter-summary">{{ statisticsFilter.from }} – {{ statisticsFilter.to }} · {{ groupingLabel(statisticsFilter.grouping) }}</span>
+    </div>
+
+    <div class="statistics-filter-grid">
+      <div class="filter-field">
+        <label for="statisticsPreset">Period</label>
+        <select id="statisticsPreset" class="form-select" [(ngModel)]="selectedPreset" (ngModelChange)="applyPreset($event)">
+          @for (preset of presetOptions; track preset.key) {
+            <option [ngValue]="preset.key">{{ preset.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label for="statisticsFrom">From</label>
+        <input id="statisticsFrom" class="form-control" type="date" [(ngModel)]="statisticsFilter.from" (ngModelChange)="selectedPreset = 'CUSTOM'">
+      </div>
+
+      <div class="filter-field">
+        <label for="statisticsTo">To</label>
+        <input id="statisticsTo" class="form-control" type="date" [(ngModel)]="statisticsFilter.to" (ngModelChange)="selectedPreset = 'CUSTOM'">
+      </div>
+
+      <div class="filter-field">
+        <label for="statisticsGrouping">Grouping</label>
+        <select id="statisticsGrouping" class="form-select" [(ngModel)]="statisticsFilter.grouping">
+          @for (grouping of groupingOptions; track grouping) {
+            <option [ngValue]="grouping">{{ groupingLabel(grouping) }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="module-filter-group" aria-label="Module filters">
+      @for (module of moduleOptions; track module.key) {
+        <label class="module-filter-chip" [class.selected]="moduleSelected(module.key)">
+          <input type="checkbox" [checked]="moduleSelected(module.key)" (change)="toggleModule(module.key, $any($event.target).checked)">
+          <span>{{ module.label }}</span>
+        </label>
+      }
+    </div>
+
+    <div class="statistics-filter-actions">
+      <button type="button" class="btn btn-primary" (click)="applyStatisticsFilters()">Apply filters</button>
+      <button type="button" class="btn btn-outline-secondary" (click)="resetStatisticsFilters()">Reset</button>
+    </div>
+  </section>
+
+  @if (errorMessage) {
+    <div class="alert alert-danger" role="alert">{{ errorMessage }}</div>
+  }
+
+  @if (loading) {
+    <div class="section text-center p-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading statistics...</span>
+      </div>
+    </div>
+  } @else {
+    @if (overview) {
+      <section class="statistics-kpi-grid" aria-label="Statistical overview">
+        <div class="stat-kpi-card">
+          <span class="stat-kpi-label">Completed tasks</span>
+          <strong>{{ formatNumber(overview.completedTaskCount) }}</strong>
+          <span class="stat-kpi-caption">{{ formatPercent(overview.taskCompletionRate) }} completion rate</span>
+        </div>
+        <div class="stat-kpi-card">
+          <span class="stat-kpi-label">Expenses</span>
+          <strong>{{ formatMoney(overview.totalExpenseAmount) }}</strong>
+          <span class="stat-kpi-caption">Recorded household spending</span>
+        </div>
+        <div class="stat-kpi-card">
+          <span class="stat-kpi-label">Payments</span>
+          <strong>{{ formatMoney(overview.recordedPaymentAmount) }}</strong>
+          <span class="stat-kpi-caption">Settlement activity</span>
+        </div>
+        <div class="stat-kpi-card">
+          <span class="stat-kpi-label">Shopping bought</span>
+          <strong>{{ formatNumber(overview.purchasedShoppingItemCount) }}</strong>
+          <span class="stat-kpi-caption">Purchased visible items</span>
+        </div>
+        <div class="stat-kpi-card">
+          <span class="stat-kpi-label">Active schedules</span>
+          <strong>{{ formatNumber(overview.activeCleaningScheduleCount) }}</strong>
+          <span class="stat-kpi-caption">Cleaning routines</span>
+        </div>
+        <div class="stat-kpi-card">
+          <span class="stat-kpi-label">Total activity</span>
+          <strong>{{ formatNumber(overview.totalActivityCount) }}</strong>
+          <span class="stat-kpi-caption">Filtered events</span>
+        </div>
+      </section>
+
+      <div class="statistics-section-tabs" role="tablist" aria-label="Statistics sections">
+        <button type="button" [class.active]="activeStatisticsSection === 'overview'" (click)="setStatisticsSection('overview')">Overview</button>
+        <button type="button" [class.active]="activeStatisticsSection === 'tasks'" (click)="setStatisticsSection('tasks')">Tasks & Cleaning</button>
+        <button type="button" [class.active]="activeStatisticsSection === 'expenses'" (click)="setStatisticsSection('expenses')">Expenses & Payments</button>
+        <button type="button" [class.active]="activeStatisticsSection === 'shopping'" (click)="setStatisticsSection('shopping')">Shopping</button>
+      </div>
+
+      @if (activeStatisticsSection === 'overview') {
+        <div class="statistics-chart-grid">
+          <app-statistics-line-chart title="Household activity trend" [series]="overview.activityTrend"></app-statistics-line-chart>
+          <app-statistics-donut-chart title="Activity by module" [items]="overview.activityByModule"></app-statistics-donut-chart>
+        </div>
+      }
+
+      @if (activeStatisticsSection === 'tasks' && taskStatistics) {
+        <section class="statistics-detail-section">
+          <div class="statistics-mini-grid">
+            <div class="mini-stat"><span>Total tasks</span><strong>{{ formatNumber(taskStatistics.totalTaskCount) }}</strong></div>
+            <div class="mini-stat"><span>Completed</span><strong>{{ formatNumber(taskStatistics.completedTaskCount) }}</strong></div>
+            <div class="mini-stat"><span>Cancelled</span><strong>{{ formatNumber(taskStatistics.cancelledTaskCount) }}</strong></div>
+            <div class="mini-stat"><span>Overdue</span><strong>{{ formatNumber(taskStatistics.overdueTaskCount) }}</strong></div>
+            <div class="mini-stat"><span>Schedules</span><strong>{{ formatNumber(taskStatistics.totalCleaningScheduleCount) }}</strong></div>
+            <div class="mini-stat"><span>Schedule task rate</span><strong>{{ formatPercent(taskStatistics.scheduleGeneratedTaskCompletionRate) }}</strong></div>
+          </div>
+          <div class="statistics-chart-grid">
+            <app-statistics-line-chart title="Task completion trend" [series]="taskStatistics.completionTrend"></app-statistics-line-chart>
+            <app-statistics-donut-chart title="Task status distribution" [items]="taskStatistics.taskStatusDistribution"></app-statistics-donut-chart>
+            <app-statistics-donut-chart title="Cleaning frequencies" [items]="taskStatistics.cleaningFrequencyDistribution"></app-statistics-donut-chart>
+            <app-statistics-bar-list title="Completed tasks by member" [items]="taskStatistics.completedTasksByMember"></app-statistics-bar-list>
+            <app-statistics-bar-list title="Completed tasks by weekday" [items]="taskStatistics.completedTasksByWeekday"></app-statistics-bar-list>
+          </div>
+        </section>
+      }
+
+      @if (activeStatisticsSection === 'expenses' && expenseStatistics) {
+        <section class="statistics-detail-section">
+          <div class="statistics-mini-grid">
+            <div class="mini-stat"><span>Expenses</span><strong>{{ formatNumber(expenseStatistics.expenseCount) }}</strong></div>
+            <div class="mini-stat"><span>Total spent</span><strong>{{ formatMoney(expenseStatistics.totalExpenseAmount) }}</strong></div>
+            <div class="mini-stat"><span>Average</span><strong>{{ formatMoney(expenseStatistics.averageExpenseAmount) }}</strong></div>
+            <div class="mini-stat"><span>Largest</span><strong>{{ formatMoney(expenseStatistics.largestExpenseAmount) }}</strong></div>
+            <div class="mini-stat"><span>Payments</span><strong>{{ formatNumber(expenseStatistics.paymentCount) }}</strong></div>
+            <div class="mini-stat"><span>Paid back</span><strong>{{ formatMoney(expenseStatistics.totalPaymentAmount) }}</strong></div>
+          </div>
+          <div class="statistics-chart-grid">
+            <app-statistics-line-chart title="Expense trend" [series]="expenseStatistics.expenseTrend"></app-statistics-line-chart>
+            <app-statistics-line-chart title="Payment trend" [series]="expenseStatistics.paymentTrend"></app-statistics-line-chart>
+            <app-statistics-bar-list title="Expenses paid by member" [items]="expenseStatistics.expensesPaidByMember"></app-statistics-bar-list>
+            <app-statistics-bar-list title="Payments sent" [items]="expenseStatistics.paymentsSentByMember"></app-statistics-bar-list>
+            <app-statistics-bar-list title="Payments received" [items]="expenseStatistics.paymentsReceivedByMember"></app-statistics-bar-list>
+          </div>
+        </section>
+      }
+
+      @if (activeStatisticsSection === 'shopping' && shoppingStatistics) {
+        <section class="statistics-detail-section">
+          <div class="statistics-mini-grid">
+            <div class="mini-stat"><span>Visible items</span><strong>{{ formatNumber(shoppingStatistics.addedItemCount) }}</strong></div>
+            <div class="mini-stat"><span>Bought items</span><strong>{{ formatNumber(shoppingStatistics.purchasedItemCount) }}</strong></div>
+            <div class="mini-stat"><span>Purchase rate</span><strong>{{ formatPercent(shoppingStatistics.purchaseCompletionRate) }}</strong></div>
+          </div>
+          <div class="statistics-chart-grid">
+            <app-statistics-line-chart title="Shopping activity trend" [series]="shoppingStatistics.itemActivityTrend"></app-statistics-line-chart>
+            <app-statistics-donut-chart title="Shopping status" [items]="shoppingStatistics.statusDistribution"></app-statistics-donut-chart>
+            <app-statistics-donut-chart title="Shopping visibility" [items]="shoppingStatistics.visibilityDistribution"></app-statistics-donut-chart>
+            <app-statistics-bar-list title="Frequently purchased products" [items]="shoppingStatistics.mostFrequentlyPurchasedItems"></app-statistics-bar-list>
+            <app-statistics-bar-list title="Items added by member" [items]="shoppingStatistics.itemsAddedByMember"></app-statistics-bar-list>
+          </div>
+        </section>
+      }
+    } @else {
+      <section class="section empty-state">
+        <p class="empty-text">Apply the statistics filters to load household analytics.</p>
+      </section>
+    }
+  }
+</div>
