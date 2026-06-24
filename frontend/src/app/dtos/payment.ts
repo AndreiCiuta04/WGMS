@@ -25,3 +25,22 @@ export interface PaymentOverviewDto {
   totalIOwe: number;
   totalOwedToMe: number;
 }
+
+export type SettlementDecisionStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface PendingSettlementDto {
+  id: string;
+  expenseDescription: string;
+  fromRoommateId: number;
+  fromRoommateName: string;
+  fromRoommateEmail: string;
+  toRoommateId: number;
+  toRoommateName: string;
+  toRoommateEmail: string;
+  amount: number;
+  status: SettlementDecisionStatus;
+  canDecide: boolean;
+  createdAt: string | null;
+  decidedAt: string | null;
+  decidedByName: string | null;
+}

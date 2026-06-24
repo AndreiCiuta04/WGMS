@@ -18,6 +18,39 @@ This QA form focuses on:
 
 This feature must not execute real money transfers.
 
+## Implementation Evidence — 2026-06-23
+
+- Backend exposes `GET /api/v1/payments/settlement-approvals`, `POST /api/v1/payments/settlement-approvals/{settlementId}/approve`, and `POST /api/v1/payments/settlement-approvals/{settlementId}/reject`.
+- Pending settlements are derived from the existing deterministic balance calculation; frontend-submitted amounts are not trusted.
+- Approving a settlement records a normal `Payment` and persists an `APPROVED` settlement decision.
+- Rejecting a settlement persists a `REJECTED` settlement decision without recording a payment.
+- Only the owing roommate may approve or reject a pending settlement.
+- The frontend payment status page includes settlement cards with swipe handling and approve/reject button fallback.
+- Demo data includes `debtor.fr17@example.com` with password `Password123!` in the datagen profile.
+- The FR-17 datagen seed resets deterministic demo financial data on every datagen backend start, so manual approval/rejection tests can be repeated after restarting the backend.
+- The FR-17 debtor demo account starts with three pending settlements: EUR 15.90, EUR 21.00, and EUR 32.00.
+- Added backend unit/integration tests, frontend service/component tests, and a Cypress spec for the FR-17 user flow.
+
+Verified commands:
+
+```bash
+cd backend
+mvn "-Dtest=PaymentServiceTest,PaymentEndpointTest" test
+```
+
+```bash
+cd frontend
+npx ng test --include src/app/services/payment.service.spec.ts --include src/app/components/payment-status/payment-status.component.spec.ts --watch=false --browsers=ChromeHeadless
+npx ng build
+```
+
+```bash
+cd e2e
+npx cypress run --headed --browser chrome --spec "cypress/e2e/fr17-swipe-settlement-approval.cy.js"
+```
+
+Result: 2 passing, 0 failing.
+
 ---
 
 # FR17-01 — Feature Scope and Existing Workflow Preservation
@@ -333,6 +366,24 @@ FR-17 should be demonstrable with a dedicated test account or deterministic demo
 - [ ] Reject one settlement.
 - [ ] Verify status/overview updates.
 - [ ] Verify settlement history remains understandable.
+
+Manual demo data:
+
+```text
+Backend command:
+mvn spring-boot:run -Dspring-boot.run.profiles=datagen
+
+Login:
+debtor.fr17@example.com / Password123!
+
+Expected pending settlements on fresh datagen start:
+- Swipe Debtor owes Utility Creditor: EUR 15.90
+- Swipe Debtor owes Grocery Creditor: EUR 21.00
+- Swipe Debtor owes Rent Creditor: EUR 32.00
+
+Reset behavior:
+Restarting the backend with the datagen profile recreates the FR-17 pending settlements after manual approve/reject testing.
+```
 
 ## Status
 

@@ -3,6 +3,7 @@ package at.ac.tuwien.sepr.groupphase.backend.unittests;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.PaymentCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.PaymentDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.PaymentOverviewDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.PendingSettlementDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Expense;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ExpenseSplit;
@@ -10,6 +11,8 @@ import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Payment;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
+import at.ac.tuwien.sepr.groupphase.backend.entity.SettlementDecision;
+import at.ac.tuwien.sepr.groupphase.backend.entity.SettlementDecisionStatus;
 import at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException;
@@ -17,6 +20,7 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.ExpenseSplitRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.SettlementDecisionRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.PaymentService;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
 import at.ac.tuwien.sepr.groupphase.backend.service.NotificationService;
@@ -55,6 +59,9 @@ public class PaymentServiceTest {
     private PaymentRepository paymentRepository;
 
     @Mock
+    private SettlementDecisionRepository settlementDecisionRepository;
+
+    @Mock
     private HouseholdRepository householdRepository;
 
     @Mock
@@ -82,6 +89,7 @@ public class PaymentServiceTest {
         paymentService = new PaymentServiceImpl(
             expenseSplitRepository,
             paymentRepository,
+            settlementDecisionRepository,
             householdRepository,
             roommateRepository,
             userService,
@@ -234,6 +242,120 @@ public class PaymentServiceTest {
     }
 
     @Test
+    public void givenOpenBalance_whenGetPendingSettlements_thenReturnsActionableSettlement() {
+        mockCurrentRoommate(ROOMMATE_EMAIL, roommateUser, roommate);
+        when(expenseSplitRepository.findAllByExpenseHouseholdId(household.getId()))
+            .thenReturn(List.of(createSplit(createExpense(mainTenant), roommate, "10.00")));
+        when(paymentRepository.findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(household.getId()))
+            .thenReturn(List.of());
+        when(settlementDecisionRepository.findTopByHouseholdIdAndFromRoommateIdAndToRoommateIdAndAmountOrderByDecidedAtDescIdDesc(
+            household.getId(), roommate.getId(), mainTenant.getId(), money("10.00")))
+            .thenReturn(Optional.empty());
+
+        List<PendingSettlementDto> result = paymentService.getPendingSettlements(ROOMMATE_EMAIL);
+
+        assertAll(
+            () -> assertEquals(1, result.size()),
+            () -> assertEquals(roommate.getId() + "-" + mainTenant.getId() + "-1000", result.get(0).id()),
+            () -> assertEquals("Shared expense", result.get(0).expenseDescription()),
+            () -> assertEquals(SettlementDecisionStatus.PENDING, result.get(0).status()),
+            () -> assertEquals(true, result.get(0).canDecide()),
+            () -> assertEquals(money("10.00"), result.get(0).amount())
+        );
+    }
+
+    @Test
+    public void givenOpenBalanceOwedToCurrentUser_whenGetPendingSettlements_thenReturnsNoApproval() {
+        mockCurrentRoommate(MAIN_EMAIL, mainUser, mainTenant);
+        when(expenseSplitRepository.findAllByExpenseHouseholdId(household.getId()))
+            .thenReturn(List.of(createSplit(createExpense(mainTenant), roommate, "10.00")));
+        when(paymentRepository.findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(household.getId()))
+            .thenReturn(List.of());
+
+        List<PendingSettlementDto> result = paymentService.getPendingSettlements(MAIN_EMAIL);
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    public void givenOpenSettlement_whenApproveSettlement_thenRecordsPaymentAndDecision() {
+        mockCurrentRoommate(ROOMMATE_EMAIL, roommateUser, roommate);
+        when(householdRepository.findByIdForUpdate(household.getId())).thenReturn(Optional.of(household));
+        when(roommateRepository.findByIdAndHouseholdIdAndActiveTrue(mainTenant.getId(), household.getId()))
+            .thenReturn(Optional.of(mainTenant));
+        when(expenseSplitRepository.findAllByExpenseHouseholdId(household.getId()))
+            .thenReturn(List.of(createSplit(createExpense(mainTenant), roommate, "10.00")));
+        when(paymentRepository.findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(household.getId()))
+            .thenReturn(List.of());
+        when(settlementDecisionRepository.findTopByHouseholdIdAndFromRoommateIdAndToRoommateIdAndAmountOrderByDecidedAtDescIdDesc(
+            household.getId(), roommate.getId(), mainTenant.getId(), money("10.00")))
+            .thenReturn(Optional.empty());
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> {
+            Payment payment = invocation.getArgument(0);
+            payment.setId(100L);
+            payment.setCreatedAt(LocalDateTime.of(2026, 5, 25, 12, 0));
+            return payment;
+        });
+        when(settlementDecisionRepository.save(any(SettlementDecision.class))).thenAnswer(invocation -> {
+            SettlementDecision decision = invocation.getArgument(0);
+            decision.setId(200L);
+            decision.setCreatedAt(LocalDateTime.of(2026, 5, 25, 12, 1));
+            return decision;
+        });
+
+        PendingSettlementDto result = paymentService.approveSettlement(roommate.getId() + "-" + mainTenant.getId() + "-1000", ROOMMATE_EMAIL);
+
+        assertAll(
+            () -> assertEquals(SettlementDecisionStatus.APPROVED, result.status()),
+            () -> assertEquals(money("10.00"), result.amount())
+        );
+        verify(paymentRepository).save(any(Payment.class));
+        verify(settlementDecisionRepository).save(any(SettlementDecision.class));
+    }
+
+    @Test
+    public void givenOpenSettlement_whenRejectSettlement_thenRecordsDecisionWithoutPayment() {
+        mockCurrentRoommate(ROOMMATE_EMAIL, roommateUser, roommate);
+        when(householdRepository.findByIdForUpdate(household.getId())).thenReturn(Optional.of(household));
+        when(roommateRepository.findByIdAndHouseholdIdAndActiveTrue(mainTenant.getId(), household.getId()))
+            .thenReturn(Optional.of(mainTenant));
+        when(expenseSplitRepository.findAllByExpenseHouseholdId(household.getId()))
+            .thenReturn(List.of(createSplit(createExpense(mainTenant), roommate, "10.00")));
+        when(paymentRepository.findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(household.getId()))
+            .thenReturn(List.of());
+        when(settlementDecisionRepository.findTopByHouseholdIdAndFromRoommateIdAndToRoommateIdAndAmountOrderByDecidedAtDescIdDesc(
+            household.getId(), roommate.getId(), mainTenant.getId(), money("10.00")))
+            .thenReturn(Optional.empty());
+        when(settlementDecisionRepository.save(any(SettlementDecision.class))).thenAnswer(invocation -> {
+            SettlementDecision decision = invocation.getArgument(0);
+            decision.setId(201L);
+            decision.setCreatedAt(LocalDateTime.of(2026, 5, 25, 12, 2));
+            return decision;
+        });
+
+        PendingSettlementDto result = paymentService.rejectSettlement(roommate.getId() + "-" + mainTenant.getId() + "-1000", ROOMMATE_EMAIL);
+
+        assertEquals(SettlementDecisionStatus.REJECTED, result.status());
+        verify(paymentRepository, never()).save(any(Payment.class));
+        verify(settlementDecisionRepository).save(any(SettlementDecision.class));
+    }
+
+    @Test
+    public void givenAlreadyDecidedSettlement_whenApproveSettlement_thenConflictAndNoPayment() {
+        mockCurrentRoommate(ROOMMATE_EMAIL, roommateUser, roommate);
+        when(householdRepository.findByIdForUpdate(household.getId())).thenReturn(Optional.of(household));
+        when(roommateRepository.findByIdAndHouseholdIdAndActiveTrue(mainTenant.getId(), household.getId()))
+            .thenReturn(Optional.of(mainTenant));
+        when(settlementDecisionRepository.findTopByHouseholdIdAndFromRoommateIdAndToRoommateIdAndAmountOrderByDecidedAtDescIdDesc(
+            household.getId(), roommate.getId(), mainTenant.getId(), money("10.00")))
+            .thenReturn(Optional.of(createDecision(roommate, mainTenant, "10.00", SettlementDecisionStatus.REJECTED)));
+
+        assertThrows(ConflictException.class, () ->
+            paymentService.approveSettlement(roommate.getId() + "-" + mainTenant.getId() + "-1000", ROOMMATE_EMAIL));
+        verify(paymentRepository, never()).save(any(Payment.class));
+    }
+
+    @Test
     public void givenUserWithoutActiveHousehold_whenGetOverview_thenForbidden() {
         when(userService.findApplicationUserByEmail(MAIN_EMAIL)).thenReturn(mainUser);
         when(roommateRepository.findByUserIdAndActiveTrue(mainUser.getId())).thenReturn(Optional.empty());
@@ -344,6 +466,25 @@ public class PaymentServiceTest {
         payment.setDate(LocalDate.of(2026, 5, 25));
         payment.setCreatedAt(LocalDateTime.of(2026, 5, 25, 12, 0));
         return payment;
+    }
+
+    private SettlementDecision createDecision(
+        Roommate fromRoommate,
+        Roommate toRoommate,
+        String amount,
+        SettlementDecisionStatus status
+    ) {
+        SettlementDecision decision = new SettlementDecision();
+        decision.setId(1L);
+        decision.setHousehold(fromRoommate.getHousehold());
+        decision.setFromRoommate(fromRoommate);
+        decision.setToRoommate(toRoommate);
+        decision.setAmount(money(amount));
+        decision.setStatus(status);
+        decision.setDecidedBy(fromRoommate);
+        decision.setDecidedAt(LocalDateTime.of(2026, 5, 25, 12, 0));
+        decision.setCreatedAt(LocalDateTime.of(2026, 5, 25, 12, 0));
+        return decision;
     }
 
     private BigDecimal money(String amount) {

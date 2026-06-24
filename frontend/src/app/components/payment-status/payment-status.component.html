@@ -26,6 +26,72 @@
     </div>
   </section>
 
+  @if (showSettlementOverlay()) {
+    <div class="settlement-overlay" data-cy="settlement-approval-overlay" role="dialog" aria-modal="true">
+      <div class="settlement-overlay-backdrop" (click)="closeSettlementOverlay()"></div>
+
+      <button
+        type="button"
+        class="settlement-close-fab"
+        (click)="closeSettlementOverlay()"
+        title="Close settlement approvals"
+        data-cy="close-settlement-overlay">
+        <lucide-icon name="circle-x" [size]="28" [strokeWidth]="2"></lucide-icon>
+      </button>
+
+      @if (currentSettlement(); as settlement) {
+        <div class="settlement-stage">
+          <div
+            class="settlement-swipe-shell"
+            [class.swipe-approve]="settlementSwipeDirection(settlement) === 'approve'"
+            [class.swipe-reject]="settlementSwipeDirection(settlement) === 'reject'"
+            [style.--swipe-progress]="settlementSwipeProgress(settlement)">
+            <div class="swipe-action swipe-action-approve">
+              <lucide-icon name="circle-check" [size]="20" [strokeWidth]="2"></lucide-icon>
+              <span>Approve</span>
+            </div>
+            <div class="swipe-action swipe-action-reject">
+              <span>Reject</span>
+              <lucide-icon name="circle-x" [size]="20" [strokeWidth]="2"></lucide-icon>
+            </div>
+
+            <div
+              class="settlement-card single-card"
+              [class.readonly]="!settlement.canDecide"
+              [class.dragging]="isSettlementSwiping(settlement)"
+              [class.settling]="isSettlementSettling(settlement)"
+              [style.transform]="settlementSwipeTransform(settlement)"
+              [attr.data-cy]="'settlement-card'"
+              (pointerdown)="startSettlementSwipe(settlement, $event)"
+              (pointermove)="moveSettlementSwipe(settlement, $event)"
+              (pointerup)="finishSettlementSwipe(settlement, $event)"
+              (pointercancel)="cancelSettlementSwipe(settlement)"
+              (lostpointercapture)="cancelSettlementSwipe(settlement)"
+              (mousedown)="startSettlementSwipe(settlement, $event)"
+              (mousemove)="moveSettlementSwipe(settlement, $event)"
+              (mouseup)="finishSettlementSwipe(settlement, $event)"
+              (mouseleave)="cancelSettlementSwipe(settlement)">
+              <span class="settlement-expense-label">{{ settlement.expenseDescription }}</span>
+              <div class="settlement-party">
+                <span class="settlement-title">{{ settlement.fromRoommateName }} owes {{ settlement.toRoommateName }}</span>
+                <span class="settlement-meta">{{ settlement.fromRoommateEmail }} &rarr; {{ settlement.toRoommateEmail }}</span>
+              </div>
+              <span class="settlement-amount-large">{{ settlement.amount | currency:'EUR':'symbol':'1.2-2' }}</span>
+            </div>
+          </div>
+        </div>
+
+        @if (settlements().length > 1) {
+          <div class="settlement-dots">
+            @for (s of settlements(); track s.id; let i = $index) {
+              <div class="dot" [class.active]="i === currentSettlementIndex" [class.done]="i < currentSettlementIndex"></div>
+            }
+          </div>
+        }
+      }
+    </div>
+  }
+
   @if (selectedBalance) {
     <section class="section payment-form-section">
       <div class="section-header">

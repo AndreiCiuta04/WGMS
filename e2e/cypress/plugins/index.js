@@ -17,6 +17,12 @@
  */
 // eslint-disable-next-line no-unused-vars
 module.exports = (on, config) => {
-  // `on` is used to hook into various events Cypress emits
-  // `config` is the resolved Cypress config
+  on('before:browser:launch', (browser, launchOptions) => {
+    if (browser.family === 'chromium' && browser.name !== 'electron' && Array.isArray(launchOptions.args)) {
+      launchOptions.args.push('--no-sandbox');
+      launchOptions.args.push('--disable-gpu');
+      launchOptions.args.push('--disable-dev-shm-usage');
+    }
+    return launchOptions;
+  });
 }

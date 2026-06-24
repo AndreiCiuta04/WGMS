@@ -17,6 +17,7 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.NotificationRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.NotificationSettingRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.SettlementDecisionRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ShoppingItemRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
@@ -55,6 +56,9 @@ public class NotificationEndpointTest implements TestData {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private SettlementDecisionRepository settlementDecisionRepository;
 
     @Autowired
     private PaymentRepository paymentRepository;
@@ -107,6 +111,7 @@ public class NotificationEndpointTest implements TestData {
     @BeforeEach
     public void beforeEach() {
         TestDbCleaner.clearAllApplicationData(
+            settlementDecisionRepository,
             paymentRepository,
             expenseSplitRepository,
             expenseRepository,
