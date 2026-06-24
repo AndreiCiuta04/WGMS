@@ -24,11 +24,20 @@ function registerUser(email, firstName, lastName) {
 }
 
 function login(email) {
-  cy.visit('/#/login');
+  cy.clearCookies();
+  cy.visit('/#/login', {
+    onBeforeLoad(win) {
+      win.localStorage.clear();
+      win.sessionStorage.clear();
+    },
+  });
   cy.get('input[name="email"]').clear().type(email);
   cy.get('input[name="password"]').clear().type(password);
+  cy.intercept('POST', '**/api/v1/authentication').as('loginRequest');
   cy.contains('button', 'Login').click();
-  cy.location('hash').should('eq', '#/');
+  cy.wait('@loginRequest').its('response.statusCode').should('eq', 200);
+  cy.window().its('localStorage.authToken').should('exist');
+  cy.location('hash', { timeout: 10000 }).should('eq', '#/');
 }
 
 function createHouseholdWithRoommate() {
@@ -114,15 +123,28 @@ function assertPaymentAmount(title, amount) {
     });
 }
 
+function visitPaymentStatusWithoutSettlementOverlay({ expectSettlementOverlay = false } = {}) {
+  cy.intercept('GET', '**/api/v1/payments/settlement-approvals').as('getSettlements');
+  cy.intercept('GET', '**/api/v1/payments/overview').as('getPaymentOverview');
+  cy.visit('/#/payment-status');
+  cy.contains('h2', 'Payment Status').should('be.visible');
+  cy.wait('@getSettlements').its('response.statusCode').should('eq', 200);
+  cy.wait('@getPaymentOverview').its('response.statusCode').should('eq', 200);
+
+  if (expectSettlementOverlay) {
+    cy.get('[data-cy="close-settlement-overlay"]', { timeout: 10000 })
+      .should('be.visible')
+      .click();
+  }
+  cy.get('[data-cy="settlement-approval-overlay"]').should('not.exist');
+}
+
 describe('FR-06 Payment Status E2E Workflow', () => {
   it('records a partial payment and keeps FR-05 balances in sync', () => {
     createHouseholdWithExpense().then(({ roomEmail }) => {
       login(roomEmail);
 
-      cy.intercept('GET', '**/api/v1/payments/overview').as('getPaymentOverview');
-      cy.visit('/#/payment-status');
-      cy.contains('h2', 'Payment Status').should('be.visible');
-      cy.wait('@getPaymentOverview').its('response.statusCode').should('eq', 200);
+      visitPaymentStatusWithoutSettlementOverlay({ expectSettlementOverlay: true });
 
       assertBalanceAmount('FR06 Room owes FR06 Main', '€10.00');
       cy.contains('.balance-row', 'FR06 Room owes FR06 Main')
@@ -149,10 +171,7 @@ describe('FR-06 Payment Status E2E Workflow', () => {
     createHouseholdWithRoommate().then(({ roomEmail }) => {
       login(roomEmail);
 
-      cy.intercept('GET', '**/api/v1/payments/overview').as('getPaymentOverview');
-      cy.visit('/#/payment-status');
-      cy.contains('h2', 'Payment Status').should('be.visible');
-      cy.wait('@getPaymentOverview').its('response.statusCode').should('eq', 200);
+      visitPaymentStatusWithoutSettlementOverlay();
 
       cy.contains('There are no open balances.').should('be.visible');
       cy.contains('No payments recorded yet.').should('be.visible');

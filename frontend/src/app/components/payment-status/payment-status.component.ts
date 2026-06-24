@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { BalanceDto } from '../../dtos/expense';
-import { PaymentDto, PaymentOverviewDto } from '../../dtos/payment';
+import { PaymentDto, PaymentOverviewDto, PendingSettlementDto } from '../../dtos/payment';
 import { AuthService } from '../../services/auth.service';
 import { PaymentService } from '../../services/payment.service';
 
@@ -15,13 +15,25 @@ export class PaymentStatusComponent implements OnInit {
 
   paymentForm: FormGroup;
   overview: PaymentOverviewDto = this.emptyOverview();
+  pendingSettlements: PendingSettlementDto[] = [];
   selectedBalance: BalanceDto | null = null;
   submitted = false;
   isLoading = false;
+  isLoadingSettlements = false;
   isSaving = false;
+  settlementActionId: string | null = null;
   overviewLoadFailed = false;
+  settlementLoadFailed = false;
+  settlementOverlayDismissed = false;
   errorMessage = '';
   successMessage = '';
+  readonly settlementSwipeThreshold = 90;
+  readonly settlementSwipeLimit = 150;
+  currentSettlementIndex = 0;
+  settlementSwipeOffsets: Record<string, number> = {};
+  private swipeStartX: number | null = null;
+  private swipedSettlementId: string | null = null;
+  private settlingSettlementId: string | null = null;
 
   constructor(
     private formBuilder: FormBuilder,
@@ -36,6 +48,7 @@ export class PaymentStatusComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadOverview();
+    this.loadPendingSettlements();
   }
 
   loadOverview(): void {
@@ -52,6 +65,31 @@ export class PaymentStatusComponent implements OnInit {
         this.overviewLoadFailed = true;
         this.errorMessage = this.extractErrorMessage(err, 'Could not load payment status.');
         this.isLoading = false;
+      }
+    });
+  }
+
+  currentSettlement(): PendingSettlementDto | null {
+    return this.pendingSettlements[this.currentSettlementIndex] ?? null;
+  }
+
+  loadPendingSettlements(): void {
+    this.isLoadingSettlements = true;
+    this.settlementLoadFailed = false;
+    this.paymentService.getPendingSettlements().subscribe({
+      next: settlements => {
+        this.pendingSettlements = settlements ?? [];
+        this.currentSettlementIndex = 0;
+        if (this.pendingSettlements.length === 0) {
+          this.settlementOverlayDismissed = false;
+        }
+        this.isLoadingSettlements = false;
+      },
+      error: err => {
+        this.pendingSettlements = [];
+        this.settlementLoadFailed = true;
+        this.errorMessage = this.extractErrorMessage(err, 'Could not load settlement approvals.');
+        this.isLoadingSettlements = false;
       }
     });
   }
@@ -109,6 +147,7 @@ export class PaymentStatusComponent implements OnInit {
         this.successMessage = 'Payment recorded.';
         this.cancelPayment();
         this.loadOverview();
+        this.loadPendingSettlements();
       },
       error: err => {
         this.errorMessage = this.extractErrorMessage(err, 'Could not record payment.');
@@ -133,9 +172,156 @@ export class PaymentStatusComponent implements OnInit {
     return this.overview.payments ?? [];
   }
 
+  settlements(): PendingSettlementDto[] {
+    return this.pendingSettlements ?? [];
+  }
+
+  showSettlementOverlay(): boolean {
+    return this.settlements().length > 0 && !this.settlementOverlayDismissed && !this.settlementLoadFailed;
+  }
+
+  closeSettlementOverlay(): void {
+    this.settlementOverlayDismissed = true;
+    this.swipeStartX = null;
+    this.swipedSettlementId = null;
+    this.settlingSettlementId = null;
+    this.settlementSwipeOffsets = {};
+  }
+
   canRecord(balance: BalanceDto): boolean {
     const currentUserEmail = this.authService.getUserEmail();
     return currentUserEmail !== null && currentUserEmail === balance.fromRoommateEmail;
+  }
+
+  decideSettlement(settlement: PendingSettlementDto, decision: 'APPROVE' | 'REJECT'): void {
+    if (this.settlementActionId || !settlement.canDecide) {
+      return;
+    }
+
+    this.clearMessages();
+    this.settlementActionId = settlement.id;
+    const request = decision === 'APPROVE'
+      ? this.paymentService.approveSettlement(settlement.id)
+      : this.paymentService.rejectSettlement(settlement.id);
+
+    request.subscribe({
+      next: () => {
+        this.successMessage = decision === 'APPROVE'
+          ? 'Settlement approved and payment recorded.'
+          : 'Settlement rejected.';
+        this.pendingSettlements = this.pendingSettlements.filter(s => s.id !== settlement.id);
+        if (this.currentSettlementIndex >= this.pendingSettlements.length) {
+          this.currentSettlementIndex = Math.max(0, this.pendingSettlements.length - 1);
+        }
+        if (this.pendingSettlements.length === 0) {
+          this.settlementOverlayDismissed = true;
+        }
+        this.loadOverview();
+      },
+      error: err => {
+        this.errorMessage = this.extractErrorMessage(err, 'Could not update settlement.');
+        this.settlementActionId = null;
+        this.resetSettlementSwipe(settlement.id);
+      },
+      complete: () => this.settlementActionId = null
+    });
+  }
+
+  startSettlementSwipe(settlement: PendingSettlementDto, event: PointerEvent | MouseEvent): void {
+    if (!settlement.canDecide || this.settlementActionId) {
+      return;
+    }
+    if (this.swipedSettlementId !== null && this.swipedSettlementId !== settlement.id) {
+      return;
+    }
+    this.swipeStartX = event.clientX;
+    this.swipedSettlementId = settlement.id;
+    this.settlingSettlementId = null;
+    this.settlementSwipeOffsets[settlement.id] = 0;
+    if ('pointerId' in event) {
+      (event.currentTarget as HTMLElement | null)?.setPointerCapture?.(event.pointerId);
+    }
+  }
+
+  moveSettlementSwipe(settlement: PendingSettlementDto, event: PointerEvent | MouseEvent): void {
+    if (this.swipedSettlementId !== settlement.id || this.swipeStartX === null) {
+      return;
+    }
+
+    const deltaX = event.clientX - this.swipeStartX;
+    const boundedDeltaX = Math.max(-this.settlementSwipeLimit, Math.min(this.settlementSwipeLimit, deltaX));
+    this.settlementSwipeOffsets = {
+      ...this.settlementSwipeOffsets,
+      [settlement.id]: boundedDeltaX
+    };
+
+    if (Math.abs(deltaX) > 8) {
+      event.preventDefault();
+    }
+  }
+
+  finishSettlementSwipe(settlement: PendingSettlementDto, event: PointerEvent | MouseEvent): void {
+    if (this.swipedSettlementId !== settlement.id || this.swipeStartX === null) {
+      return;
+    }
+
+    const deltaX = this.settlementSwipeOffsets[settlement.id] ?? event.clientX - this.swipeStartX;
+    this.swipeStartX = null;
+    this.swipedSettlementId = null;
+    if ('pointerId' in event) {
+      (event.currentTarget as HTMLElement | null)?.releasePointerCapture?.(event.pointerId);
+    }
+
+    if (Math.abs(deltaX) < this.settlementSwipeThreshold) {
+      this.resetSettlementSwipe(settlement.id);
+      return;
+    }
+
+    this.settlementSwipeOffsets = {
+      ...this.settlementSwipeOffsets,
+      [settlement.id]: deltaX > 0 ? this.settlementSwipeLimit : -this.settlementSwipeLimit
+    };
+    this.decideSettlement(settlement, deltaX > 0 ? 'APPROVE' : 'REJECT');
+  }
+
+  cancelSettlementSwipe(settlement: PendingSettlementDto): void {
+    if (this.swipedSettlementId !== settlement.id) {
+      return;
+    }
+
+    this.swipeStartX = null;
+    this.swipedSettlementId = null;
+    this.resetSettlementSwipe(settlement.id);
+  }
+
+  settlementSwipeTransform(settlement: PendingSettlementDto): string {
+    const offset = this.settlementSwipeOffsets[settlement.id] ?? 0;
+    const rotation = offset / 28;
+    return `translateX(${offset}px) rotate(${rotation}deg)`;
+  }
+
+  settlementSwipeProgress(settlement: PendingSettlementDto): number {
+    const offset = Math.abs(this.settlementSwipeOffsets[settlement.id] ?? 0);
+    return Math.min(1, offset / this.settlementSwipeThreshold);
+  }
+
+  settlementSwipeDirection(settlement: PendingSettlementDto): 'approve' | 'reject' | null {
+    const offset = this.settlementSwipeOffsets[settlement.id] ?? 0;
+    if (offset >= this.settlementSwipeThreshold) {
+      return 'approve';
+    }
+    if (offset <= -this.settlementSwipeThreshold) {
+      return 'reject';
+    }
+    return null;
+  }
+
+  isSettlementSwiping(settlement: PendingSettlementDto): boolean {
+    return this.swipedSettlementId === settlement.id;
+  }
+
+  isSettlementSettling(settlement: PendingSettlementDto): boolean {
+    return this.settlingSettlementId === settlement.id;
   }
 
   totalIOwe(): number {
@@ -158,6 +344,19 @@ export class PaymentStatusComponent implements OnInit {
   private clearMessages(): void {
     this.errorMessage = '';
     this.successMessage = '';
+  }
+
+  private resetSettlementSwipe(settlementId: string): void {
+    this.settlingSettlementId = settlementId;
+    this.settlementSwipeOffsets = {
+      ...this.settlementSwipeOffsets,
+      [settlementId]: 0
+    };
+    window.setTimeout(() => {
+      if (this.settlingSettlementId === settlementId) {
+        this.settlingSettlementId = null;
+      }
+    }, 180);
   }
 
   private extractErrorMessage(err: any, fallback: string): string {

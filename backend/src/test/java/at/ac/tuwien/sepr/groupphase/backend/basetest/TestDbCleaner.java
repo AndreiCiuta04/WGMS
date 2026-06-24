@@ -9,6 +9,7 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.NotificationRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.NotificationSettingRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.SettlementDecisionRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ShoppingItemRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
@@ -25,7 +26,8 @@ public final class TestDbCleaner {
         notificationSettingRepository.deleteAll();
     }
 
-    public static void clearAllApplicationData(PaymentRepository paymentRepository,
+    public static void clearAllApplicationData(SettlementDecisionRepository settlementDecisionRepository,
+                                               PaymentRepository paymentRepository,
                                                ExpenseSplitRepository expenseSplitRepository,
                                                ExpenseRepository expenseRepository,
                                                TaskRepository taskRepository,
@@ -38,6 +40,7 @@ public final class TestDbCleaner {
                                                NotificationSettingRepository notificationSettingRepository,
                                                VerificationCodeRepository verificationCodeRepository,
                                                UserRepository userRepository) {
+        settlementDecisionRepository.deleteAll();
         paymentRepository.deleteAll();
         expenseSplitRepository.deleteAll();
         expenseRepository.deleteAll();

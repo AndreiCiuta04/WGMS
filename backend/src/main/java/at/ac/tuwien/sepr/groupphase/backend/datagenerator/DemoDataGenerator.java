@@ -49,6 +49,10 @@ public class DemoDataGenerator implements ApplicationRunner {
     private static final String DEMO_PASSWORD = "Password123!";
     private static final String FR15_MAIN_TENANT_EMAIL = "maintenant.fr15@example.com";
     private static final String FR15_PASSWORD = "password";
+    private static final String FR17_DEBTOR_EMAIL = "debtor.fr17@example.com";
+    private static final String FR17_CREDITOR_EMAIL = "creditor.fr17@example.com";
+    private static final String FR17_GROCERIES_EMAIL = "groceries.fr17@example.com";
+    private static final String FR17_RENT_EMAIL = "rent.fr17@example.com";
 
     private final UserRepository userRepository;
     private final HouseholdRepository householdRepository;
@@ -96,6 +100,12 @@ public class DemoDataGenerator implements ApplicationRunner {
             generateFr15FairChoreDemoData();
         } else {
             resetFr15FairChoreDemoData();
+        }
+
+        if (userRepository.findUserByEmail(FR17_DEBTOR_EMAIL) == null) {
+            generateFr17SettlementApprovalDemoData();
+        } else {
+            resetFr17SettlementApprovalDemoData();
         }
     }
 
@@ -167,6 +177,118 @@ public class DemoDataGenerator implements ApplicationRunner {
 
         LOGGER.info("FR-15 fair chore demo data already exists. Reset deterministic task seed.");
         LOGGER.info("FR-15 expected recommendation in the task form: Light Worker");
+    }
+
+    private void generateFr17SettlementApprovalDemoData() {
+        LOGGER.info("Generating FR-17 swipe settlement approval demo data.");
+
+        Fr17Users users = createFr17Users();
+        Household household = createFr15Household("FR-17 Settlement Demo WG", "FR-17 Demo Street 17, 1040 Wien", users.creditor());
+        Fr17Roommates roommates = ensureFr17Roommates(household, users);
+        createFr17PendingSettlementExpenses(household, roommates);
+
+        logFr17DemoAccounts();
+    }
+
+    private void resetFr17SettlementApprovalDemoData() {
+        LOGGER.info("Resetting FR-17 swipe settlement approval demo data.");
+
+        Fr17Users users = createFr17Users();
+        Roommate debtorRoommate = roommateRepository.findByUserIdAndActiveTrue(users.debtor().getId()).orElse(null);
+        Household household = debtorRoommate == null
+            ? createFr15Household("FR-17 Settlement Demo WG", "FR-17 Demo Street 17, 1040 Wien", users.creditor())
+            : debtorRoommate.getHousehold();
+
+        household.setName("FR-17 Settlement Demo WG");
+        household.setAddress("FR-17 Demo Street 17, 1040 Wien");
+        household.setCreatedBy(users.creditor());
+        householdRepository.save(household);
+
+        Fr17Roommates roommates = ensureFr17Roommates(household, users);
+        entityManager.flush();
+        deleteFr17FinancialDemoData(household);
+        createFr17PendingSettlementExpenses(household, roommates);
+
+        LOGGER.info("FR-17 settlement approval demo data reset to pending settlements.");
+        logFr17DemoAccounts();
+    }
+
+    private Fr17Users createFr17Users() {
+        ApplicationUser debtor = createUser(FR17_DEBTOR_EMAIL, "Swipe", "Debtor", false, DEMO_PASSWORD);
+        ApplicationUser creditor = createUser(FR17_CREDITOR_EMAIL, "Utility", "Creditor", false, DEMO_PASSWORD);
+        ApplicationUser groceries = createUser(FR17_GROCERIES_EMAIL, "Grocery", "Creditor", false, DEMO_PASSWORD);
+        ApplicationUser rent = createUser(FR17_RENT_EMAIL, "Rent", "Creditor", false, DEMO_PASSWORD);
+        return new Fr17Users(debtor, creditor, groceries, rent);
+    }
+
+    private Fr17Roommates ensureFr17Roommates(Household household, Fr17Users users) {
+        Roommate creditor = ensureFr15Roommate(users.creditor(), household, HouseholdRole.MAIN_TENANT, LocalDate.now().minusMonths(4));
+        Roommate debtor = ensureFr15Roommate(users.debtor(), household, HouseholdRole.ROOMMATE, LocalDate.now().minusMonths(3));
+        Roommate groceries = ensureFr15Roommate(users.groceries(), household, HouseholdRole.ROOMMATE, LocalDate.now().minusMonths(2));
+        Roommate rent = ensureFr15Roommate(users.rent(), household, HouseholdRole.ROOMMATE, LocalDate.now().minusMonths(1));
+        return new Fr17Roommates(debtor, creditor, groceries, rent);
+    }
+
+    private void deleteFr17FinancialDemoData(Household household) {
+        Long householdId = household.getId();
+        entityManager.createQuery("delete from SettlementDecision decision where decision.household.id = :householdId")
+            .setParameter("householdId", householdId)
+            .executeUpdate();
+        entityManager.createQuery("delete from Payment payment where payment.household.id = :householdId")
+            .setParameter("householdId", householdId)
+            .executeUpdate();
+        entityManager.createQuery("delete from ExpenseSplit split where split.expense.household.id = :householdId")
+            .setParameter("householdId", householdId)
+            .executeUpdate();
+        entityManager.createQuery("delete from Expense expense where expense.household.id = :householdId")
+            .setParameter("householdId", householdId)
+            .executeUpdate();
+    }
+
+    private void createFr17PendingSettlementExpenses(Household household, Fr17Roommates roommates) {
+        LocalDate today = LocalDate.now();
+        createExpense(
+            household,
+            "FR17 utilities approval card",
+            "31.80",
+            today.minusDays(4),
+            roommates.creditor(),
+            roommates.creditor(),
+            List.of(
+                share(roommates.creditor(), "15.90"),
+                share(roommates.debtor(), "15.90")
+            )
+        );
+        createExpense(
+            household,
+            "FR17 groceries rejection card",
+            "42.00",
+            today.minusDays(2),
+            roommates.groceries(),
+            roommates.groceries(),
+            List.of(
+                share(roommates.groceries(), "21.00"),
+                share(roommates.debtor(), "21.00")
+            )
+        );
+        createExpense(
+            household,
+            "FR17 rent settlement card",
+            "64.00",
+            today.minusDays(1),
+            roommates.rent(),
+            roommates.rent(),
+            List.of(
+                share(roommates.rent(), "32.00"),
+                share(roommates.debtor(), "32.00")
+            )
+        );
+    }
+
+    private void logFr17DemoAccounts() {
+        LOGGER.info("FR-17 demo login account: debtor.fr17@example.com");
+        LOGGER.info("FR-17 demo password for all FR-17 accounts: Password123!");
+        LOGGER.info("FR-17 expected pending settlements for debtor: EUR 15.90, EUR 21.00, EUR 32.00");
     }
 
     // -------------------------------------------------------------------------
@@ -1030,6 +1152,20 @@ public class DemoDataGenerator implements ApplicationRunner {
         ApplicationUser heavyWorker,
         ApplicationUser mediumWorker,
         ApplicationUser lightWorker
+    ) {}
+
+    private record Fr17Users(
+        ApplicationUser debtor,
+        ApplicationUser creditor,
+        ApplicationUser groceries,
+        ApplicationUser rent
+    ) {}
+
+    private record Fr17Roommates(
+        Roommate debtor,
+        Roommate creditor,
+        Roommate groceries,
+        Roommate rent
     ) {}
 
     private record ExpenseShare(Roommate roommate, BigDecimal amountOwed) {}
