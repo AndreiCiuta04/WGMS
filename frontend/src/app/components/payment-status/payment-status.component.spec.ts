@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { of, Subject, throwError } from 'rxjs';
 import { LucideAngularModule, CircleCheck, CircleX, Clock, HandCoins, Scale } from 'lucide-angular';
@@ -285,6 +285,91 @@ describe('PaymentStatusComponent', () => {
     expect(component.settlementActionId).toBeNull();
   });
 
+  it('should show fallback settlement load error and hide overlay', () => {
+    paymentServiceSpy.getPendingSettlements.and.returnValue(throwError(() => ({
+      status: 0,
+      error: {}
+    })));
+
+    fixture.detectChanges();
+
+    expect(component.settlementLoadFailed).toBeTrue();
+    expect(component.errorMessage).toBe('Could not load settlement approvals.');
+    expect(component.showSettlementOverlay()).toBeFalse();
+  });
+
+  it('should ignore settlement decisions while busy or not allowed', () => {
+    component.settlementActionId = 'other';
+    component.decideSettlement(pendingSettlements[0], 'APPROVE');
+    expect(paymentServiceSpy.approveSettlement).not.toHaveBeenCalled();
+
+    component.settlementActionId = null;
+    component.decideSettlement({ ...pendingSettlements[0], canDecide: false }, 'APPROVE');
+    expect(paymentServiceSpy.approveSettlement).not.toHaveBeenCalled();
+  });
+
+  it('should track settlement swipe movement, progress, direction, cancel, and reset', fakeAsync(() => {
+    const settlement = pendingSettlements[0];
+    const event = {
+      clientX: 10,
+      preventDefault: jasmine.createSpy('preventDefault')
+    } as any as MouseEvent;
+
+    component.startSettlementSwipe(settlement, event);
+    expect(component.isSettlementSwiping(settlement)).toBeTrue();
+
+    component.moveSettlementSwipe(settlement, { ...event, clientX: 110 } as any as MouseEvent);
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(component.settlementSwipeTransform(settlement)).toContain('translateX(100px)');
+    expect(component.settlementSwipeProgress(settlement)).toBe(1);
+    expect(component.settlementSwipeDirection(settlement)).toBe('approve');
+
+    component.cancelSettlementSwipe(settlement);
+    expect(component.isSettlementSettling(settlement)).toBeTrue();
+    expect(component.settlementSwipeOffsets[settlement.id]).toBe(0);
+
+    tick(180);
+    expect(component.isSettlementSettling(settlement)).toBeFalse();
+  }));
+
+  it('should reject settlement by left swipe and release pointer capture', () => {
+    const settlement = pendingSettlements[0];
+    const target = {
+      setPointerCapture: jasmine.createSpy('setPointerCapture'),
+      releasePointerCapture: jasmine.createSpy('releasePointerCapture')
+    };
+    const startEvent = { clientX: 150, pointerId: 7, currentTarget: target } as any as PointerEvent;
+    const finishEvent = {
+      clientX: 10,
+      pointerId: 7,
+      currentTarget: target,
+      preventDefault: jasmine.createSpy('preventDefault')
+    } as any as PointerEvent;
+
+    component.startSettlementSwipe(settlement, startEvent);
+    component.moveSettlementSwipe(settlement, finishEvent);
+    component.finishSettlementSwipe(settlement, finishEvent);
+
+    expect(target.setPointerCapture).toHaveBeenCalledOnceWith(7);
+    expect(target.releasePointerCapture).toHaveBeenCalledOnceWith(7);
+    expect(paymentServiceSpy.rejectSettlement).toHaveBeenCalledOnceWith(settlement.id);
+  });
+
+  it('should reset short settlement swipe without deciding', fakeAsync(() => {
+    const settlement = pendingSettlements[0];
+
+    component.startSettlementSwipe(settlement, { clientX: 0 } as MouseEvent);
+    component.moveSettlementSwipe(settlement, { clientX: 20, preventDefault: jasmine.createSpy('preventDefault') } as any as MouseEvent);
+    component.finishSettlementSwipe(settlement, { clientX: 20 } as MouseEvent);
+
+    expect(paymentServiceSpy.approveSettlement).not.toHaveBeenCalled();
+    expect(paymentServiceSpy.rejectSettlement).not.toHaveBeenCalled();
+    expect(component.isSettlementSettling(settlement)).toBeTrue();
+
+    tick(180);
+    expect(component.isSettlementSettling(settlement)).toBeFalse();
+  }));
+
   it('should allow recording only balances from the current user email', () => {
     expect(component.canRecord(populatedOverview.openBalances[0])).toBeTrue();
     expect(component.canRecord(populatedOverview.openBalances[1])).toBeFalse();
@@ -327,5 +412,48 @@ describe('PaymentStatusComponent', () => {
 
     expect(component.errorMessage).toBe('Enter a positive amount with at most two decimal places.');
     expect(paymentServiceSpy.create).not.toHaveBeenCalled();
+  });
+
+  it('should reject missing and excessive payment form values before submit', () => {
+    paymentServiceSpy.getOverview.and.returnValue(of(populatedOverview));
+    fixture.detectChanges();
+
+    component.submit();
+    expect(paymentServiceSpy.create).not.toHaveBeenCalled();
+
+    component.selectBalance(populatedOverview.openBalances[0]);
+    component.paymentForm.patchValue({amount: '', date: ''});
+    component.submit();
+    expect(component.errorMessage).toBe('Please fill in all required fields.');
+
+    component.paymentForm.patchValue({amount: '13,00', date: '2026-05-31'});
+    component.submit();
+    expect(component.errorMessage).toBe('Payment cannot exceed the open balance.');
+    expect(paymentServiceSpy.create).not.toHaveBeenCalled();
+  });
+
+  it('should normalize valid payment amounts and keep invalid values unchanged', () => {
+    component.paymentForm.patchValue({amount: '6.5'});
+    component.normalizeAmount();
+    expect(component.paymentForm.get('amount')?.value).toBe('6,50');
+
+    component.paymentForm.patchValue({amount: 'abc'});
+    component.normalizeAmount();
+    expect(component.paymentForm.get('amount')?.value).toBe('abc');
+  });
+
+  it('should show backend string error when payment recording fails', () => {
+    paymentServiceSpy.create.and.returnValue(throwError(() => ({
+      error: 'Payment amount must not exceed the open balance.'
+    })));
+    paymentServiceSpy.getOverview.and.returnValue(of(populatedOverview));
+    fixture.detectChanges();
+
+    component.selectBalance(populatedOverview.openBalances[0]);
+    component.paymentForm.patchValue({amount: '6,50', date: '2026-05-31'});
+    component.submit();
+
+    expect(component.errorMessage).toBe('Payment amount must not exceed the open balance.');
+    expect(component.isSaving).toBeFalse();
   });
 });
