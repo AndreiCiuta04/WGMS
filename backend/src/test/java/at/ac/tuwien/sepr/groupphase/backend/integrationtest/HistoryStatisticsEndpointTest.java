@@ -33,6 +33,7 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.ShoppingItemRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.VerificationCodeRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.SettlementDecisionRepository;
 import at.ac.tuwien.sepr.groupphase.backend.security.JwtTokenizer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -105,6 +106,9 @@ public class HistoryStatisticsEndpointTest implements TestData {
 
     @Autowired
     private VerificationCodeRepository verificationCodeRepository;
+
+    @Autowired
+    private SettlementDecisionRepository settlementDecisionRepository;
 
     @Autowired
     private UserRepository userRepository;
@@ -348,6 +352,7 @@ public class HistoryStatisticsEndpointTest implements TestData {
 
     private void cleanDatabase() {
         TestDbCleaner.clearAllApplicationData(
+            settlementDecisionRepository,
             paymentRepository,
             expenseSplitRepository,
             expenseRepository,
