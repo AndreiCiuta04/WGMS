@@ -348,6 +348,52 @@ public class PaymentEndpointTest implements TestData {
     }
 
     @Test
+    public void bug42_givenDebtToAnonymizedFormerRoommate_whenApproveSettlement_thenPaymentIsRecordedToPrivacySafeCounterparty() throws Exception {
+        ApplicationUser deletedUser = saveUser("deleted.counterparty@test.com", "Former", "Member");
+        Roommate deletedRoommate = saveRoommate(deletedUser, household, HouseholdRole.ROOMMATE);
+        deletedUser.setEmail("anonymized-user-" + deletedUser.getId() + "@deleted.local");
+        deletedUser.setFirstName("Deleted");
+        deletedUser.setLastName("User");
+        deletedUser.setAnonymized(true);
+        userRepository.save(deletedUser);
+        deletedRoommate.setActive(false);
+        roommateRepository.save(deletedRoommate);
+
+        Expense expense = saveExpense(household, deletedRoommate, deletedRoommate, "Former member groceries", money("20.00"));
+        saveSplit(expense, deletedRoommate, money("10.00"));
+        saveSplit(expense, roommateRecord, money("10.00"));
+        String settlementId = roommateRecord.getId() + "-" + deletedRoommate.getId() + "-1000";
+
+        MvcResult pendingResult = this.mockMvc.perform(get(PAYMENT_BASE_URI + "/settlement-approvals")
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+        MvcResult approveResult = this.mockMvc.perform(post(PAYMENT_BASE_URI + "/settlement-approvals/" + settlementId + "/approve")
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+
+        List<PendingSettlementDto> pending = jsonMapper.readValue(
+            pendingResult.getResponse().getContentAsString(),
+            jsonMapper.getTypeFactory().constructCollectionType(List.class, PendingSettlementDto.class)
+        );
+        Payment savedPayment = paymentRepository.findAll().get(0);
+        String approveBody = approveResult.getResponse().getContentAsString();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), pendingResult.getResponse().getStatus()),
+            () -> assertEquals(1, pending.size()),
+            () -> assertEquals("Deleted User", pending.get(0).toRoommateName()),
+            () -> assertEquals(deletedRoommate.getId(), pending.get(0).toRoommateId()),
+            () -> assertEquals(HttpStatus.OK.value(), approveResult.getResponse().getStatus()),
+            () -> assertEquals(1, paymentRepository.findAll().size()),
+            () -> assertEquals(roommateRecord.getId(), savedPayment.getFromRoommate().getId()),
+            () -> assertEquals(deletedRoommate.getId(), savedPayment.getToRoommate().getId()),
+            () -> assertEquals(1, settlementDecisionRepository.findAll().size()),
+            () -> assertFalse(approveBody.contains("deleted.counterparty@test.com")),
+            () -> assertEquals(0, money("10.00").compareTo(savedPayment.getAmount()))
+        );
+    }
+
+    @Test
     public void givenPendingSettlement_whenReject_thenDecisionIsRecordedWithoutPaymentAndSettlementNoLongerPending() throws Exception {
         Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Internet bill", money("20.00"));
         saveSplit(expense, mainTenantRoommate, money("10.00"));

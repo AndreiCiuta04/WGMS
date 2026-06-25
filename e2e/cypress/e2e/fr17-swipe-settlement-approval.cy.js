@@ -201,6 +201,33 @@ describe('FR-17 Swipe Settlement Approval E2E', () => {
     });
   });
 
+  it('approves and rejects settlements via accessible button fallback', () => {
+    createFr17SettlementData().then(({ debtorEmail }) => {
+      login(debtorEmail);
+      visitPaymentStatus();
+
+      cy.get('[data-cy="settlement-approval-overlay"]').should('be.visible');
+      cy.get('[data-cy="approve-settlement"]')
+        .should('be.visible')
+        .and('have.attr', 'aria-label', 'Approve settlement');
+      cy.get('[data-cy="reject-settlement"]')
+        .should('be.visible')
+        .and('have.attr', 'aria-label', 'Reject settlement');
+
+      cy.intercept('POST', '**/api/v1/payments/settlement-approvals/*/approve').as('approveByButton');
+      cy.get('[data-cy="approve-settlement"]').click();
+      cy.wait('@approveByButton').its('response.statusCode').should('eq', 200);
+      cy.contains('Settlement approved and payment recorded.').should('be.visible');
+      cy.get('[data-cy="settlement-card"]').should('have.length', 1);
+
+      cy.intercept('POST', '**/api/v1/payments/settlement-approvals/*/reject').as('rejectByButton');
+      cy.get('[data-cy="reject-settlement"]').click();
+      cy.wait('@rejectByButton').its('response.statusCode').should('eq', 200);
+      cy.contains('Settlement rejected.').should('be.visible');
+      cy.get('[data-cy="settlement-approval-overlay"]').should('not.exist');
+    });
+  });
+
   it('rejects first settlement via left swipe, approves second via right swipe', () => {
     createFr17SettlementData().then(({ debtorEmail }) => {
       login(debtorEmail);

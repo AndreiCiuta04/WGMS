@@ -99,6 +99,30 @@ describe('ShoppingItemEditComponent', () => {
     expect(routerSpy.navigate).toHaveBeenCalledWith(['/shopping-items']);
   });
 
+  it('BUG #36 should reject quantity amount without a structured unit before update', () => {
+    fixture.detectChanges();
+    component.itemForm.patchValue({
+      name: 'Milk', quantityAmount: 2, quantityUnit: null
+    });
+
+    component.onSubmit();
+
+    expect(component.itemForm.errors?.['quantityMeasureIncomplete']).toBeTrue();
+    expect(shoppingSpy.update).not.toHaveBeenCalled();
+  });
+
+  it('BUG #36 should reject quantity unit without a structured amount before update', () => {
+    fixture.detectChanges();
+    component.itemForm.patchValue({
+      name: 'Milk', quantityAmount: null, quantityUnit: QuantityUnit.PACK
+    });
+
+    component.onSubmit();
+
+    expect(component.itemForm.errors?.['quantityMeasureIncomplete']).toBeTrue();
+    expect(shoppingSpy.update).not.toHaveBeenCalled();
+  });
+
   it('handles loading errors', () => {
     shoppingSpy.findOne.and.returnValue(throwError(() => ({ status: 404 })));
     fixture.detectChanges();

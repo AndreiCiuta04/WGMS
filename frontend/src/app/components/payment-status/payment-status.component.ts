@@ -128,7 +128,7 @@ export class PaymentStatusComponent implements OnInit {
 
     const amount = this.parseAmount(this.paymentForm.get('amount')?.value);
     if (amount === null || amount <= 0) {
-      this.errorMessage = 'Enter a positive amount.';
+      this.errorMessage = 'Enter a positive amount with at most two decimal places.';
       return;
     }
 
@@ -378,12 +378,16 @@ export class PaymentStatusComponent implements OnInit {
       return null;
     }
 
-    const normalized = String(value).replace(',', '.');
+    const normalized = String(value).trim().replace(',', '.');
+    if (!/^-?\d+(\.\d{1,2})?$/.test(normalized)) {
+      return null;
+    }
+
     const parsed = Number(normalized);
     if (!Number.isFinite(parsed)) {
       return null;
     }
-    return Math.round(parsed * 100) / 100;
+    return parsed;
   }
 
   private formatAmount(value: number): string {

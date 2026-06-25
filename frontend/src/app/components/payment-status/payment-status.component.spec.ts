@@ -209,9 +209,31 @@ describe('PaymentStatusComponent', () => {
 
     const text = fixture.nativeElement.textContent;
     expect(fixture.nativeElement.querySelector('[data-cy="settlement-approval-overlay"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-cy="approve-settlement"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-cy="reject-settlement"]')).not.toBeNull();
     expect(text).toContain('Groceries');
     expect(text).toContain('Max Mustermann owes Anna Musterfrau');
     expect(text).toContain('€12.50');
+  });
+
+  it('BUG #42 should render anonymized/former settlement counterpart safely and allow approval action', () => {
+    const formerSettlement: PendingSettlementDto = {
+      ...pendingSettlements[0],
+      id: '10-99-1250',
+      toRoommateId: 99,
+      toRoommateName: 'Deleted User',
+      toRoommateEmail: 'anonymized-user-99@deleted.local'
+    };
+    paymentServiceSpy.getPendingSettlements.and.returnValue(of([formerSettlement]));
+
+    fixture.detectChanges();
+    component.decideSettlement(formerSettlement, 'APPROVE');
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Deleted User');
+    expect(text).toContain('anonymized-user-99@deleted.local');
+    expect(text).not.toContain('undefined');
+    expect(paymentServiceSpy.approveSettlement).toHaveBeenCalledOnceWith('10-99-1250');
   });
 
   it('should close the settlement approval overlay with the close button', () => {
@@ -232,7 +254,8 @@ describe('PaymentStatusComponent', () => {
     paymentServiceSpy.getPendingSettlements.and.returnValue(of(pendingSettlements));
     fixture.detectChanges();
 
-    component.decideSettlement(pendingSettlements[0], 'APPROVE');
+    const approveButton = fixture.nativeElement.querySelector('[data-cy="approve-settlement"]') as HTMLButtonElement;
+    approveButton.click();
 
     expect(paymentServiceSpy.approveSettlement).toHaveBeenCalledOnceWith('10-11-1250');
     expect(component.successMessage).toBe('Settlement approved and payment recorded.');
@@ -244,7 +267,8 @@ describe('PaymentStatusComponent', () => {
     paymentServiceSpy.getPendingSettlements.and.returnValue(of(pendingSettlements));
     fixture.detectChanges();
 
-    component.decideSettlement(pendingSettlements[0], 'REJECT');
+    const rejectButton = fixture.nativeElement.querySelector('[data-cy="reject-settlement"]') as HTMLButtonElement;
+    rejectButton.click();
 
     expect(paymentServiceSpy.rejectSettlement).toHaveBeenCalledOnceWith('10-11-1250');
     expect(component.successMessage).toBe('Settlement rejected.');
@@ -291,5 +315,17 @@ describe('PaymentStatusComponent', () => {
       date: '2026-05-31'
     });
     expect((paymentServiceSpy.create.calls.mostRecent().args[0] as any).householdId).toBeUndefined();
+  });
+
+  it('should reject payment amounts with more than two decimal places without rounding', () => {
+    paymentServiceSpy.getOverview.and.returnValue(of(populatedOverview));
+    fixture.detectChanges();
+
+    component.selectBalance(populatedOverview.openBalances[0]);
+    component.paymentForm.patchValue({amount: '6,505', date: '2026-05-31'});
+    component.submit();
+
+    expect(component.errorMessage).toBe('Enter a positive amount with at most two decimal places.');
+    expect(paymentServiceSpy.create).not.toHaveBeenCalled();
   });
 });

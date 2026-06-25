@@ -26,6 +26,7 @@ describe('StatisticsComponent', () => {
     recordedPaymentAmount: 35,
     purchasedShoppingItemCount: 4,
     activeCleaningScheduleCount: 2,
+    totalActivityCount: 5,
     activityByModule: [
       { key: 'TASKS', label: 'Tasks', value: 3 },
       { key: 'EXPENSES', label: 'Expenses', value: 2 }
@@ -35,8 +36,8 @@ describe('StatisticsComponent', () => {
         key: 'ACTIVITY',
         label: 'Activity',
         points: [
-          { periodStart: '2026-06-01', periodEnd: '2026-06-01', label: 'Jun 1', value: 2 },
-          { periodStart: '2026-06-02', periodEnd: '2026-06-02', label: 'Jun 2', value: 1 }
+          { periodStart: '2026-06-01', value: 2 },
+          { periodStart: '2026-06-02', value: 1 }
         ]
       }
     ]
@@ -51,9 +52,11 @@ describe('StatisticsComponent', () => {
     cancelledTaskCount: 1,
     overdueTaskCount: 1,
     completionRate: 60,
+    totalCleaningScheduleCount: 2,
+    activeCleaningScheduleCount: 1,
     scheduleGeneratedTaskCount: 2,
-    scheduleGeneratedCompletionRate: 50,
-    statusDistribution: [
+    scheduleGeneratedTaskCompletionRate: 50,
+    taskStatusDistribution: [
       { key: 'DONE', label: 'Done', value: 3 }
     ],
     cleaningFrequencyDistribution: [
@@ -64,12 +67,12 @@ describe('StatisticsComponent', () => {
         key: 'COMPLETED',
         label: 'Completed tasks',
         points: [
-          { periodStart: '2026-06-01', periodEnd: '2026-06-01', label: 'Jun 1', value: 1 }
+          { periodStart: '2026-06-01', value: 1 }
         ]
       }
     ],
     completedTasksByMember: [
-      { key: '1', displayName: 'Main Tenant', value: 2 }
+      { roommateId: 1, displayName: 'Main Tenant', value: 2 }
     ],
     completedTasksByWeekday: [
       { key: 'MONDAY', label: 'Monday', value: 1 }
@@ -91,7 +94,7 @@ describe('StatisticsComponent', () => {
         key: 'EXPENSES',
         label: 'Expenses',
         points: [
-          { periodStart: '2026-06-01', periodEnd: '2026-06-01', label: 'Jun 1', value: 80 }
+          { periodStart: '2026-06-01', value: 80 }
         ]
       }
     ],
@@ -100,18 +103,18 @@ describe('StatisticsComponent', () => {
         key: 'PAYMENTS',
         label: 'Payments',
         points: [
-          { periodStart: '2026-06-02', periodEnd: '2026-06-02', label: 'Jun 2', value: 35 }
+          { periodStart: '2026-06-02', value: 35 }
         ]
       }
     ],
     expensesPaidByMember: [
-      { key: '1', displayName: 'Main Tenant', value: 120 }
+      { roommateId: 1, displayName: 'Main Tenant', value: 120 }
     ],
     paymentsSentByMember: [
-      { key: '2', displayName: 'Roommate', value: 35 }
+      { roommateId: 2, displayName: 'Roommate', value: 35 }
     ],
     paymentsReceivedByMember: [
-      { key: '1', displayName: 'Main Tenant', value: 35 }
+      { roommateId: 1, displayName: 'Main Tenant', value: 35 }
     ]
   };
 
@@ -133,7 +136,7 @@ describe('StatisticsComponent', () => {
         key: 'ADDED',
         label: 'Items added',
         points: [
-          { periodStart: '2026-06-01', periodEnd: '2026-06-01', label: 'Jun 1', value: 2 }
+          { periodStart: '2026-06-01', value: 2 }
         ]
       }
     ],
@@ -141,7 +144,7 @@ describe('StatisticsComponent', () => {
       { key: 'milk', label: 'Milk', value: 2 }
     ],
     itemsAddedByMember: [
-      { key: '1', displayName: 'Main Tenant', value: 2 }
+      { roommateId: 1, displayName: 'Main Tenant', value: 2 }
     ]
   };
 

@@ -25,7 +25,7 @@ describe('StatisticsLineChartComponent', () => {
         key: 'TASKS',
         label: 'Tasks',
         points: [
-          { periodStart: '2026-06-01', periodEnd: '2026-06-01', label: 'Jun 1', value: 0 }
+          { periodStart: '2026-06-01', value: 0 }
         ]
       }
     ];
@@ -40,8 +40,8 @@ describe('StatisticsLineChartComponent', () => {
         key: 'TASKS',
         label: 'Tasks',
         points: [
-          { periodStart: '2026-06-01', periodEnd: '2026-06-01', label: 'Jun 1', value: 2 },
-          { periodStart: '2026-06-02', periodEnd: '2026-06-02', label: 'Jun 2', value: 4 }
+          { periodStart: '2026-06-01', value: 2 },
+          { periodStart: '2026-06-02', value: 4 }
         ]
       }
     ];

@@ -368,9 +368,6 @@ export class ExpensesComponent implements OnInit, OnDestroy {
   }
 
   updateSplitSelection(row: SplitRow, selected: boolean): void {
-    if (this.editingExpense) {
-      return;
-    }
     row.selected = selected;
     if (!selected) {
       row.amountOwed = null;
@@ -401,7 +398,7 @@ export class ExpensesComponent implements OnInit, OnDestroy {
   private buildPayload(): ExpenseCreateDto | null {
     const totalAmount = this.parseAmount(this.expenseForm.get('totalAmount')?.value);
     if (totalAmount === null || totalAmount <= 0) {
-      this.errorMessage = 'Enter a positive total amount.';
+      this.errorMessage = 'Enter a positive total amount with at most two decimal places.';
       return null;
     }
 
@@ -411,7 +408,7 @@ export class ExpensesComponent implements OnInit, OnDestroy {
     }));
 
     if (splits.length === 0 || splits.some(split => split.amountOwed === null || split.amountOwed <= 0)) {
-      this.errorMessage = 'Select participants and enter a positive amount for every selected split.';
+      this.errorMessage = 'Select participants and enter a positive amount with at most two decimal places for every selected split.';
       return null;
     }
 
@@ -477,12 +474,16 @@ export class ExpensesComponent implements OnInit, OnDestroy {
       return null;
     }
 
-    const normalized = String(value).replace(',', '.');
+    const normalized = String(value).trim().replace(',', '.');
+    if (!/^-?\d+(\.\d{1,2})?$/.test(normalized)) {
+      return null;
+    }
+
     const parsed = Number(normalized);
     if (!Number.isFinite(parsed)) {
       return null;
     }
-    return Math.round(parsed * 100) / 100;
+    return parsed;
   }
 
   private formatAmount(value: number): string {

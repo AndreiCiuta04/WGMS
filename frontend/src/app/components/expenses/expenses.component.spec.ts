@@ -131,7 +131,18 @@ describe('ExpensesComponent', () => {
 
     component.submit();
 
-    expect(component.errorMessage).toBe('Enter a positive total amount.');
+    expect(component.errorMessage).toBe('Enter a positive total amount with at most two decimal places.');
+    expect(expenseService.create).not.toHaveBeenCalled();
+  });
+
+  it('should reject total amounts with more than two decimal places without rounding', () => {
+    fixture.detectChanges();
+    component.expenseForm.patchValue(validExpenseForm({ totalAmount: '10,005' }));
+    component.splitRows[0].amountOwed = '10,00';
+
+    component.submit();
+
+    expect(component.errorMessage).toBe('Enter a positive total amount with at most two decimal places.');
     expect(expenseService.create).not.toHaveBeenCalled();
   });
 
@@ -142,7 +153,18 @@ describe('ExpensesComponent', () => {
 
     component.submit();
 
-    expect(component.errorMessage).toBe('Select participants and enter a positive amount for every selected split.');
+    expect(component.errorMessage).toBe('Select participants and enter a positive amount with at most two decimal places for every selected split.');
+    expect(expenseService.create).not.toHaveBeenCalled();
+  });
+
+  it('should reject split amounts with more than two decimal places without rounding', () => {
+    fixture.detectChanges();
+    component.expenseForm.patchValue(validExpenseForm());
+    component.splitRows[0].amountOwed = '12,005';
+
+    component.submit();
+
+    expect(component.errorMessage).toBe('Select participants and enter a positive amount with at most two decimal places for every selected split.');
     expect(expenseService.create).not.toHaveBeenCalled();
   });
 
@@ -395,6 +417,64 @@ describe('ExpensesComponent', () => {
     expect(component.successMessage).toBe('Expense updated.');
     expect(expenseService.findAll).toHaveBeenCalledTimes(1);
     expect(expenseService.calculateBalances).toHaveBeenCalledTimes(1);
+  });
+
+  it('BUG #31 should allow editing an equal split by adding a participant and submitting recomputed splits', () => {
+    const threeRoommates = [
+      ...roommates(),
+      roommate({ id: 3, userId: 3, email: 'second@example.com', role: 'ROOMMATE', firstName: 'Second' })
+    ];
+    householdService.getMembers.and.returnValue(of(threeRoommates));
+    fixture.detectChanges();
+    component.editExpense(expense());
+
+    component.expenseForm.patchValue({ totalAmount: '10,00' });
+    component.updateSplitSelection(component.splitRows[2], true);
+    component.splitRows[0].amountOwed = '3,34';
+    component.splitRows[1].amountOwed = '3,33';
+    component.splitRows[2].amountOwed = '3,33';
+    component.submit();
+
+    expect(expenseService.update).toHaveBeenCalledOnceWith(1, {
+      description: 'Groceries',
+      totalAmount: 10,
+      date: '2026-06-05',
+      paidByRoommateId: 1,
+      splits: [
+        { roommateId: 1, amountOwed: 3.34 },
+        { roommateId: 2, amountOwed: 3.33 },
+        { roommateId: 3, amountOwed: 3.33 }
+      ]
+    });
+  });
+
+  it('BUG #31 should allow equal split recalculation while editing an expense', () => {
+    const threeRoommates = [
+      ...roommates(),
+      roommate({ id: 3, userId: 3, email: 'second@example.com', role: 'ROOMMATE', firstName: 'Second' })
+    ];
+    householdService.getMembers.and.returnValue(of(threeRoommates));
+    expenseService.calculateEqualSplits.and.returnValue(of([
+      { roommateId: 1, amountOwed: 3.34 },
+      { roommateId: 2, amountOwed: 3.33 },
+      { roommateId: 3, amountOwed: 3.33 }
+    ]));
+    fixture.detectChanges();
+    component.editExpense(expense());
+    component.expenseForm.patchValue({ totalAmount: '10,00' });
+    component.updateSplitSelection(component.splitRows[2], true);
+
+    component.calculateEqualSplit();
+
+    expect(expenseService.calculateEqualSplits).toHaveBeenCalledOnceWith({
+      totalAmount: 10,
+      participantRoommateIds: [1, 2, 3]
+    });
+    expect(component.splitRows.map(row => ({ id: row.roommate.id, selected: row.selected, amount: row.amountOwed }))).toEqual([
+      { id: 1, selected: true, amount: '3,34' },
+      { id: 2, selected: true, amount: '3,33' },
+      { id: 3, selected: true, amount: '3,33' }
+    ]);
   });
 
   it('should not delete when the confirmation dialog is cancelled', fakeAsync(() => {

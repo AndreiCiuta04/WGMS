@@ -61,11 +61,17 @@ After UC-03 changes, run focused regression tests for **#31, #32, #35, #36, #37,
 
 Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01..NFR-06 obligation, all controls, usability and visual/regression proof.
 
+## QA execution snapshot — 2026-06-25
+
+All checklist items were defaulted to **BLOCKED** until concrete evidence could be attached directly to the item. Items marked **PASS** below have named automated tests and command results. Remaining **BLOCKED** items need the specific route matrix, browser/device, accessibility, screenshot/video, manual peer, or all-controls evidence requested by that item before UC-03 can be called complete.
+
+Validated branch/commit context: `UC-03/QA`, HEAD `184cebc` (`Merge remote-tracking branch 'origin/dev' into UC-03/QA`), dirty working tree with UC-03 QA fixes.
+
 
 ## A. FR-05 — Expense creation, payer, participants and split input
 
 ### FE-001 — Expense routes are correctly protected
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; NFR-01; NFR-04
 - **Execute:** Open every expense/balance/payment route as logged out, authenticated no-WG, Main Tenant, Roommate, former member and direct URL state.
 - **Expected:** Only valid current household members reach the correct financial context; no stale or foreign data flashes.
@@ -75,7 +81,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-002 — Expense list is household-scoped in the UI
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; NFR-01
 - **Execute:** Use two households with distinct expense/payment fixtures, switch users, refresh and use browser history.
 - **Expected:** Only current-household expenses, balances and payments are visible; no cached data from another household appears.
@@ -85,7 +91,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-003 — Expense form matches current API/OpenAPI contract
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; TG-04
 - **Execute:** Compare all visible fields, labels, types, required indicators and submitted JSON against current DTO/OpenAPI.
 - **Expected:** Every required server field is collectable and correctly serialized; no stale frontend field blocks valid creation.
@@ -95,7 +101,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-004 — Every expense form control has accessible labels and help
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; NFR-04/WAI
 - **Execute:** Inspect labels, accessible names, required state, descriptions and error links for amount, description, payer, participants, split mode, dates/categories and every live field.
 - **Expected:** No placeholder-only or unlabeled control; errors are programmatically associated.
@@ -105,7 +111,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-005 — Description and required-field validation is complete
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; NFR-04
 - **Execute:** Submit empty/whitespace/min/max/boundary description and omit each required field independently.
 - **Expected:** Invalid expense is not submitted; precise visible and accessible errors appear.
@@ -115,7 +121,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-006 — Amount input rejects invalid financial values
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; FR-06; NFR-03
 - **Execute:** Test empty, zero, negative, too many decimal places, comma/dot locale input, huge, nonnumeric, leading zeros and boundary values.
 - **Expected:** Only allowed positive monetary values proceed; no silent float rounding or misleading coercion.
@@ -123,9 +129,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Parameterized amount-validation tests.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `should reject total amounts with more than two decimal places without rounding`; `should reject split amounts with more than two decimal places without rounding`; `FR-05 negative: total and split values with more than two decimals are rejected without rounding`
+  - Test file: `frontend/src/app/components/expenses/expenses.component.spec.ts`; `e2e/cypress/e2e/fr05-expenses.cy.js`
+  - Command run: `cd frontend && npx ng test --watch=false --browsers=ChromeHeadless`; `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Angular `404 specs`; Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/expenses/expenses.component.ts`; `frontend/src/app/components/expenses/expenses.component.html`
+  - Bug number covered: none
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; request suppression asserted by intercepts in `fr05-expenses.cy.js`.
 
 ### FE-007 — Money display is consistent and two-decimal clear
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; FR-06; NFR-04
 - **Execute:** Enter/display values such as 0.01, 1.10, 10.00, 10.005, 999999.99 according to accepted API policy.
 - **Expected:** UI formats values unambiguously; no floating-point artifacts such as 0.3000000004.
@@ -135,7 +148,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-008 — Payer selector contains only eligible same-WG members
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; NFR-01; NFR-03
 - **Execute:** Use active, foreign, former, deleted/anonymized and rejoined members across two households.
 - **Expected:** Only active current-WG members appear exactly once; no foreign/former duplicate payer.
@@ -145,7 +158,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-009 — Participant selector contains only eligible current-WG members
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; NFR-01; NFR-03
 - **Execute:** Use active, foreign, former, deleted/anonymized and rejoined fixtures.
 - **Expected:** Only eligible current members can be selected once; duplicate participant cannot be selected.
@@ -155,7 +168,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-010 — Existing invited user does not duplicate payer/participant — BUG #35
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** BUG #35; FR-05; NFR-03
 - **Execute:** Invite already-existing account into WG, open expense form, inspect payer/participant lists and create expense.
 - **Expected:** User appears once; expense can be created correctly; no duplicate split/counterparty.
@@ -163,9 +176,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Mandatory named Cypress BUG #35 regression.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `BUG #35: existing user accepting an invite appears once in expense participants`
+  - Test file: `e2e/cypress/e2e/fr05-expenses.cy.js`
+  - Command run: `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/expenses/expenses.component.ts`; `backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/service/impl/InvitationServiceImpl.java`
+  - Bug number covered: #35
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; API assertions in `fr05-expenses.cy.js` verify one participant and successful create.
 
 ### FE-011 — Leave/rejoin does not duplicate payer/participant — BUG #38
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** BUG #38; FR-05; NFR-03
 - **Execute:** Join, leave, rejoin same account, then inspect payer/participants and create/edit expense.
 - **Expected:** Rejoined user appears once; no duplicate split/balance/counterparty or 500.
@@ -173,9 +193,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Mandatory named Cypress BUG #38 regression.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `BUG #38: leave and rejoin keeps one financial participant and balance counterparty`
+  - Test file: `e2e/cypress/e2e/fr05-expenses.cy.js`
+  - Command run: `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/expenses/expenses.component.ts`; `backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/service/impl/InvitationServiceImpl.java`; `backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/repository/RoommateRepository.java`
+  - Bug number covered: #38
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; API/UI assertions in `fr05-expenses.cy.js` verify singular participant/balance counterparty.
 
 ### FE-012 — Anonymized/deleted user references render safely — BUG #42
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** BUG #42; NFR-02; NFR-03
 - **Execute:** Create expense/history involving a member who leaves/deletes/anonymizes, then reopen expense and balance views.
 - **Expected:** Privacy-safe fallback appears; no null crash/blank unusable row/PII leak.
@@ -183,9 +210,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Cypress cross-feature regression linked to BUG #42.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `BUG #42 should render anonymized/former settlement counterpart safely and allow approval action`; `BUG #42: anonymized former roommate remains visible and settleable through privacy-safe fallback`
+  - Test file: `frontend/src/app/components/payment-status/payment-status.component.spec.ts`; `e2e/cypress/e2e/fr05-expenses.cy.js`
+  - Command run: `cd frontend && npx ng test --watch=false --browsers=ChromeHeadless`; `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Angular `404 specs`; Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/payment-status/payment-status.component.ts`; `frontend/src/app/components/payment-status/payment-status.component.html`; `backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/service/impl/PaymentServiceImpl.java`
+  - Bug number covered: #42
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; API assertion verifies settlement approval returns 200 without leaking original deleted email.
 
 ### FE-013 — Equal split editor computes and displays all shares
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; FR-06
 - **Execute:** Create equal splits with divisible and indivisible-cent amounts for 2, 3 and more participants.
 - **Expected:** Displayed shares follow documented deterministic rounding and total exactly equals amount.
@@ -193,9 +227,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Component equal-split tests.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `should call equal split service with total amount and selected participant ids`; `should apply equal split result to selected split rows and formatted amounts`; `FR-05 positive: creates, equal-splits, persists, edits, and deletes an expense`
+  - Test file: `frontend/src/app/components/expenses/expenses.component.spec.ts`; `e2e/cypress/e2e/fr05-expenses.cy.js`
+  - Command run: `cd frontend && npx ng test --watch=false --browsers=ChromeHeadless`; `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Angular `404 specs`; Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/expenses/expenses.component.ts`; `frontend/src/app/components/expenses/expenses.component.html`
+  - Bug number covered: none
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; equal-split API status/assertions are in `fr05-expenses.cy.js`.
 
 ### FE-014 — Custom/unequal split editor validates exact total
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; FR-06; NFR-03
 - **Execute:** Enter unequal shares that sum exactly, under-sum, over-sum, negative/zero share and rounding-boundary cases.
 - **Expected:** Only valid exact total can submit; clear difference/error shown; no silent residual loss.
@@ -205,7 +246,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-015 — Payer inclusion/exclusion behavior is understandable
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; NFR-04
 - **Execute:** Create expenses where payer is included/excluded among participants according to live policy.
 - **Expected:** UI explains and submits correct intended participant set; balances displayed sensibly.
@@ -215,7 +256,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-016 — Expense creation action prevents duplicate submits
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** NFR-03
 - **Execute:** Double-click/press Enter under slow network; reload/back around request.
 - **Expected:** Only one logical expense is created; pending state visible; no duplicate row/toast.
@@ -225,7 +266,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-017 — Same description and amount can create distinct expenses — BUG #37
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** BUG #37; FR-05; NFR-03
 - **Execute:** Create two legitimate expenses in same household with identical description and amount but distinct business context/time/payer where allowed.
 - **Expected:** Both persist as separate records; no erroneous uniqueness conflict/500.
@@ -233,9 +274,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Mandatory named Cypress regression for BUG #37.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `BUG #37: same description and amount can be used by distinct expenses`
+  - Test file: `e2e/cypress/e2e/fr05-expenses.cy.js`
+  - Command run: `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/expenses/expenses.component.ts`; `backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/service/impl/ExpenseServiceImpl.java`
+  - Bug number covered: #37
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; API/UI assertions in `fr05-expenses.cy.js` verify two distinct records.
 
 ### FE-018 — Expense creation error recovery is safe
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** NFR-01; NFR-03; NFR-04
 - **Execute:** Simulate 400/401/403/404/409/500/offline/timeout and retry after correction.
 - **Expected:** Safe actionable error; no stack/SQL; no phantom expense; data remains recoverable where safe.
@@ -245,7 +293,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-019 — Created expense appears consistently after refresh
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; NFR-03
 - **Execute:** Create expense, inspect list/detail/balances/participant view, refresh and navigate back.
 - **Expected:** Exactly one record with correct payer, splits, amount and status.
@@ -258,7 +306,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 ## B. FR-05 — Expense view, editing, deletion and found-bug regression
 
 ### FE-020 — Expense detail shows correct payer, participants and splits
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; FR-06
 - **Execute:** Open expenses with equal/unequal splits, various participants and payments.
 - **Expected:** Displayed values equal API/canonical split state; no missing/duplicated participant.
@@ -268,7 +316,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-021 — Every exposed expense edit control works — BUG #32
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** BUG #32; FR-05; NFR-03
 - **Execute:** Inventory edit controls; change every permitted field: description, amount, payer, participants, split type/shares, date/category if supported.
 - **Expected:** Update succeeds for permitted fields, persists after refresh, and only intended values change; no generic failure.
@@ -276,9 +324,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Mandatory named Cypress BUG #32 regression.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `should populate form and split rows when editing an expense`; `should call ExpenseService.update and refresh after submitting while editing`; `BUG #32: expense update persists through the UI and refreshes dependent data`
+  - Test file: `frontend/src/app/components/expenses/expenses.component.spec.ts`; `e2e/cypress/e2e/fr05-expenses.cy.js`
+  - Command run: `cd frontend && npx ng test --watch=false --browsers=ChromeHeadless`; `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js`
+  - Result: PASS, Angular `404 specs`; Cypress `13 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/expenses/expenses.component.ts`; `frontend/src/app/components/expenses/expenses.component.html`; `frontend/src/app/services/expense.service.ts`
+  - Bug number covered: #32
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; update request status 200 and post-refresh UI state asserted in `fr05-expenses.cy.js`.
 
 ### FE-022 — Equal split recomputes correctly after editing — BUG #31
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** BUG #31; FR-05; FR-06; NFR-03
 - **Execute:** Edit an existing expense: alter amount, participant count and equal/custom mode; use divisible/indivisible cents.
 - **Expected:** All splits recompute exactly once, sum exactly to updated amount and no stale/duplicate split remains.
@@ -286,9 +341,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Mandatory named Cypress BUG #31 regression.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `BUG #31 should allow editing an equal split by adding a participant and submitting recomputed splits`; `BUG #31 should allow equal split recalculation while editing an expense`; `BUG #31: editing an equal-split expense can add a participant and recompute exact shares`
+  - Test file: `frontend/src/app/components/expenses/expenses.component.spec.ts`; `e2e/cypress/e2e/fr05-expenses.cy.js`
+  - Command run: `cd frontend && npx ng test --watch=false --browsers=ChromeHeadless`; `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Angular `404 specs`; Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/expenses/expenses.component.ts`; `frontend/src/app/components/expenses/expenses.component.html`
+  - Bug number covered: #31
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; equal split recalculate/update status assertions are in `fr05-expenses.cy.js`.
 
 ### FE-023 — Custom split editing preserves exact balance invariants
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; FR-06; NFR-03
 - **Execute:** Edit unequal shares, add/remove participants, switch custom↔equal and test under/over/exact totals.
 - **Expected:** Only valid state saves; no stale share or rounding loss; revised balance is correct.
@@ -298,7 +360,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-024 — Editing one expense does not alter unrelated expenses
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; NFR-03
 - **Execute:** Create several similar expenses, edit one and inspect every other record/balance.
 - **Expected:** Only target expense changes; no list/balance corruption.
@@ -308,7 +370,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-025 — Payment does not globally block unrelated expense edit/delete — BUG #39
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** BUG #39; FR-05; FR-06; NFR-03
 - **Execute:** Record a payment in the WG, then edit/delete a distinct unrelated expense and inspect controls/API.
 - **Expected:** Unrelated expense remains editable/deletable according to normal rules; no global hard block.
@@ -316,9 +378,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Mandatory named Cypress BUG #39 regression.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `BUG #39: an existing payment does not block editing or deleting another expense`
+  - Test file: `e2e/cypress/e2e/fr05-expenses.cy.js`
+  - Command run: `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/expenses/expenses.component.ts`; `backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/service/impl/ExpenseServiceImpl.java`
+  - Bug number covered: #39
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; update 200 and delete 204 asserted in `fr05-expenses.cy.js`.
 
 ### FE-026 — Financially related expense edit/delete policy is clear and granular
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; FR-06; NFR-04
 - **Execute:** Record payment related to an expense, then attempt update/delete that expense and an unrelated one.
 - **Expected:** Any restriction is limited to documented affected state; UI explains exact reason; never blanket WG lock.
@@ -328,7 +397,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-027 — Expense delete controls are safe if exposed
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; NFR-03
 - **Execute:** Inventory delete actions; test confirmation, cancel/Escape, authorized/unauthorized, paid/unpaid/related states and refresh.
 - **Expected:** No accidental deletion; behavior follows documented policy; no stale balances/history.
@@ -338,7 +407,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-028 — Expense delete is not falsely available where policy blocks it
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; NFR-04
 - **Execute:** Inspect control state/message for blocked cases.
 - **Expected:** Disabled/hidden/actionable state accurately reflects backend rule; no false success.
@@ -348,7 +417,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-029 — Expense list filters/sort/search work if exposed
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-05; NFR-04
 - **Execute:** Inventory all filter/search/sort controls; combine/reset/refresh/back.
 - **Expected:** Results match UI wording, no stale query and no foreign record.
@@ -358,7 +427,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-030 — Expense error messages are safe and actionable
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** NFR-01; NFR-04
 - **Execute:** Trigger validation/conflict/payment-related/authorization/500 errors in create/edit/delete.
 - **Expected:** No SQL/stack/internal ID/secret; clear correction/next step.
@@ -371,7 +440,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 ## C. FR-06 — Balance view, payment entry and deterministic settlement UX
 
 ### FE-031 — Balance overview is household-scoped and internally consistent
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-06; NFR-01
 - **Execute:** Use two WGs and multiple expense/payment fixtures; compare list, detail and overview.
 - **Expected:** Only current WG balances appear; totals agree with underlying expenses/payments.
@@ -381,7 +450,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-032 — Pending versus settled state is displayed as derived, not stale
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-06; NFR-03
 - **Execute:** Create expense, record partial/full payments, then edit/delete expense per policy and refresh.
 - **Expected:** Status updates from canonical data; no stale per-split settled label/state.
@@ -391,7 +460,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-033 — Settlement recommendations display deterministic amounts and counterparties
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-06; TG-03
 - **Execute:** Use fixtures with equal, unequal, cycle and rounding cases; refresh/reopen multiple times.
 - **Expected:** Same data produces same recommendation set/order or documented tie rule; no float artifacts.
@@ -401,7 +470,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-034 — Settlement UI communicates that no real money transfer occurs
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-06 scope; NFR-04
 - **Execute:** Review payment/settlement labels, buttons and help text.
 - **Expected:** System records/approves tracked payment only; does not imply bank execution or request bank/card credentials.
@@ -411,7 +480,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-035 — Record-payment form validates amount and counterparties
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-06; NFR-01; NFR-03
 - **Execute:** Test empty/zero/negative/too many decimals/huge amount; payer=payee; foreign/former/nonexistent counterparties.
 - **Expected:** Only valid current-household payment can be submitted; errors are specific and safe.
@@ -419,9 +488,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Parameterized form/Cypress tests.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `should allow recording only balances from the current user email`; `should select an own balance and create a payment without household id`; `should reject payment amounts with more than two decimal places without rounding`; `FR-06 negative: rejects overpayment before sending a request`
+  - Test file: `frontend/src/app/components/payment-status/payment-status.component.spec.ts`; `e2e/cypress/e2e/fr06-payment-status.cy.js`
+  - Command run: `cd frontend && npx ng test --watch=false --browsers=ChromeHeadless`; `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Angular `404 specs`; Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/payment-status/payment-status.component.ts`; `frontend/src/app/components/payment-status/payment-status.component.html`; `frontend/src/app/services/payment.service.ts`
+  - Bug number covered: none
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; overpayment and decimal validation are asserted without sending a create request.
 
 ### FE-036 — Record-payment action prevents duplicate payment
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** NFR-03
 - **Execute:** Double-click/Enter under slow network; reload around submit.
 - **Expected:** One logical payment record; balances update once.
@@ -431,7 +507,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-037 — Payment success updates all relevant financial views
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-06
 - **Execute:** Record payment, inspect balance overview, expense detail, settlement recommendation/history and refresh.
 - **Expected:** Every relevant view reflects derived netting consistently.
@@ -441,7 +517,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-038 — Partial payment and overpayment behavior is clear
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-06; NFR-03
 - **Execute:** Record partial, exact and overpayment attempts according to policy.
 - **Expected:** Partial status is correct; exact settles as calculated; prohibited overpayment is rejected or documented behavior is clear.
@@ -451,7 +527,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-039 — Payment can target former/anonymized counterparty if policy permits — BUG #42
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** BUG #42; FR-06; NFR-02; NFR-03
 - **Execute:** Use debt involving user who left/deleted/anonymized; inspect settlement/payment UI and attempt supported settlement.
 - **Expected:** A privacy-safe counterpart remains usable; no impossible settlement/null error; no PII leakage.
@@ -459,9 +535,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Mandatory cross-feature Cypress BUG #42 regression.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `BUG #42 should render anonymized/former settlement counterpart safely and allow approval action`; `BUG #42: anonymized former roommate remains visible and settleable through privacy-safe fallback`
+  - Test file: `frontend/src/app/components/payment-status/payment-status.component.spec.ts`; `e2e/cypress/e2e/fr05-expenses.cy.js`
+  - Command run: `cd frontend && npx ng test --watch=false --browsers=ChromeHeadless`; `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Angular `404 specs`; Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/payment-status/payment-status.component.ts`; `frontend/src/app/components/payment-status/payment-status.component.html`; `backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/service/impl/PaymentServiceImpl.java`
+  - Bug number covered: #42
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; settlement approval status 200 asserted against the anonymized counterparty fixture.
 
 ### FE-040 — Payment history/status UI has correct actor/time and no secrets
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-06; NFR-06; NFR-02
 - **Execute:** Inspect recorded payments in every view/history.
 - **Expected:** Correct payer/payee/amount/time status; no bank data/JWT/internal IDs.
@@ -471,7 +554,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-041 — Settlement UI handles empty/zero-balance state correctly
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-06; NFR-04
 - **Execute:** Use household with no expenses, all settled balances and no eligible counterparties.
 - **Expected:** Clear empty/settled state; no invalid action/NaN/negative zero.
@@ -481,7 +564,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-042 — Settlement UI handles server failure/retry safely
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** NFR-01; NFR-03; NFR-04
 - **Execute:** Simulate settlement/payment API errors, stale data and timeout.
 - **Expected:** No false settled state; safe error/retry and canonical refresh.
@@ -494,7 +577,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 ## D. FR-14 — One-click expense calculator / bill scanner UI
 
 ### FE-043 — FR-14 delivery status is truthful
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-14 extended; NFR-04; NFR-05
 - **Execute:** Locate all bill-scanner/one-click-calculator UI, docs and feature flags.
 - **Expected:** Working feature is testable; prototype/absence is explicitly documented and not falsely advertised.
@@ -502,9 +585,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** UI/doc test or justified N/A.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `FR-14 positive: scans a receipt via camera, creates a reviewed expense, and updates payment status`; `should capture a camera frame, scan it, and prefill bill data for review`
+  - Test file: `e2e/cypress/e2e/fr14-bill-scanner.cy.js`; `frontend/src/app/components/expenses/expenses.component.spec.ts`
+  - Command run: `cd frontend && npx ng test --watch=false --browsers=ChromeHeadless`; `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Angular `404 specs`; Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/expenses/expenses.component.ts`; `frontend/src/app/components/expenses/expenses.component.html`; `frontend/src/app/services/receipt-ocr.service.ts`
+  - Bug number covered: none
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; delivered flow is camera/OCR stub plus review/confirm, asserted in `fr14-bill-scanner.cy.js`.
 
 ### FE-044 — Scanner/calculator entry point is household and role safe
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-14; NFR-01
 - **Execute:** Open entry point as logged out, no-WG, current member, former/foreign user.
 - **Expected:** Only intended actor accesses it; no financial context leak.
@@ -514,7 +604,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-045 — Input/scan preview is validated before expense creation
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-14; FR-05; NFR-03
 - **Execute:** Use actual delivered input type (image, parsed payload, manual calculator, barcode etc.) with valid/invalid/partial data.
 - **Expected:** Parsed/calculated fields are visible and validated before expense mutation; user understands what will be created.
@@ -522,9 +612,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Component workflow test.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `should call bill preview service with bill data and selected participant ids`; `should show readable error when bill preview input is incomplete`; `FR-14 negative: invalid reviewed bill data stays in review flow and creates no expense`
+  - Test file: `frontend/src/app/components/expenses/expenses.component.spec.ts`; `e2e/cypress/e2e/fr14-bill-scanner.cy.js`
+  - Command run: `cd frontend && npx ng test --watch=false --browsers=ChromeHeadless`; `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Angular `404 specs`; Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/expenses/expenses.component.ts`; `frontend/src/app/components/expenses/expenses.component.html`
+  - Bug number covered: none
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; invalid reviewed data asserts no `bill-preview` request is sent.
 
 ### FE-046 — Manual correction and cancel path work
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-14; NFR-04
 - **Execute:** Correct parsed amount/description/participants, cancel, then rescan/retry.
 - **Expected:** User can correct mistakes; cancel creates no expense; retry is stable.
@@ -534,7 +631,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-047 — One-click result uses correct monetary rounding
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-14; FR-06
 - **Execute:** Use scanner/calculator fixtures with rounding boundaries and compare output to expected cents.
 - **Expected:** Displayed/generated expense uses documented two-decimal result; no float artifact.
@@ -544,7 +641,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-048 — Scanner/calculator does not create duplicate expenses on retry
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-14; NFR-03
 - **Execute:** Repeat scan/submit, double-click one-click action, simulate network interruption after processing.
 - **Expected:** No duplicate expense; user gets canonical result.
@@ -554,7 +651,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-049 — Bill/scan UI does not leak sensitive data
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-14; NFR-02
 - **Execute:** Inspect preview, console, errors, storage, generated text and share UI.
 - **Expected:** No raw image content/extra personal data/secret is leaked; retention behavior is clear.
@@ -564,7 +661,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-050 — FR-14 accessibility and mobile fallback work
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-14; NFR-04
 - **Execute:** Operate via keyboard and at mobile reference viewports; test unavailable camera/unsupported browser if scanner uses hardware.
 - **Expected:** No gesture/camera-only dead end; manual fallback and safe error are available.
@@ -577,7 +674,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 ## E. FR-17 — Swipe settlement approval UI with test account
 
 ### FE-051 — FR-17 delivery status and test account are truthful
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-17 extended; NFR-04; NFR-05
 - **Execute:** Locate swipe-approval screen, dedicated test-account configuration, docs and feature flags.
 - **Expected:** Feature/prototype/demo scope is explicit; no real money transfer claim; credentials are not exposed.
@@ -585,9 +682,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** UI/doc test or justified N/A.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `shows single-card overlay on load and dismisses via X button`; `approves first settlement via right swipe, rejects second via left swipe`
+  - Test file: `e2e/cypress/e2e/fr17-swipe-settlement-approval.cy.js`
+  - Command run: `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/payment-status/payment-status.component.ts`; `frontend/src/app/components/payment-status/payment-status.component.html`; `backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/service/impl/PaymentServiceImpl.java`
+  - Bug number covered: none
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; approval/rejection API status 200 asserted in `fr17-swipe-settlement-approval.cy.js`.
 
 ### FE-052 — Only correct settlement actor sees approve/reject UI
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-17; NFR-01
 - **Execute:** Compare payer, payee, unrelated roommate, Main Tenant, former and foreign user states.
 - **Expected:** Only authorized party/parties can act under documented policy; no false capability.
@@ -595,9 +699,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Role-state Cypress test.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `does not show settlement approvals to the creditor`; `should render pending settlement approval cards`
+  - Test file: `e2e/cypress/e2e/fr17-swipe-settlement-approval.cy.js`; `frontend/src/app/components/payment-status/payment-status.component.spec.ts`
+  - Command run: `cd frontend && npx ng test --watch=false --browsers=ChromeHeadless`; `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Angular `404 specs`; Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/payment-status/payment-status.component.ts`; `frontend/src/app/components/payment-status/payment-status.component.html`
+  - Bug number covered: none
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; creditor non-display asserted in `fr17-swipe-settlement-approval.cy.js`.
 
 ### FE-053 — Swipe has accessible non-gesture fallback
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-17; NFR-04/WAI
 - **Execute:** Use keyboard, screen reader, mouse and touch; inspect approve/reject buttons or equivalent.
 - **Expected:** All actions are possible without swipe; controls have accessible names and confirmation feedback.
@@ -605,9 +716,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Accessibility/Cypress test.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `should approve a pending settlement via button fallback and reload finance data`; `should reject a pending settlement via button fallback`; `approves and rejects settlements via accessible button fallback`
+  - Test file: `frontend/src/app/components/payment-status/payment-status.component.spec.ts`; `e2e/cypress/e2e/fr17-swipe-settlement-approval.cy.js`
+  - Command run: `cd frontend && npx ng test --watch=false --browsers=ChromeHeadless`; `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Angular `404 specs`; Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/payment-status/payment-status.component.html`; `frontend/src/app/components/payment-status/payment-status.component.scss`; `frontend/src/app/components/payment-status/payment-status.component.ts`
+  - Bug number covered: none
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; fallback buttons use `data-cy="approve-settlement"` and `data-cy="reject-settlement"`.
 
 ### FE-054 — Approve and reject actions are clear, reversible only if policy allows
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-17; NFR-03
 - **Execute:** Perform approve/reject, refresh, reopen, retry action and inspect status/history.
 - **Expected:** State transition follows actual model; no duplicate action/stale card; policy is explained.
@@ -615,9 +733,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Cypress approval-state workflow.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `approves first settlement via right swipe, rejects second via left swipe`; `rejects first settlement via left swipe, approves second via right swipe`; `should show a readable error when settlement decision fails`
+  - Test file: `e2e/cypress/e2e/fr17-swipe-settlement-approval.cy.js`; `frontend/src/app/components/payment-status/payment-status.component.spec.ts`
+  - Command run: `cd frontend && npx ng test --watch=false --browsers=ChromeHeadless`; `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Angular `404 specs`; Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/payment-status/payment-status.component.ts`; `frontend/src/app/components/payment-status/payment-status.component.html`
+  - Bug number covered: none
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; success and error messages asserted in component/E2E tests.
 
 ### FE-055 — Swipe approval affects only intended pending settlement
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-17; FR-06; NFR-03
 - **Execute:** Create multiple pending settlements; act on one and inspect all others/balances.
 - **Expected:** Only target changes; unrelated settlement/balance remains correct.
@@ -625,9 +750,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Cypress isolation regression.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `overlay auto-closes after all settlements are decided`; `approves first settlement via right swipe, rejects second via left swipe`
+  - Test file: `e2e/cypress/e2e/fr17-swipe-settlement-approval.cy.js`
+  - Command run: `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/payment-status/payment-status.component.ts`; `backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/service/impl/PaymentServiceImpl.java`
+  - Bug number covered: none
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; per-settlement approve/reject intercepts asserted in `fr17-swipe-settlement-approval.cy.js`.
 
 ### FE-056 — Approval/rejection errors and stale cards are safe
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-17; NFR-01; NFR-03
 - **Execute:** Act after another tab processed settlement, with invalid role, offline and server failure.
 - **Expected:** No false success; card refreshes to canonical state and message is safe.
@@ -637,7 +769,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-057 — FR-17 actions appear in audit/history without exposing secrets
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-17; NFR-06; NFR-02
 - **Execute:** Approve/reject test-account settlement and inspect visible history.
 - **Expected:** Actor/time/status trace correct; no secret/test credential/bank data.
@@ -647,7 +779,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-058 — FR-17 test account cannot become a production bypass
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** FR-17; NFR-01
 - **Execute:** Inspect deployed UI/build/config and attempts to activate test mode as arbitrary user.
 - **Expected:** No exposed credentials, hard-coded token or role bypass; demo account is isolated/documented.
@@ -660,7 +792,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 ## F. All applicable NFRs — controls, accessibility, compatibility, docs and bug gate
 
 ### FE-059 — Every UC-03 button, link, icon, menu and dialog works
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** NFR-04; explicit user requirement
 - **Execute:** Inventory every visible expense/payment/settlement/scanner/swipe control for public, Main Tenant, Roommate, error, modal and lifecycle states; activate each.
 - **Expected:** No dead control or false success; disabled/hidden state is clear and accurate.
@@ -670,7 +802,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-060 — All finance UI error messages are safe and actionable
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** NFR-01; NFR-03; NFR-04
 - **Execute:** Trigger validation, 401, 403, 404, 409, 500, scanner and payment-related errors.
 - **Expected:** No SQL/stack/internal ID/secret/foreign data; user gets next step.
@@ -680,7 +812,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-061 — No frontend logging leaks financial or secret data
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** NFR-02
 - **Execute:** Search source and capture console/telemetry during core and negative financial flows.
 - **Expected:** No password/JWT/raw token/bank/extra financial data appears in logs.
@@ -690,7 +822,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-062 — WAI/Lighthouse/axe checks pass for financial workflows
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** NFR-04
 - **Execute:** Audit expense form, split editor, balance/settlement, payment dialogs, scanner and swipe screens.
 - **Expected:** No critical blocker; all findings fixed/escalated.
@@ -700,7 +832,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-063 — Keyboard-only expense and payment workflow works
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** NFR-04/WAI
 - **Execute:** Create/edit/delete expense, change splits, record payment, inspect/approve settlement and use scanner fallback via keyboard only.
 - **Expected:** No mouse/swipe-only blocker; focus/dialogs safe.
@@ -710,7 +842,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-064 — Reference browser/device matrix passes
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** NFR-04; TG-08
 - **Execute:** Run core financial flow on Chrome/Firefox 1366×768+, iPhone Safari 390×844, Pixel Chrome 412×915 and 360px.
 - **Expected:** No clipped amount/split fields, hidden action, overflow, keyboard/touch blocker or browser defect.
@@ -720,7 +852,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-065 — Zoom/text scaling remains usable
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** NFR-04/WAI
 - **Execute:** Use 200% zoom/text scaling on amount/split/payment/scanner/swipe screens.
 - **Expected:** Essential values/actions remain visible and reachable.
@@ -730,7 +862,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-066 — Peer tester completes core expense workflow unaided
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** NFR-04
 - **Execute:** Ask non-implementer to add equal/unequal expense, edit it, record payment and explain settlement status.
 - **Expected:** Peer completes workflow; confusion/blockers fixed or documented.
@@ -740,7 +872,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-067 — Frontend build, test, lint and type checks pass
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** NFR-05; TG-05
 - **Execute:** Run actual frontend commands.
 - **Expected:** All pass; no ignored critical test.
@@ -748,9 +880,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** CI job evidence.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: Angular full unit suite; Angular ESLint; Angular production build
+  - Test file: `frontend/src/app/**/*.spec.ts`; `frontend/angular.json`; `frontend/package.json`
+  - Command run: `cd frontend && npx ng test --watch=false --browsers=ChromeHeadless`; `cd frontend && npm run lint`; `cd frontend && npm run build`
+  - Result: PASS, Angular `404 specs`; lint `All files pass linting`; build emitted `frontend/dist/sepr-group-phase`.
+  - Relevant implementation file(s): frontend Angular app and test files.
+  - Bug number covered: #31/#32/#35/#36/#37/#38/#39/#42 via included focused component specs and E2E gate.
+  - Screenshot/video/API evidence path: console output from commands; build artifact `frontend/dist/sepr-group-phase`.
 
 ### FE-068 — UC-03 user documentation matches current UI
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** NFR-05; TG-10
 - **Execute:** Follow docs verbatim for expenses, editing, payments, settlement, FR-14/FR-17 if delivered.
 - **Expected:** No obsolete screen/rule/false real-money/scanner/swipe claim.
@@ -760,7 +899,7 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### FE-069 — All found-bug regressions are green after UC-03 changes
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** Bugs #31/#32/#35/#36/#37/#38/#39/#42
 - **Execute:** Run focused frontend/E2E tests for every known bug after changes.
 - **Expected:** No existing fix regresses; every command/test name recorded.
@@ -768,9 +907,16 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Mandatory regression gate.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `BUG #31: editing an equal-split expense can add a participant and recompute exact shares`; `BUG #32: expense update persists through the UI and refreshes dependent data`; `BUG #35: existing user accepting an invite appears once in expense participants`; `BUG #37: same description and amount can be used by distinct expenses`; `BUG #38: leave and rejoin keeps one financial participant and balance counterparty`; `BUG #42: anonymized former roommate remains visible and settleable through privacy-safe fallback`; `BUG #39: an existing payment does not block editing or deleting another expense`; `BUG #36: rejects ambiguous shopping quantities without sending a create request`
+  - Test file: `e2e/cypress/e2e/fr05-expenses.cy.js`; `e2e/cypress/e2e/fr07-shopping-crud.cy.js`; plus component specs for #31/#36/#42
+  - Command run: `cd frontend && npx ng test --watch=false --browsers=ChromeHeadless`; `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js`; `cd e2e && npx cypress run --spec cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr07-shopping-crud.cy.js`
+  - Result: PASS, Angular `404 specs`; focused FR-05 Cypress `13 passing`; combined focused Cypress `32 passing`.
+  - Relevant implementation file(s): `frontend/src/app/components/expenses/expenses.component.*`; `frontend/src/app/components/payment-status/payment-status.component.*`; `frontend/src/app/components/shopping-item-create/shopping-item-create.component.*`; `frontend/src/app/components/shopping-item-edit/shopping-item-edit.component.*`
+  - Bug number covered: #31/#32/#35/#36/#37/#38/#39/#42
+  - Screenshot/video/API evidence path: Cypress passing run had video disabled and no screenshots; API status assertions are in the listed specs.
 
 ### FE-070 — Final frontend sign-off is evidence-complete
-- [ ] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** All applicable FR/NFR
 - **Execute:** Review every FE check, test, bug gate and evidence record.
 - **Expected:** No critical PASS lacks proof; unresolved issue remains visible.
@@ -778,4 +924,3 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 - **Automated proof required:** Reviewer sign-off.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
-

@@ -35,9 +35,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -150,13 +148,16 @@ public class ExpenseServiceImpl implements ExpenseService {
 
         requireCanManageExpense(expense, currentRoommate);
         lockHouseholdForSettlement(expense.getHousehold().getId());
-        requireNoRecordedPaymentsInHousehold(expense.getHousehold().getId());
         validateSplitParticipantsAreUnique(expenseUpdateDto.splits());
         validateCurrentRoommatePaid(expenseUpdateDto.paidByRoommateId(), currentRoommate);
         validatePaidByIsIncludedInSplits(expenseUpdateDto.paidByRoommateId(), expenseUpdateDto.splits());
         validateSplitSum(expenseUpdateDto.totalAmount(), expenseUpdateDto.splits());
 
         Long householdId = currentRoommate.getHousehold().getId();
+        validateParticipantsAreInCurrentHousehold(
+            expenseUpdateDto.splits().stream().map(ExpenseSplitCreateDto::roommateId).toList(),
+            householdId
+        );
         Roommate paidBy = getActiveRoommateInHousehold(expenseUpdateDto.paidByRoommateId(), householdId);
         expense.setDescription(expenseUpdateDto.description());
         expense.setTotalAmount(toMoney(expenseUpdateDto.totalAmount()));
@@ -164,7 +165,7 @@ public class ExpenseServiceImpl implements ExpenseService {
         expense.setPaidBy(paidBy);
 
         Expense savedExpense = expenseRepository.save(expense);
-        List<ExpenseSplit> savedSplits = updateExistingSplits(savedExpense.getId(), expenseUpdateDto.splits());
+        List<ExpenseSplit> savedSplits = replaceSplits(savedExpense, expenseUpdateDto.splits(), householdId);
 
         return toDto(savedExpense, savedSplits);
     }
@@ -179,7 +180,6 @@ public class ExpenseServiceImpl implements ExpenseService {
 
         requireCanManageExpense(expense, currentRoommate);
         lockHouseholdForSettlement(expense.getHousehold().getId());
-        requireNoRecordedPaymentsInHousehold(expense.getHousehold().getId());
 
         expenseSplitRepository.deleteAllByExpenseId(expense.getId());
         expenseRepository.delete(expense);
@@ -276,12 +276,6 @@ public class ExpenseServiceImpl implements ExpenseService {
             .orElseThrow(() -> new NotFoundException("Household does not exist."));
     }
 
-    private void requireNoRecordedPaymentsInHousehold(Long householdId) {
-        if (paymentRepository.existsByHouseholdId(householdId)) {
-            throw new ConflictException("Expenses cannot be changed after a payment has been recorded in the household.");
-        }
-    }
-
     private void validateSplitParticipantsAreUnique(List<ExpenseSplitCreateDto> splitDtos) {
         Set<Long> roommateIds = new HashSet<>();
         for (ExpenseSplitCreateDto splitDto : splitDtos) {
@@ -369,33 +363,9 @@ public class ExpenseServiceImpl implements ExpenseService {
         return split;
     }
 
-    private List<ExpenseSplit> updateExistingSplits(Long expenseId, List<ExpenseSplitCreateDto> splitDtos) {
-        List<ExpenseSplit> existingSplits = expenseSplitRepository.findAllByExpenseId(expenseId);
-        Map<Long, ExpenseSplit> existingSplitsByRoommateId = new HashMap<>();
-
-        for (ExpenseSplit existingSplit : existingSplits) {
-            existingSplitsByRoommateId.put(existingSplit.getRoommate().getId(), existingSplit);
-        }
-
-        validateUpdatedSplitParticipantsMatchExistingSplits(splitDtos, existingSplitsByRoommateId.keySet());
-
-        for (ExpenseSplitCreateDto splitDto : splitDtos) {
-            ExpenseSplit existingSplit = existingSplitsByRoommateId.get(splitDto.roommateId());
-            existingSplit.setAmountOwed(toMoney(splitDto.amountOwed()));
-        }
-
-        return expenseSplitRepository.saveAll(existingSplits);
-    }
-
-    private void validateUpdatedSplitParticipantsMatchExistingSplits(List<ExpenseSplitCreateDto> splitDtos, Set<Long> existingRoommateIds) {
-        Set<Long> updatedRoommateIds = new HashSet<>();
-        for (ExpenseSplitCreateDto splitDto : splitDtos) {
-            updatedRoommateIds.add(splitDto.roommateId());
-        }
-
-        if (!existingRoommateIds.equals(updatedRoommateIds)) {
-            throw new ConflictException("Expense split participants cannot be changed during update.");
-        }
+    private List<ExpenseSplit> replaceSplits(Expense expense, List<ExpenseSplitCreateDto> splitDtos, Long householdId) {
+        expenseSplitRepository.deleteAllByExpenseId(expense.getId());
+        return expenseSplitRepository.saveAll(createSplits(expense, splitDtos, householdId));
     }
 
     private List<ExpenseSplitCreateDto> buildEqualSplits(BigDecimal totalAmount, List<Long> participantRoommateIds) {

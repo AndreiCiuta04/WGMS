@@ -156,7 +156,10 @@ public class InvitationServiceImpl implements InvitationService {
             throw new ForbiddenException("This invitation is not assigned to this email address.");
         }
 
-        Roommate roommate = new Roommate();
+        Roommate roommate = roommateRepository
+            .findByUserIdAndHouseholdId(currentUser.getId(), invitation.getHousehold().getId())
+            .orElseGet(Roommate::new);
+
         roommate.setUser(currentUser);
         roommate.setHousehold(invitation.getHousehold());
         roommate.setRole(HouseholdRole.ROOMMATE);

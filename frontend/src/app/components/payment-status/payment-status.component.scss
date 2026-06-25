@@ -455,9 +455,12 @@ $text-secondary: #5F6B5F;
 }
 
 .settlement-actions {
+  position: relative;
+  z-index: 1;
   display: flex;
   gap: 12px;
   margin-bottom: 4px;
+  width: min(420px, calc(100vw - 48px));
 }
 
 .action-decision-btn {
