@@ -65,7 +65,16 @@ This file is the final system-level proof that FR-05, FR-06, FR-14, FR-17 and ev
 
 All checklist items were defaulted to **BLOCKED** until concrete evidence could be attached directly to the item. Items marked **PASS** below have named automated tests and command results. Remaining **BLOCKED** items need the specific multi-browser/device, race/retry, restart, all-controls, accessibility, or peer-test evidence requested by that item before UC-03 can be called complete.
 
-Validated branch/commit context: `UC-03/QA`, HEAD `184cebc` (`Merge remote-tracking branch 'origin/dev' into UC-03/QA`), dirty working tree with UC-03 QA fixes.
+Validated branch/commit context: `UC-03/QA`, HEAD `00b867c` (`Merge remote-tracking branch 'origin/dev' into UC-03/QA`), dirty working tree with UC-03 QA fixes.
+
+Merged-branch automated evidence update, 2026-06-25:
+- `cd backend && mvn test`: PASS, 397 tests, 0 failures/errors/skips.
+- `cd frontend && npx ng test --watch=false --browsers=ChromeHeadless`: PASS, 404 specs.
+- `cd frontend && npm run lint`: PASS; `cd frontend && npm run build`: PASS.
+- `cd e2e && npx cypress run --spec "cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr07-shopping-crud.cy.js"`: PASS, 33 tests.
+- `cd e2e && npx cypress run`: PASS, 112 tests across 30 specs after fixing stale shopping quantity fixtures in `fr09-shopping-aggregation-history.cy.js` and `usecases/uc04-shopping-collaboration.cy.js`.
+- Direct regression evidence: #31/#32/#35/#37/#38/#39/#42 passed in `fr05-expenses.cy.js`; #36 passed in `fr07-shopping-crud.cy.js`; FR-17 passed in `fr17-swipe-settlement-approval.cy.js`.
+- Remaining BLOCKED items are manual or specialized proof gaps explicitly named by the item, including real device/browser matrix, network interruption/manual retry, multi-tab race proof beyond automated coverage, full controls inventory, accessibility audit, and peer-test evidence.
 
 
 ## A. Core FR-05 / FR-06 integrated expense, balance and payment journeys

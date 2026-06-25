@@ -62,7 +62,7 @@ describe('UC-04 Shopping Collaboration E2E', () => {
       addShoppingItem({ name: sharedName, amount: 1, unit: 'PACK', notes: 'Shared pantry item', visibility: 'SHARED' });
       addShoppingItem({ name: groupedName, amount: 1, unit: 'KILOGRAM', notes: 'First shared request', visibility: 'SHARED' });
       addShoppingItem({ name: ` ${groupedName.toLowerCase()} `, amount: 1, unit: 'KILOGRAM', notes: 'Second shared request', visibility: 'SHARED' });
-      addShoppingItem({ name: personalName, amount: 1, notes: 'Private item', visibility: 'PERSONAL' });
+      addShoppingItem({ name: personalName, amount: 1, unit: 'PIECE', notes: 'Private item', visibility: 'PERSONAL' });
       addShoppingItem({ name: targetedName, amount: 1, unit: 'PACK', notes: 'Please buy tea', visibility: 'TARGETED', targetUserEmail: buyer.email });
 
       cy.logoutUser();

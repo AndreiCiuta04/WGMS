@@ -65,7 +65,13 @@ This form owns server-side enforcement for FR-05, FR-06, FR-14 and FR-17 plus NF
 
 All checklist items were defaulted to **BLOCKED** until concrete evidence could be attached directly to the item. Items marked **PASS** below have named automated tests and command results. Remaining **BLOCKED** items need the specific matrix, contract, manual device, accessibility, concurrency, or peer evidence requested by that item before UC-03 can be called complete.
 
-Validated branch/commit context: `UC-03/QA`, HEAD `184cebc` (`Merge remote-tracking branch 'origin/dev' into UC-03/QA`), dirty working tree with UC-03 QA fixes.
+Validated branch/commit context: `UC-03/QA`, HEAD `00b867c` (`Merge remote-tracking branch 'origin/dev' into UC-03/QA`), dirty working tree with UC-03 QA fixes.
+
+Merged-branch automated evidence update, 2026-06-25:
+- `cd backend && mvn -Dtest=ExpenseEndpointTest,PaymentEndpointTest,SecurityTest test`: PASS, 58 tests, 0 failures/errors/skips.
+- `cd backend && mvn test`: PASS, 397 tests, 0 failures/errors/skips.
+- `curl -fsS http://localhost:8080/v3/api-docs` and `curl -fsS http://localhost:8080/v3/api-docs.yaml`: PASS; both include `/api/v1/expenses`, `/api/v1/expenses/balances`, `/api/v1/expenses/bill-preview`, `/api/v1/expenses/equal-split`, `/api/v1/payments`, `/api/v1/payments/overview`, and settlement approval/rejection paths.
+- Whole-project Cypress gate after backend/frontend startup: `cd e2e && npx cypress run`: PASS, 112 tests, 0 failures.
 
 
 ## A. FR-05 — Expense creation, participants, equal/custom splits and persistence
@@ -981,7 +987,7 @@ Validated branch/commit context: `UC-03/QA`, HEAD `184cebc` (`Merge remote-track
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
 
 ### BE-080 — Repository tests cover financial queries and invariants
-- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** NFR-03; QA strategy
 - **Execute:** Locate/run tests for household scope, split totals, payment lookup, active members, deleted fallback, transaction graphs.
 - **Expected:** Real persistence semantics proven.
@@ -989,9 +995,16 @@ Validated branch/commit context: `UC-03/QA`, HEAD `184cebc` (`Merge remote-track
 - **Automated proof required:** Mandatory repository evidence.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `ExpenseEndpointTest` repository-backed expense/split/payment assertions; `PaymentEndpointTest` settlement/payment persistence assertions; full backend test suite.
+  - Test file: `backend/src/test/java/at/ac/tuwien/sepr/groupphase/backend/integrationtest/ExpenseEndpointTest.java`; `PaymentEndpointTest.java`; repository tests covered by `mvn test`.
+  - Command run: `cd backend && mvn -Dtest=ExpenseEndpointTest,PaymentEndpointTest,SecurityTest test`; `cd backend && mvn test`.
+  - Result: PASS, focused 58 tests and full backend 397 tests, 0 failures/errors/skips.
+  - Relevant implementation file(s): `ExpenseRepository.java`; `ExpenseSplitRepository.java`; `PaymentRepository.java`; `RoommateRepository.java`; `ExpenseServiceImpl.java`; `PaymentServiceImpl.java`.
+  - Bug number covered: #31/#32/#35/#37/#38/#39/#42.
+  - Screenshot/video/API evidence path: Surefire XML/text reports under `backend/target/surefire-reports/`.
 
 ### BE-081 — Service tests cover deterministic financial rules
-- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** TG-03; NFR-05; TG-09
 - **Execute:** Locate/run unit tests for equal/unequal splits, HALF_UP rounding, minimum graph, payments, edits/deletes, deleted fallback.
 - **Expected:** Rules tested independently of UI/E2E.
@@ -999,9 +1012,16 @@ Validated branch/commit context: `UC-03/QA`, HEAD `184cebc` (`Merge remote-track
 - **Automated proof required:** Mandatory service test evidence.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `PaymentServiceTest` deterministic settlement/payment tests; `ExpenseEndpointTest` split/rounding/edit/delete regressions; full backend suite.
+  - Test file: `backend/src/test/java/at/ac/tuwien/sepr/groupphase/backend/unittests/PaymentServiceTest.java`; `ExpenseEndpointTest.java`; `PaymentEndpointTest.java`.
+  - Command run: `cd backend && mvn test`.
+  - Result: PASS, 397 tests, 0 failures/errors/skips.
+  - Relevant implementation file(s): `ExpenseServiceImpl.java`; `PaymentServiceImpl.java`.
+  - Bug number covered: #31/#32/#37/#39/#42.
+  - Screenshot/video/API evidence path: Surefire reports under `backend/target/surefire-reports/`.
 
 ### BE-082 — API integration tests cover finance + auth + persistence
-- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** TG-09
 - **Execute:** Run end-to-end API workflows for create/edit/delete/payment/settlement and known bugs.
 - **Expected:** Security and real DB state proven together.
@@ -1009,9 +1029,16 @@ Validated branch/commit context: `UC-03/QA`, HEAD `184cebc` (`Merge remote-track
 - **Automated proof required:** Mandatory integration suite.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `givenNoToken_whenAccessExpenseEndpoints_then403AndNoFinancialMutationOccurs`; `givenNoToken_whenAccessPaymentAndSettlementEndpoints_then403AndNoFinancialMutationOccurs`; `givenMultiplePendingSettlements_whenApproveOne_thenOnlyTargetSettlementIsDecided`; `givenAlreadyApprovedSettlement_whenApproveAgain_then409AndNoDuplicatePaymentOrDecision`; `givenAlreadyRejectedSettlement_whenRejectOrApproveAgain_then409AndNoPaymentIsCreated`.
+  - Test file: `ExpenseEndpointTest.java`; `PaymentEndpointTest.java`; `SecurityTest.java`.
+  - Command run: `cd backend && mvn -Dtest=ExpenseEndpointTest,PaymentEndpointTest,SecurityTest test`; `cd backend && mvn test`.
+  - Result: PASS, focused 58 tests and full backend 397 tests, 0 failures/errors/skips.
+  - Relevant implementation file(s): `SecurityConfig.java`; `ExpenseEndpoint.java`; `PaymentEndpoint.java`; `ExpenseServiceImpl.java`; `PaymentServiceImpl.java`.
+  - Bug number covered: #31/#32/#35/#37/#38/#39/#42; OpenAPI access regression.
+  - Screenshot/video/API evidence path: Surefire reports under `backend/target/surefire-reports/`.
 
 ### BE-083 — OpenAPI is served and current
-- [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
+- [x] **PASS**  - [ ] **FAIL**  - [ ] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*
 - **Requirement(s):** TG-04
 - **Execute:** Start application and retrieve Swagger/OpenAPI; inspect UC-03 operations.
 - **Expected:** Specification available/current.
@@ -1019,6 +1046,13 @@ Validated branch/commit context: `UC-03/QA`, HEAD `184cebc` (`Merge remote-track
 - **Automated proof required:** OpenAPI smoke/contract test.
 - **If failed or evidence is missing:** Keep this item unchecked. Fix the defect or coverage gap, add the smallest focused regression test at the correct layer, rerun all affected suites, and record the exact changed files.
 - **Evidence record:** `executor | date | branch/commit | synthetic fixture(s) | test name | exact command | evidence path | changed files | reviewer`
+  - Test name: `givenNoOneLoggedIn_whenFetchOpenApiDocs_thenJsonAndYamlArePublic`.
+  - Test file: `backend/src/test/java/at/ac/tuwien/sepr/groupphase/backend/integrationtest/SecurityTest.java`.
+  - Command run: `cd backend && mvn -Dtest=SecurityTest test`; live probes `curl -fsS http://localhost:8080/v3/api-docs` and `curl -fsS http://localhost:8080/v3/api-docs.yaml`.
+  - Result: PASS; JSON and YAML returned 200 and listed UC-03 expense/payment/settlement approval paths.
+  - Relevant implementation file(s): `backend/src/main/java/at/ac/tuwien/sepr/groupphase/backend/config/SecurityConfig.java`; expense/payment endpoint DTOs.
+  - Bug number covered: OpenAPI YAML 403 regression discovered during UC-03 QA.
+  - Screenshot/video/API evidence path: `/tmp/uc03-openapi.json`; `/tmp/uc03-openapi.yaml`; Surefire reports under `backend/target/surefire-reports/`.
 
 ### BE-084 — CI runs all critical UC-03 test layers
 - [ ] **PASS**  - [ ] **FAIL**  - [x] **BLOCKED**  - [ ] **N/A** *(N/A requires a written, contract-based justification)*

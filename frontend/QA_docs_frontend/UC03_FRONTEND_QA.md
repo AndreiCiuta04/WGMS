@@ -65,7 +65,15 @@ Owns visible behavior for FR-05, FR-06, FR-14 and FR-17, every UI-facing NFR-01.
 
 All checklist items were defaulted to **BLOCKED** until concrete evidence could be attached directly to the item. Items marked **PASS** below have named automated tests and command results. Remaining **BLOCKED** items need the specific route matrix, browser/device, accessibility, screenshot/video, manual peer, or all-controls evidence requested by that item before UC-03 can be called complete.
 
-Validated branch/commit context: `UC-03/QA`, HEAD `184cebc` (`Merge remote-tracking branch 'origin/dev' into UC-03/QA`), dirty working tree with UC-03 QA fixes.
+Validated branch/commit context: `UC-03/QA`, HEAD `00b867c` (`Merge remote-tracking branch 'origin/dev' into UC-03/QA`), dirty working tree with UC-03 QA fixes.
+
+Merged-branch automated evidence update, 2026-06-25:
+- `cd frontend && npm run lint`: PASS, all files pass linting.
+- `cd frontend && npm run build`: PASS, build emitted `frontend/dist/sepr-group-phase`.
+- `cd frontend && npx ng test --watch=false --browsers=ChromeHeadless`: PASS, 404 specs.
+- `cd e2e && npx cypress run --spec "cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr07-shopping-crud.cy.js"`: PASS, 33 tests.
+- `cd e2e && npx cypress run`: PASS, 112 tests across 30 specs.
+- Remaining BLOCKED frontend items still require the explicit manual/device/browser/accessibility/peer evidence named in those items, especially real iPhone Safari, Firefox desktop, Lighthouse/axe, keyboard-only walkthrough, 200% zoom/text scaling, and peer tester proof.
 
 
 ## A. FR-05 — Expense creation, payer, participants and split input

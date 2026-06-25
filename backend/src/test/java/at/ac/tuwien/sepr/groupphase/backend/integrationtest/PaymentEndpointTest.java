@@ -55,6 +55,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -166,6 +167,34 @@ public class PaymentEndpointTest implements TestData {
     }
 
     @Test
+    public void givenNoToken_whenAccessPaymentAndSettlementEndpoints_then403AndNoFinancialMutationOccurs() throws Exception {
+        Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Internet bill", money("20.00"));
+        saveSplit(expense, mainTenantRoommate, money("10.00"));
+        saveSplit(expense, roommateRecord, money("10.00"));
+        String settlementId = roommateRecord.getId() + "-" + mainTenantRoommate.getId() + "-1000";
+        PaymentCreateDto createDto = new PaymentCreateDto(mainTenantRoommate.getId(), money("4.00"), PAYMENT_DATE);
+
+        List<Integer> statuses = List.of(
+            this.mockMvc.perform(get(PAYMENT_BASE_URI + "/overview")).andReturn().getResponse().getStatus(),
+            this.mockMvc.perform(get(PAYMENT_BASE_URI + "/settlement-approvals")).andReturn().getResponse().getStatus(),
+            this.mockMvc.perform(post(PAYMENT_BASE_URI)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(jsonMapper.writeValueAsString(createDto)))
+                .andReturn().getResponse().getStatus(),
+            this.mockMvc.perform(post(PAYMENT_BASE_URI + "/settlement-approvals/" + settlementId + "/approve"))
+                .andReturn().getResponse().getStatus(),
+            this.mockMvc.perform(post(PAYMENT_BASE_URI + "/settlement-approvals/" + settlementId + "/reject"))
+                .andReturn().getResponse().getStatus()
+        );
+
+        assertAll(
+            () -> assertTrue(statuses.stream().allMatch(status -> status == HttpStatus.FORBIDDEN.value())),
+            () -> assertEquals(0, paymentRepository.findAll().size()),
+            () -> assertEquals(0, settlementDecisionRepository.findAll().size())
+        );
+    }
+
+    @Test
     public void givenUserWithoutActiveHousehold_whenGetOverview_then403() throws Exception {
         MvcResult mvcResult = this.mockMvc.perform(get(PAYMENT_BASE_URI + "/overview")
                 .header(securityProperties.getAuthHeader(), tokenFor(userWithoutHousehold.getEmail())))
@@ -273,6 +302,25 @@ public class PaymentEndpointTest implements TestData {
     }
 
     @Test
+    public void givenOverscalePaymentAmount_whenCreatePayment_then400AndNoPaymentIsCreated() throws Exception {
+        Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Internet bill", money("20.00"));
+        saveSplit(expense, mainTenantRoommate, money("10.00"));
+        saveSplit(expense, roommateRecord, money("10.00"));
+        PaymentCreateDto createDto = new PaymentCreateDto(mainTenantRoommate.getId(), money("4.005"), PAYMENT_DATE);
+
+        MvcResult mvcResult = this.mockMvc.perform(post(PAYMENT_BASE_URI)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(createDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.BAD_REQUEST.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals(0, paymentRepository.findAll().size())
+        );
+    }
+
+    @Test
     public void givenOpenBalance_whenGetPendingSettlementApprovals_thenReturnsCurrentHouseholdPendingSettlement() throws Exception {
         Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Internet bill", money("20.00"));
         saveSplit(expense, mainTenantRoommate, money("10.00"));
@@ -348,6 +396,39 @@ public class PaymentEndpointTest implements TestData {
     }
 
     @Test
+    public void givenMultiplePendingSettlements_whenApproveOne_thenOnlyTargetSettlementIsDecided() throws Exception {
+        ApplicationUser secondCreditorUser = saveUser("second.creditor@test.com", "Second", "Creditor");
+        Roommate secondCreditor = saveRoommate(secondCreditorUser, household, HouseholdRole.ROOMMATE);
+        Expense internet = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Internet bill", money("20.00"));
+        saveSplit(internet, mainTenantRoommate, money("10.00"));
+        saveSplit(internet, roommateRecord, money("10.00"));
+        Expense utilities = saveExpense(household, secondCreditor, secondCreditor, "Utilities", money("14.00"));
+        saveSplit(utilities, secondCreditor, money("7.00"));
+        saveSplit(utilities, roommateRecord, money("7.00"));
+        String approvedSettlementId = roommateRecord.getId() + "-" + mainTenantRoommate.getId() + "-1000";
+
+        MvcResult approveResult = this.mockMvc.perform(post(PAYMENT_BASE_URI + "/settlement-approvals/" + approvedSettlementId + "/approve")
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+        MvcResult pendingResult = this.mockMvc.perform(get(PAYMENT_BASE_URI + "/settlement-approvals")
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+        List<PendingSettlementDto> pending = jsonMapper.readValue(
+            pendingResult.getResponse().getContentAsString(),
+            jsonMapper.getTypeFactory().constructCollectionType(List.class, PendingSettlementDto.class)
+        );
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), approveResult.getResponse().getStatus()),
+            () -> assertEquals(1, paymentRepository.findAll().size()),
+            () -> assertEquals(1, settlementDecisionRepository.findAll().size()),
+            () -> assertEquals(1, pending.size()),
+            () -> assertEquals(roommateRecord.getId() + "-" + secondCreditor.getId() + "-700", pending.get(0).id()),
+            () -> assertEquals(0, money("7.00").compareTo(pending.get(0).amount()))
+        );
+    }
+
+    @Test
     public void bug42_givenDebtToAnonymizedFormerRoommate_whenApproveSettlement_thenPaymentIsRecordedToPrivacySafeCounterparty() throws Exception {
         ApplicationUser deletedUser = saveUser("deleted.counterparty@test.com", "Former", "Member");
         Roommate deletedRoommate = saveRoommate(deletedUser, household, HouseholdRole.ROOMMATE);
@@ -416,6 +497,54 @@ public class PaymentEndpointTest implements TestData {
             () -> assertEquals(0, paymentRepository.findAll().size()),
             () -> assertEquals(1, settlementDecisionRepository.findAll().size()),
             () -> assertEquals(0, pending.size())
+        );
+    }
+
+    @Test
+    public void givenAlreadyApprovedSettlement_whenApproveAgain_then409AndNoDuplicatePaymentOrDecision() throws Exception {
+        Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Internet bill", money("20.00"));
+        saveSplit(expense, mainTenantRoommate, money("10.00"));
+        saveSplit(expense, roommateRecord, money("10.00"));
+        String settlementId = roommateRecord.getId() + "-" + mainTenantRoommate.getId() + "-1000";
+
+        MvcResult firstApprove = this.mockMvc.perform(post(PAYMENT_BASE_URI + "/settlement-approvals/" + settlementId + "/approve")
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+        MvcResult secondApprove = this.mockMvc.perform(post(PAYMENT_BASE_URI + "/settlement-approvals/" + settlementId + "/approve")
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), firstApprove.getResponse().getStatus()),
+            () -> assertEquals(HttpStatus.CONFLICT.value(), secondApprove.getResponse().getStatus()),
+            () -> assertEquals(1, paymentRepository.findAll().size()),
+            () -> assertEquals(1, settlementDecisionRepository.findAll().size())
+        );
+    }
+
+    @Test
+    public void givenAlreadyRejectedSettlement_whenRejectOrApproveAgain_then409AndNoPaymentIsCreated() throws Exception {
+        Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Internet bill", money("20.00"));
+        saveSplit(expense, mainTenantRoommate, money("10.00"));
+        saveSplit(expense, roommateRecord, money("10.00"));
+        String settlementId = roommateRecord.getId() + "-" + mainTenantRoommate.getId() + "-1000";
+
+        MvcResult firstReject = this.mockMvc.perform(post(PAYMENT_BASE_URI + "/settlement-approvals/" + settlementId + "/reject")
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+        MvcResult secondReject = this.mockMvc.perform(post(PAYMENT_BASE_URI + "/settlement-approvals/" + settlementId + "/reject")
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+        MvcResult approveAfterReject = this.mockMvc.perform(post(PAYMENT_BASE_URI + "/settlement-approvals/" + settlementId + "/approve")
+                .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), firstReject.getResponse().getStatus()),
+            () -> assertEquals(HttpStatus.CONFLICT.value(), secondReject.getResponse().getStatus()),
+            () -> assertEquals(HttpStatus.CONFLICT.value(), approveAfterReject.getResponse().getStatus()),
+            () -> assertEquals(0, paymentRepository.findAll().size()),
+            () -> assertEquals(1, settlementDecisionRepository.findAll().size())
         );
     }
 
