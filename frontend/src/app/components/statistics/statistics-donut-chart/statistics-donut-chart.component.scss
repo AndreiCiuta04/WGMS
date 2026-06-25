@@ -1,0 +1,133 @@
+.donut-card {
+  background: #FFFFFF;
+  border: 1px solid rgba(52, 103, 57, 0.12);
+  border-radius: 14px;
+  padding: 16px;
+  min-height: 260px;
+}
+
+h4 {
+  color: #1F2A1F;
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
+.donut-layout {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(130px, 170px) 1fr;
+}
+
+.donut-chart {
+  height: auto;
+  max-width: 170px;
+  overflow: visible;
+  transform: rotate(-90deg);
+  width: 100%;
+}
+
+.donut-bg {
+  fill: none;
+  stroke: rgba(31, 42, 31, 0.08);
+  stroke-width: 16;
+}
+
+.donut-slice {
+  fill: none;
+  stroke: #346739;
+  stroke-linecap: butt;
+  stroke-width: 16;
+  transition: stroke-dasharray 180ms ease;
+}
+
+.donut-slice-secondary {
+  stroke: #79AE6F;
+}
+
+.donut-slice-tertiary {
+  stroke: #C6A15B;
+}
+
+.donut-total,
+.donut-caption {
+  fill: #1F2A1F;
+  text-anchor: middle;
+  transform: rotate(90deg);
+  transform-origin: 60px 60px;
+}
+
+.donut-total {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.donut-caption {
+  fill: #5F6B5F;
+  font-size: 10px;
+}
+
+.donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.donut-legend-row {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+}
+
+.donut-dot {
+  background: #346739;
+  border-radius: 999px;
+  display: inline-block;
+  height: 9px;
+  width: 9px;
+}
+
+.donut-dot-secondary {
+  background: #79AE6F;
+}
+
+.donut-dot-tertiary {
+  background: #C6A15B;
+}
+
+.donut-label {
+  color: #1F2A1F;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.donut-value {
+  color: #5F6B5F;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.donut-empty-state {
+  align-items: center;
+  color: #5F6B5F;
+  display: flex;
+  font-size: 14px;
+  justify-content: center;
+  min-height: 196px;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .donut-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .donut-chart {
+    justify-self: center;
+  }
+}

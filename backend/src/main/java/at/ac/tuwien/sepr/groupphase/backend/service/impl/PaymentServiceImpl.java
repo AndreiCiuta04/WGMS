@@ -4,11 +4,14 @@ import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BalanceDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.PaymentCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.PaymentDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.PaymentOverviewDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.PendingSettlementDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ExpenseSplit;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Payment;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
+import at.ac.tuwien.sepr.groupphase.backend.entity.SettlementDecision;
+import at.ac.tuwien.sepr.groupphase.backend.entity.SettlementDecisionStatus;
 import at.ac.tuwien.sepr.groupphase.backend.exception.ConflictException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.ForbiddenException;
 import at.ac.tuwien.sepr.groupphase.backend.exception.NotFoundException;
@@ -16,6 +19,7 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.ExpenseSplitRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.SettlementDecisionRepository;
 import at.ac.tuwien.sepr.groupphase.backend.service.PaymentService;
 import at.ac.tuwien.sepr.groupphase.backend.service.UserService;
 import at.ac.tuwien.sepr.groupphase.backend.service.NotificationService;
@@ -29,7 +33,10 @@ import java.lang.invoke.MethodHandles;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PaymentServiceImpl implements PaymentService {
@@ -39,6 +46,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final ExpenseSplitRepository expenseSplitRepository;
     private final PaymentRepository paymentRepository;
+    private final SettlementDecisionRepository settlementDecisionRepository;
     private final HouseholdRepository householdRepository;
     private final RoommateRepository roommateRepository;
     private final UserService userService;
@@ -48,6 +56,7 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentServiceImpl(
         ExpenseSplitRepository expenseSplitRepository,
         PaymentRepository paymentRepository,
+        SettlementDecisionRepository settlementDecisionRepository,
         HouseholdRepository householdRepository,
         RoommateRepository roommateRepository,
         UserService userService,
@@ -56,6 +65,7 @@ public class PaymentServiceImpl implements PaymentService {
     ) {
         this.expenseSplitRepository = expenseSplitRepository;
         this.paymentRepository = paymentRepository;
+        this.settlementDecisionRepository = settlementDecisionRepository;
         this.householdRepository = householdRepository;
         this.roommateRepository = roommateRepository;
         this.userService = userService;
@@ -123,6 +133,63 @@ public class PaymentServiceImpl implements PaymentService {
         return toDto(savedPayment);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<PendingSettlementDto> getPendingSettlements(String currentUserEmail) {
+        LOGGER.debug("Get pending settlement approvals for user {}", currentUserEmail);
+
+        Roommate currentRoommate = getCurrentRoommateByEmail(currentUserEmail);
+        return calculateOpenBalances(currentRoommate.getHousehold().getId()).stream()
+            .filter(balance -> currentRoommate.getId().equals(balance.fromRoommateId()))
+            .filter(balance -> latestDecisionFor(currentRoommate.getHousehold().getId(), balance).isEmpty())
+            .map(balance -> toPendingSettlementDto(balance, currentRoommate))
+            .toList();
+    }
+
+    @Override
+    @Transactional
+    public PendingSettlementDto approveSettlement(String settlementId, String currentUserEmail) {
+        LOGGER.debug("Approve settlement {} by user {}", settlementId, currentUserEmail);
+
+        Roommate currentRoommate = getCurrentRoommateByEmail(currentUserEmail);
+        Long householdId = currentRoommate.getHousehold().getId();
+        lockHouseholdForSettlement(householdId);
+        BalanceDto balance = validateSettlementDecisionInput(settlementId, currentRoommate);
+
+        Payment payment = new Payment();
+        payment.setHousehold(currentRoommate.getHousehold());
+        payment.setFromRoommate(currentRoommate);
+        payment.setToRoommate(getActiveRoommateInHousehold(balance.toRoommateId(), householdId));
+        payment.setAmount(toMoney(balance.amount()));
+        payment.setDate(LocalDate.now());
+        payment.setCreatedBy(currentRoommate);
+        Payment savedPayment = paymentRepository.save(payment);
+
+        String fromName = toDisplayName(currentRoommate);
+        notificationService.triggerNotification(
+            savedPayment.getToRoommate().getUser(),
+            String.format("%s approved and recorded settlement EUR %s.", fromName, savedPayment.getAmount()),
+            NotificationType.PAYMENT_RECEIVED,
+            savedPayment.getId()
+        );
+
+        SettlementDecision decision = saveSettlementDecision(balance, currentRoommate, SettlementDecisionStatus.APPROVED);
+        return toDecidedSettlementDto(balance, currentRoommate, decision);
+    }
+
+    @Override
+    @Transactional
+    public PendingSettlementDto rejectSettlement(String settlementId, String currentUserEmail) {
+        LOGGER.debug("Reject settlement {} by user {}", settlementId, currentUserEmail);
+
+        Roommate currentRoommate = getCurrentRoommateByEmail(currentUserEmail);
+        Long householdId = currentRoommate.getHousehold().getId();
+        lockHouseholdForSettlement(householdId);
+        BalanceDto balance = validateSettlementDecisionInput(settlementId, currentRoommate);
+        SettlementDecision decision = saveSettlementDecision(balance, currentRoommate, SettlementDecisionStatus.REJECTED);
+        return toDecidedSettlementDto(balance, currentRoommate, decision);
+    }
+
     private void lockHouseholdForSettlement(Long householdId) {
         householdRepository.findByIdForUpdate(householdId)
             .orElseThrow(() -> new NotFoundException("Household does not exist."));
@@ -161,6 +228,65 @@ public class PaymentServiceImpl implements PaymentService {
         List<ExpenseSplit> splits = expenseSplitRepository.findAllByExpenseHouseholdId(householdId);
         List<Payment> payments = paymentRepository.findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(householdId);
         return balanceCalculator.calculateOpenBalances(splits, payments);
+    }
+
+    private BalanceDto validateSettlementDecisionInput(String settlementId, Roommate currentRoommate) {
+        SettlementKey settlementKey = parseSettlementId(settlementId);
+        Long householdId = currentRoommate.getHousehold().getId();
+
+        if (!currentRoommate.getId().equals(settlementKey.fromRoommateId())) {
+            throw new ForbiddenException("Only the roommate who owes the settlement may approve or reject it.");
+        }
+
+        Roommate toRoommate = getActiveRoommateInHousehold(settlementKey.toRoommateId(), householdId);
+        validateDifferentRoommates(currentRoommate, toRoommate);
+
+        BigDecimal amount = settlementKey.amount();
+        validatePositiveAmount(amount);
+
+        Optional<SettlementDecision> existingDecision = settlementDecisionRepository
+            .findTopByHouseholdIdAndFromRoommateIdAndToRoommateIdAndAmountOrderByDecidedAtDescIdDesc(
+                householdId,
+                currentRoommate.getId(),
+                toRoommate.getId(),
+                amount
+            );
+        if (existingDecision.isPresent()) {
+            throw new ConflictException("This settlement has already been decided.");
+        }
+
+        return calculateOpenBalances(householdId).stream()
+            .filter(balance -> currentRoommate.getId().equals(balance.fromRoommateId())
+                && toRoommate.getId().equals(balance.toRoommateId())
+                && amount.compareTo(toMoney(balance.amount())) == 0)
+            .findFirst()
+            .orElseThrow(() -> new ConflictException("Settlement is no longer pending."));
+    }
+
+    private Optional<SettlementDecision> latestDecisionFor(Long householdId, BalanceDto balance) {
+        return settlementDecisionRepository
+            .findTopByHouseholdIdAndFromRoommateIdAndToRoommateIdAndAmountOrderByDecidedAtDescIdDesc(
+                householdId,
+                balance.fromRoommateId(),
+                balance.toRoommateId(),
+                toMoney(balance.amount())
+            );
+    }
+
+    private SettlementDecision saveSettlementDecision(
+        BalanceDto balance,
+        Roommate currentRoommate,
+        SettlementDecisionStatus status
+    ) {
+        SettlementDecision decision = new SettlementDecision();
+        decision.setHousehold(currentRoommate.getHousehold());
+        decision.setFromRoommate(currentRoommate);
+        decision.setToRoommate(getActiveRoommateInHousehold(balance.toRoommateId(), currentRoommate.getHousehold().getId()));
+        decision.setAmount(toMoney(balance.amount()));
+        decision.setStatus(status);
+        decision.setDecidedBy(currentRoommate);
+        decision.setDecidedAt(LocalDateTime.now());
+        return settlementDecisionRepository.save(decision);
     }
 
     private List<BalanceDto> visibleBalancesFor(Roommate currentRoommate, List<BalanceDto> balances) {
@@ -243,6 +369,91 @@ public class PaymentServiceImpl implements PaymentService {
         );
     }
 
+    private PendingSettlementDto toPendingSettlementDto(BalanceDto balance, Roommate currentRoommate) {
+        return new PendingSettlementDto(
+            settlementId(balance.fromRoommateId(), balance.toRoommateId(), balance.amount()),
+            expenseDescriptionFor(balance, currentRoommate.getHousehold().getId()),
+            balance.fromRoommateId(),
+            balance.fromRoommateName(),
+            balance.fromRoommateEmail(),
+            balance.toRoommateId(),
+            balance.toRoommateName(),
+            balance.toRoommateEmail(),
+            toMoney(balance.amount()),
+            SettlementDecisionStatus.PENDING,
+            currentRoommate.getId().equals(balance.fromRoommateId()),
+            null,
+            null,
+            null
+        );
+    }
+
+    private PendingSettlementDto toDecidedSettlementDto(
+        BalanceDto balance,
+        Roommate currentRoommate,
+        SettlementDecision decision
+    ) {
+        return new PendingSettlementDto(
+            settlementId(balance.fromRoommateId(), balance.toRoommateId(), balance.amount()),
+            expenseDescriptionFor(balance, currentRoommate.getHousehold().getId()),
+            balance.fromRoommateId(),
+            balance.fromRoommateName(),
+            balance.fromRoommateEmail(),
+            balance.toRoommateId(),
+            balance.toRoommateName(),
+            balance.toRoommateEmail(),
+            toMoney(balance.amount()),
+            decision.getStatus(),
+            currentRoommate.getId().equals(balance.fromRoommateId()),
+            decision.getCreatedAt(),
+            decision.getDecidedAt(),
+            toDisplayName(decision.getDecidedBy())
+        );
+    }
+
+    private String expenseDescriptionFor(BalanceDto balance, Long householdId) {
+        List<String> descriptions = expenseSplitRepository.findAllByExpenseHouseholdId(householdId).stream()
+            .filter(split -> balance.fromRoommateId().equals(split.getRoommate().getId()))
+            .filter(split -> balance.toRoommateId().equals(split.getExpense().getPaidBy().getId()))
+            .filter(split -> toMoney(split.getAmountOwed()).compareTo(BigDecimal.ZERO) > 0)
+            .sorted(Comparator
+                .comparing((ExpenseSplit split) -> split.getExpense().getDate()).reversed()
+                .thenComparing(split -> split.getExpense().getId(), Comparator.reverseOrder()))
+            .map(split -> split.getExpense().getDescription())
+            .filter(description -> description != null && !description.isBlank())
+            .distinct()
+            .toList();
+
+        if (descriptions.isEmpty()) {
+            return "Open settlement";
+        }
+        if (descriptions.size() == 1) {
+            return descriptions.get(0);
+        }
+        return descriptions.get(0) + " +" + (descriptions.size() - 1) + " more";
+    }
+
+    private String settlementId(Long fromRoommateId, Long toRoommateId, BigDecimal amount) {
+        long amountInCents = toMoney(amount).movePointRight(MONEY_SCALE).longValueExact();
+        return fromRoommateId + "-" + toRoommateId + "-" + amountInCents;
+    }
+
+    private SettlementKey parseSettlementId(String settlementId) {
+        if (settlementId == null || !settlementId.matches("\\d+-\\d+-\\d+")) {
+            throw new NotFoundException("Settlement does not exist.");
+        }
+
+        String[] parts = settlementId.split("-");
+        try {
+            Long fromRoommateId = Long.valueOf(parts[0]);
+            Long toRoommateId = Long.valueOf(parts[1]);
+            BigDecimal amount = new BigDecimal(parts[2]).movePointLeft(MONEY_SCALE).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+            return new SettlementKey(fromRoommateId, toRoommateId, amount);
+        } catch (NumberFormatException ex) {
+            throw new NotFoundException("Settlement does not exist.");
+        }
+    }
+
     private String toDisplayName(Roommate roommate) {
         return roommate.getUser().getFirstName() + " " + roommate.getUser().getLastName();
     }
@@ -250,5 +461,7 @@ public class PaymentServiceImpl implements PaymentService {
     private BigDecimal toMoney(BigDecimal amount) {
         return amount.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
     }
+
+    private record SettlementKey(Long fromRoommateId, Long toRoommateId, BigDecimal amount) {}
 
 }

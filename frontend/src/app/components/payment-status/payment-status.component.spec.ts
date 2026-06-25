@@ -2,8 +2,8 @@ import { CommonModule } from '@angular/common';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { of, Subject, throwError } from 'rxjs';
-import { LucideAngularModule, CircleCheck, Clock, HandCoins, Scale } from 'lucide-angular';
-import { PaymentOverviewDto } from '../../dtos/payment';
+import { LucideAngularModule, CircleCheck, CircleX, Clock, HandCoins, Scale } from 'lucide-angular';
+import { PaymentOverviewDto, PendingSettlementDto } from '../../dtos/payment';
 import { AuthService } from '../../services/auth.service';
 import { PaymentService } from '../../services/payment.service';
 import { PaymentStatusComponent } from './payment-status.component';
@@ -72,12 +72,40 @@ describe('PaymentStatusComponent', () => {
     totalOwedToMe: 7.25
   };
 
+  const pendingSettlements: PendingSettlementDto[] = [
+    {
+      id: '10-11-1250',
+      expenseDescription: 'Groceries',
+      fromRoommateId: 10,
+      fromRoommateName: 'Max Mustermann',
+      fromRoommateEmail: 'max@test.com',
+      toRoommateId: 11,
+      toRoommateName: 'Anna Musterfrau',
+      toRoommateEmail: 'anna@test.com',
+      amount: 12.5,
+      status: 'PENDING',
+      canDecide: true,
+      createdAt: null,
+      decidedAt: null,
+      decidedByName: null
+    }
+  ];
+
   beforeEach(async () => {
-    paymentServiceSpy = jasmine.createSpyObj('PaymentService', ['getOverview', 'create']);
+    paymentServiceSpy = jasmine.createSpyObj('PaymentService', [
+      'getOverview',
+      'create',
+      'getPendingSettlements',
+      'approveSettlement',
+      'rejectSettlement'
+    ]);
     authServiceSpy = jasmine.createSpyObj('AuthService', ['getUserEmail']);
 
     paymentServiceSpy.getOverview.and.returnValue(of(emptyOverview));
     paymentServiceSpy.create.and.returnValue(of(populatedOverview.payments[0]));
+    paymentServiceSpy.getPendingSettlements.and.returnValue(of([]));
+    paymentServiceSpy.approveSettlement.and.returnValue(of({ ...pendingSettlements[0], status: 'APPROVED' }));
+    paymentServiceSpy.rejectSettlement.and.returnValue(of({ ...pendingSettlements[0], status: 'REJECTED' }));
     authServiceSpy.getUserEmail.and.returnValue('max@test.com');
 
     await TestBed.configureTestingModule({
@@ -85,7 +113,7 @@ describe('PaymentStatusComponent', () => {
       imports: [
         CommonModule,
         ReactiveFormsModule,
-        LucideAngularModule.pick({CircleCheck, Clock, HandCoins, Scale})
+        LucideAngularModule.pick({CircleCheck, CircleX, Clock, HandCoins, Scale})
       ],
       providers: [
         { provide: PaymentService, useValue: paymentServiceSpy },
@@ -105,6 +133,7 @@ describe('PaymentStatusComponent', () => {
     fixture.detectChanges();
 
     expect(paymentServiceSpy.getOverview).toHaveBeenCalled();
+    expect(paymentServiceSpy.getPendingSettlements).toHaveBeenCalled();
     expect(component.isLoading).toBeFalse();
   });
 
@@ -127,6 +156,7 @@ describe('PaymentStatusComponent', () => {
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('There are no open balances.');
     expect(text).toContain('No payments recorded yet.');
+    expect(fixture.nativeElement.querySelector('[data-cy="settlement-approval-overlay"]')).toBeNull();
     expect(text).not.toContain('Could not load payment status.');
   });
 
@@ -170,6 +200,65 @@ describe('PaymentStatusComponent', () => {
     expect(text).toContain('Max Mustermann paid Anna Musterfrau');
     expect(text).toContain('€12.50');
     expect(text).toContain('€7.25');
+  });
+
+  it('should render pending settlement approval cards', () => {
+    paymentServiceSpy.getPendingSettlements.and.returnValue(of(pendingSettlements));
+
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(fixture.nativeElement.querySelector('[data-cy="settlement-approval-overlay"]')).not.toBeNull();
+    expect(text).toContain('Groceries');
+    expect(text).toContain('Max Mustermann owes Anna Musterfrau');
+    expect(text).toContain('€12.50');
+  });
+
+  it('should close the settlement approval overlay with the close button', () => {
+    paymentServiceSpy.getPendingSettlements.and.returnValue(of(pendingSettlements));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-cy="settlement-approval-overlay"]')).not.toBeNull();
+
+    const closeButton = fixture.nativeElement.querySelector('[data-cy="close-settlement-overlay"]') as HTMLButtonElement;
+    closeButton.click();
+    fixture.detectChanges();
+
+    expect(component.settlementOverlayDismissed).toBeTrue();
+    expect(fixture.nativeElement.querySelector('[data-cy="settlement-approval-overlay"]')).toBeNull();
+  });
+
+  it('should approve a pending settlement via button fallback and reload finance data', () => {
+    paymentServiceSpy.getPendingSettlements.and.returnValue(of(pendingSettlements));
+    fixture.detectChanges();
+
+    component.decideSettlement(pendingSettlements[0], 'APPROVE');
+
+    expect(paymentServiceSpy.approveSettlement).toHaveBeenCalledOnceWith('10-11-1250');
+    expect(component.successMessage).toBe('Settlement approved and payment recorded.');
+    expect(paymentServiceSpy.getOverview).toHaveBeenCalledTimes(2);
+    expect(paymentServiceSpy.getPendingSettlements).toHaveBeenCalledTimes(1);
+  });
+
+  it('should reject a pending settlement via button fallback', () => {
+    paymentServiceSpy.getPendingSettlements.and.returnValue(of(pendingSettlements));
+    fixture.detectChanges();
+
+    component.decideSettlement(pendingSettlements[0], 'REJECT');
+
+    expect(paymentServiceSpy.rejectSettlement).toHaveBeenCalledOnceWith('10-11-1250');
+    expect(component.successMessage).toBe('Settlement rejected.');
+  });
+
+  it('should show a readable error when settlement decision fails', () => {
+    paymentServiceSpy.approveSettlement.and.returnValue(throwError(() => ({
+      error: { message: 'Settlement is no longer pending.' }
+    })));
+
+    component.decideSettlement(pendingSettlements[0], 'APPROVE');
+
+    expect(component.errorMessage).toBe('Settlement is no longer pending.');
+    expect(component.settlementActionId).toBeNull();
   });
 
   it('should allow recording only balances from the current user email', () => {

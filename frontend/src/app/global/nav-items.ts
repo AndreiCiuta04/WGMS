@@ -17,6 +17,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Cleaning',    route: '/cleaning-schedules',    icon: 'calendar-check' },
   { label: 'Expenses',    route: '/expenses',              icon: 'receipt-text' },
   { label: 'History',     route: '/history',               icon: 'clock' },
+  { label: 'Statistics',  route: '/statistics',            icon: 'scale' },
   { label: 'Payments',    route: '/payment-status',        icon: 'hand-coins',                   primaryMobile: true },
   { label: 'Shopping',    route: '/shopping-items',        icon: 'shopping-cart',                primaryMobile: true },
   { label: 'My WG',       route: '/household/members',     icon: 'users' },

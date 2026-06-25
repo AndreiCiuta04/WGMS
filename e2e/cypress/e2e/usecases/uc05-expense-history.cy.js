@@ -53,11 +53,20 @@ function createExpenseHousehold() {
 }
 
 function login(email) {
-  cy.visit('/#/login');
+  cy.clearCookies();
+  cy.visit('/#/login', {
+    onBeforeLoad(win) {
+      win.localStorage.clear();
+      win.sessionStorage.clear();
+    },
+  });
   cy.get('input[name="email"]').clear().type(email);
   cy.get('input[name="password"]').clear().type(password);
+  cy.intercept('POST', '**/api/v1/authentication').as('loginRequest');
   cy.contains('button', 'Login').click();
-  cy.location('hash').should('eq', '#/');
+  cy.wait('@loginRequest').its('response.statusCode').should('eq', 200);
+  cy.window().its('localStorage.authToken').should('exist');
+  cy.location('hash', { timeout: 10000 }).should('eq', '#/');
 }
 
 function assertBalanceAmount(title, amount) {
@@ -74,6 +83,22 @@ function assertPaymentAmount(title, amount) {
     .within(() => {
       cy.contains(amount).should('be.visible');
     });
+}
+
+function visitPaymentStatusWithoutSettlementOverlay({ expectSettlementOverlay = false } = {}) {
+  cy.intercept('GET', '**/api/v1/payments/settlement-approvals').as('getSettlements');
+  cy.intercept('GET', '**/api/v1/payments/overview').as('getPaymentOverview');
+  cy.visit('/#/payment-status');
+  cy.contains('h2', 'Payment Status').should('be.visible');
+  cy.wait('@getSettlements').its('response.statusCode').should('eq', 200);
+  cy.wait('@getPaymentOverview').its('response.statusCode').should('eq', 200);
+
+  if (expectSettlementOverlay) {
+    cy.get('[data-cy="close-settlement-overlay"]', { timeout: 10000 })
+      .should('be.visible')
+      .click();
+  }
+  cy.get('[data-cy="settlement-approval-overlay"]').should('not.exist');
 }
 
 describe('UC-05 Expense Tracking, Payment Status, and History E2E', () => {
@@ -115,10 +140,7 @@ describe('UC-05 Expense Tracking, Payment Status, and History E2E', () => {
 
       cy.logoutUser();
       login(roomEmail);
-      cy.intercept('GET', '**/api/v1/payments/overview').as('getPaymentOverview');
-      cy.visit('/#/payment-status');
-      cy.contains('h2', 'Payment Status').should('be.visible');
-      cy.wait('@getPaymentOverview').its('response.statusCode').should('eq', 200);
+      visitPaymentStatusWithoutSettlementOverlay({ expectSettlementOverlay: true });
 
       assertBalanceAmount('Uc05 Roommate owes Uc05 Main', '10.00');
       cy.contains('.balance-row', 'Uc05 Roommate owes Uc05 Main')

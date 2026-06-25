@@ -114,15 +114,28 @@ function assertPaymentAmount(title, amount) {
     });
 }
 
+function visitPaymentStatusWithoutSettlementOverlay() {
+  cy.intercept('GET', '**/api/v1/payments/settlement-approvals').as('getSettlements');
+  cy.intercept('GET', '**/api/v1/payments/overview').as('getPaymentOverview');
+  cy.visit('/#/payment-status');
+  cy.contains('h2', 'Payment Status').should('be.visible');
+  cy.wait('@getSettlements').its('response.statusCode').should('eq', 200);
+  cy.wait('@getPaymentOverview').its('response.statusCode').should('eq', 200);
+
+  cy.get('body').then(($body) => {
+    if ($body.find('[data-cy="close-settlement-overlay"]').length) {
+      cy.get('[data-cy="close-settlement-overlay"]').click();
+    }
+  });
+  cy.get('[data-cy="settlement-approval-overlay"]').should('not.exist');
+}
+
 describe('FR-06 Payment Status E2E Workflow', () => {
   it('FR-06 positive: records a partial payment, persists it, and keeps FR-05 balances in sync', () => {
     createHouseholdWithExpense().then(({ roomEmail }) => {
       login(roomEmail);
 
-      cy.intercept('GET', '**/api/v1/payments/overview').as('getPaymentOverview');
-      cy.visit('/#/payment-status');
-      cy.contains('h2', 'Payment Status').should('be.visible');
-      cy.wait('@getPaymentOverview').its('response.statusCode').should('eq', 200);
+      visitPaymentStatusWithoutSettlementOverlay();
 
       assertBalanceAmount('FR06 Room owes FR06 Main', '10.00');
       cy.contains('.balance-row', 'FR06 Room owes FR06 Main')
@@ -153,10 +166,7 @@ describe('FR-06 Payment Status E2E Workflow', () => {
     createHouseholdWithExpense().then(({ roomEmail }) => {
       login(roomEmail);
 
-      cy.intercept('GET', '**/api/v1/payments/overview').as('getPaymentOverview');
-      cy.visit('/#/payment-status');
-      cy.contains('h2', 'Payment Status').should('be.visible');
-      cy.wait('@getPaymentOverview').its('response.statusCode').should('eq', 200);
+      visitPaymentStatusWithoutSettlementOverlay();
 
       cy.contains('.balance-row', 'FR06 Room owes FR06 Main')
         .find('button[title="Record payment"]')
@@ -174,10 +184,7 @@ describe('FR-06 Payment Status E2E Workflow', () => {
     createHouseholdWithRoommate().then(({ roomEmail }) => {
       login(roomEmail);
 
-      cy.intercept('GET', '**/api/v1/payments/overview').as('getPaymentOverview');
-      cy.visit('/#/payment-status');
-      cy.contains('h2', 'Payment Status').should('be.visible');
-      cy.wait('@getPaymentOverview').its('response.statusCode').should('eq', 200);
+      visitPaymentStatusWithoutSettlementOverlay();
 
       cy.contains('There are no open balances.').should('be.visible');
       cy.contains('No payments recorded yet.').should('be.visible');

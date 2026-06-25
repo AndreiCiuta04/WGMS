@@ -30,7 +30,7 @@ describe('MobileNavMenuComponent', () => {
 
   it('lists exactly the non-primary nav items', () => {
     expect(component.overflowItems.map(i => i.label)).toEqual([
-      'Cleaning', 'Expenses', 'History', 'My WG', 'Invitations'
+      'Cleaning', 'Expenses', 'History', 'Statistics', 'My WG', 'Invitations'
     ]);
   });
 

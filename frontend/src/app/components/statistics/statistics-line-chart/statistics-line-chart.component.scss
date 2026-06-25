@@ -1,0 +1,90 @@
+.chart-card {
+  background: #FFFFFF;
+  border: 1px solid rgba(52, 103, 57, 0.12);
+  border-radius: 14px;
+  padding: 16px;
+  min-height: 260px;
+}
+
+.chart-card-header h4 {
+  color: #1F2A1F;
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
+.line-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.grid-line {
+  stroke: rgba(31, 42, 31, 0.08);
+  stroke-width: 1;
+}
+
+.axis-label {
+  fill: #5F6B5F;
+  font-size: 11px;
+}
+
+.x-end {
+  text-anchor: end;
+}
+
+.series-line {
+  stroke: #346739;
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.series-line-secondary {
+  stroke: #79AE6F;
+}
+
+.series-point {
+  fill: #346739;
+}
+
+.series-point-secondary {
+  fill: #79AE6F;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.legend-item {
+  align-items: center;
+  color: #5F6B5F;
+  display: inline-flex;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.legend-dot {
+  background: #346739;
+  border-radius: 999px;
+  display: inline-block;
+  height: 8px;
+  width: 8px;
+}
+
+.legend-dot-secondary {
+  background: #79AE6F;
+}
+
+.chart-empty-state {
+  align-items: center;
+  color: #5F6B5F;
+  display: flex;
+  font-size: 14px;
+  justify-content: center;
+  min-height: 196px;
+  text-align: center;
+}
