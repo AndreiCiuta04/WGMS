@@ -7,6 +7,7 @@ import at.ac.tuwien.sepr.groupphase.backend.entity.Expense;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ExpenseSplit;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
+import at.ac.tuwien.sepr.groupphase.backend.entity.Payment;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
 import at.ac.tuwien.sepr.groupphase.backend.entity.QuantityUnit;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ShoppingItem;
@@ -18,6 +19,7 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.CleaningScheduleRepositor
 import at.ac.tuwien.sepr.groupphase.backend.repository.ExpenseRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ExpenseSplitRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.HouseholdRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ShoppingItemRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
@@ -61,6 +63,7 @@ public class DemoDataGenerator implements ApplicationRunner {
     private final TaskRepository taskRepository;
     private final ExpenseRepository expenseRepository;
     private final ExpenseSplitRepository expenseSplitRepository;
+    private final PaymentRepository paymentRepository;
     private final ShoppingItemRepository shoppingItemRepository;
     private final PasswordEncoder passwordEncoder;
     private final EntityManager entityManager;
@@ -72,6 +75,7 @@ public class DemoDataGenerator implements ApplicationRunner {
                              TaskRepository taskRepository,
                              ExpenseRepository expenseRepository,
                              ExpenseSplitRepository expenseSplitRepository,
+                             PaymentRepository paymentRepository,
                              ShoppingItemRepository shoppingItemRepository,
                              PasswordEncoder passwordEncoder,
                              EntityManager entityManager) {
@@ -82,6 +86,7 @@ public class DemoDataGenerator implements ApplicationRunner {
         this.taskRepository = taskRepository;
         this.expenseRepository = expenseRepository;
         this.expenseSplitRepository = expenseSplitRepository;
+        this.paymentRepository = paymentRepository;
         this.shoppingItemRepository = shoppingItemRepository;
         this.passwordEncoder = passwordEncoder;
         this.entityManager = entityManager;
@@ -93,7 +98,9 @@ public class DemoDataGenerator implements ApplicationRunner {
         if (userRepository.findUserByEmail(PRESENTATION_DEMO_EMAIL) == null) {
             generatePresentationDemoData();
         } else {
-            LOGGER.info("Presentation demo data already exists. Skipping generation.");
+            LOGGER.info("Presentation demo data already exists. Refreshing chart-friendly task data and ensuring payment demo data exists.");
+            resetPresentationDemoTasks();
+            ensurePresentationDemoPayments();
         }
 
         if (userRepository.findUserByEmail(FR15_MAIN_TENANT_EMAIL) == null) {
@@ -119,6 +126,7 @@ public class DemoDataGenerator implements ApplicationRunner {
         List<CleaningSchedule> schedules = createCleaningSchedules(household, users);
         createTasks(household, users, schedules);
         createExpenses(household, roommates);
+        createPayments(household, roommates);
         createShoppingItems(household, users);
 
         LOGGER.info("Demo data generated successfully.");
@@ -473,56 +481,70 @@ public class DemoDataGenerator implements ApplicationRunner {
     private void createTasks(Household household, DemoUsers users, List<CleaningSchedule> schedules) {
         LocalDate today = LocalDate.now();
 
-        createTask(household, "Clean kitchen after pasta night", "Counters, stove, sink, and floor.", today.minusDays(2),
-            TaskStatus.OPEN, users.cemil(), users.dzovani(), schedules.get(0), 22);
-        createTask(household, "Bathroom deep clean", "Shower glass and toilet need special attention.", today.minusDays(1),
-            TaskStatus.IN_PROGRESS, users.cemil(), users.joan(), schedules.get(1), 21);
-        createTask(household, "Take out recycling", "Plastic and paper bins are full.", today,
-            TaskStatus.OPEN, users.cemil(), users.daniel(), schedules.get(2), 20);
-        createTask(household, "Vacuum hallway", "Especially near the entrance mat.", today.plusDays(1),
-            TaskStatus.OPEN, users.cemil(), users.taras(), schedules.get(3), 19);
+        // Current overdue and in-progress tasks for status and overdue charts.
+        createTask(household, "Clean kitchen after pasta night", "Counters, stove, sink, and floor.", today.minusDays(18),
+            TaskStatus.DONE, users.cemil(), users.dzovani(), schedules.get(0), 24);
+        createTask(household, "Bathroom deep clean", "Shower glass and toilet need special attention.", today.minusDays(14),
+            TaskStatus.DONE, users.cemil(), users.joan(), schedules.get(1), 19);
+        createTask(household, "Take out recycling", "Plastic and paper bins are full.", today.minusDays(3),
+            TaskStatus.OPEN, users.cemil(), users.daniel(), schedules.get(2), 7);
+        createTask(household, "Vacuum hallway", "Especially near the entrance mat.", today.minusDays(1),
+            TaskStatus.IN_PROGRESS, users.cemil(), users.taras(), schedules.get(3), 5);
         createTask(household, "Fridge check", "Remove expired leftovers.", today.plusDays(3),
-            TaskStatus.OPEN, users.cemil(), users.andrei(), schedules.get(4), 18);
+            TaskStatus.OPEN, users.cemil(), users.andrei(), schedules.get(4), 4);
         createTask(household, "Daily kitchen reset", "Fast evening cleanup before tomorrow.", today,
-            TaskStatus.IN_PROGRESS, users.cemil(), users.cemil(), schedules.get(5), 17);
+            TaskStatus.IN_PROGRESS, users.cemil(), users.cemil(), schedules.get(5), 2);
 
-        createTask(household, "Clean microwave", "Food splashes inside microwave.", today.minusDays(8),
-            TaskStatus.DONE, users.dzovani(), users.dzovani(), null, 28);
-        createTask(household, "Restock toilet paper", "Move bulk pack from storage to bathroom.", today.minusDays(7),
-            TaskStatus.DONE, users.daniel(), users.daniel(), null, 27);
-        createTask(household, "Water balcony plants", "Water herbs and tomatoes.", today.minusDays(6),
-            TaskStatus.DONE, users.joan(), users.joan(), null, 26);
-        createTask(household, "Clean coffee machine", "Descale and rinse water tank.", today.minusDays(5),
-            TaskStatus.DONE, users.cemil(), users.taras(), null, 25);
-        createTask(household, "Sort shared mail", "Separate utility letters from advertisements.", today.minusDays(4),
-            TaskStatus.DONE, users.cemil(), users.andrei(), null, 24);
+        // Completed task history intentionally spans several weeks so completion graphs do not collapse into one spike.
+        createTask(household, "Clean microwave", "Food splashes inside microwave.", today.minusDays(56),
+            TaskStatus.DONE, users.dzovani(), users.dzovani(), null, 60);
+        createTask(household, "Restock toilet paper", "Move bulk pack from storage to bathroom.", today.minusDays(49),
+            TaskStatus.DONE, users.daniel(), users.daniel(), null, 53);
+        createTask(household, "Water balcony plants", "Water herbs and tomatoes.", today.minusDays(43),
+            TaskStatus.DONE, users.joan(), users.joan(), null, 47);
+        createTask(household, "Clean coffee machine", "Descale and rinse water tank.", today.minusDays(36),
+            TaskStatus.DONE, users.cemil(), users.taras(), null, 40);
+        createTask(household, "Sort shared mail", "Separate utility letters from advertisements.", today.minusDays(31),
+            TaskStatus.DONE, users.cemil(), users.andrei(), null, 35);
+        createTask(household, "Clean oven tray", "Remove burnt spots after group dinner.", today.minusDays(27),
+            TaskStatus.DONE, users.joan(), users.daniel(), null, 30);
+        createTask(household, "Wash bathroom towels", "Wash and fold shared bathroom towels.", today.minusDays(22),
+            TaskStatus.DONE, users.taras(), users.joan(), schedules.get(1), 26);
+        createTask(household, "Mop entrance area", "Mop after rainy week.", today.minusDays(16),
+            TaskStatus.DONE, users.andrei(), users.andrei(), schedules.get(3), 20);
+        createTask(household, "Deep clean fridge drawer", "Clean vegetable drawer and expired sauces.", today.minusDays(11),
+            TaskStatus.DONE, users.cemil(), users.cemil(), schedules.get(4), 15);
+        createTask(household, "Descale kettle", "Use citric acid and rinse twice.", today.minusDays(6),
+            TaskStatus.DONE, users.dzovani(), users.taras(), null, 9);
 
-        createTask(household, "Buy replacement sponge", "Kitchen sponge is worn out.", today.plusDays(2),
-            TaskStatus.OPEN, users.joan(), users.dzovani(), null, 16);
-        createTask(household, "Clean windows in living room", "Only inside windows needed.", today.plusDays(4),
-            TaskStatus.OPEN, users.cemil(), users.daniel(), null, 15);
-        createTask(household, "Organize cleaning supplies shelf", "Group detergents and sponges.", today.plusDays(6),
-            TaskStatus.OPEN, users.taras(), users.taras(), null, 14);
-        createTask(household, "Check smoke detector batteries", "Press test button in hallway and kitchen.", today.plusDays(7),
-            TaskStatus.OPEN, users.andrei(), users.andrei(), null, 13);
+        // Overdue backlog, spread across dates instead of all being due today.
+        createTask(household, "Buy replacement sponge", "Kitchen sponge is worn out.", today.minusDays(13),
+            TaskStatus.OPEN, users.joan(), users.dzovani(), null, 18);
+        createTask(household, "Clean windows in living room", "Only inside windows needed.", today.minusDays(9),
+            TaskStatus.OPEN, users.cemil(), users.daniel(), null, 14);
+        createTask(household, "Organize cleaning supplies shelf", "Group detergents and sponges.", today.minusDays(5),
+            TaskStatus.IN_PROGRESS, users.taras(), users.taras(), null, 10);
+        createTask(household, "Check smoke detector batteries", "Press test button in hallway and kitchen.", today.minusDays(2),
+            TaskStatus.OPEN, users.andrei(), users.andrei(), null, 6);
+
+        // Upcoming open tasks for the current demo view.
         createTask(household, "Wipe dining table", "After group study evening.", today.plusDays(1),
-            TaskStatus.OPEN, users.daniel(), users.joan(), null, 12);
-
-        createTask(household, "Old party cleanup", "Cancelled because party did not happen.", today.minusDays(12),
-            TaskStatus.CANCELLED, users.cemil(), users.dzovani(), null, 31);
-        createTask(household, "Move sofa for vacuuming", "Cancelled due to exam week.", today.minusDays(10),
-            TaskStatus.CANCELLED, users.joan(), users.daniel(), null, 30);
-
-        createTask(household, "Kitchen floor weekly follow-up", "Generated from recurring kitchen schedule.", today.plusDays(7),
-            TaskStatus.OPEN, users.cemil(), users.joan(), schedules.get(0), 11);
-        createTask(household, "Bathroom towels wash", "Wash shared bathroom towels.", today.plusDays(8),
-            TaskStatus.OPEN, users.cemil(), users.taras(), schedules.get(1), 10);
+            TaskStatus.OPEN, users.daniel(), users.joan(), null, 3);
+        createTask(household, "Kitchen floor weekly follow-up", "Generated from recurring kitchen schedule.", today.plusDays(4),
+            TaskStatus.OPEN, users.cemil(), users.joan(), schedules.get(0), 2);
+        createTask(household, "Bathroom towels wash", "Wash shared bathroom towels.", today.plusDays(7),
+            TaskStatus.OPEN, users.cemil(), users.taras(), schedules.get(1), 1);
         createTask(household, "Glass recycling run", "Bring glass bottles to container.", today.plusDays(9),
-            TaskStatus.OPEN, users.daniel(), users.daniel(), schedules.get(2), 9);
-        createTask(household, "Entrance mat cleaning", "Shake out and vacuum entrance mat.", today.plusDays(10),
-            TaskStatus.OPEN, users.taras(), users.andrei(), schedules.get(3), 8);
-        createTask(household, "Freezer drawer cleanup", "Remove old ice and sort shared frozen food.", today.plusDays(12),
-            TaskStatus.OPEN, users.andrei(), users.cemil(), schedules.get(4), 7);
+            TaskStatus.OPEN, users.daniel(), users.daniel(), schedules.get(2), 1);
+        createTask(household, "Entrance mat cleaning", "Shake out and vacuum entrance mat.", today.plusDays(11),
+            TaskStatus.OPEN, users.taras(), users.andrei(), schedules.get(3), 1);
+        createTask(household, "Freezer drawer cleanup", "Remove old ice and sort shared frozen food.", today.plusDays(14),
+            TaskStatus.OPEN, users.andrei(), users.cemil(), schedules.get(4), 1);
+
+        createTask(household, "Old party cleanup", "Cancelled because party did not happen.", today.minusDays(39),
+            TaskStatus.CANCELLED, users.cemil(), users.dzovani(), null, 42);
+        createTask(household, "Move sofa for vacuuming", "Cancelled due to exam week.", today.minusDays(25),
+            TaskStatus.CANCELLED, users.joan(), users.daniel(), null, 28);
     }
 
     private Task createTask(Household household,
@@ -535,6 +557,12 @@ public class DemoDataGenerator implements ApplicationRunner {
                             CleaningSchedule cleaningSchedule,
                             int daysAgoCreated) {
         LocalDateTime createdAt = LocalDateTime.now().minusDays(daysAgoCreated);
+        LocalDateTime updatedAt = switch (status) {
+            case DONE -> dueDate.atTime(18, 0);
+            case CANCELLED -> dueDate.plusDays(1).atTime(12, 0);
+            case IN_PROGRESS -> LocalDateTime.now().minusHours(8);
+            default -> createdAt.plusHours(4);
+        };
 
         Task task = new Task();
         task.setHousehold(household);
@@ -546,8 +574,43 @@ public class DemoDataGenerator implements ApplicationRunner {
         task.setAssignedTo(assignedTo);
         task.setCleaningSchedule(cleaningSchedule);
         task.setCreatedAt(createdAt);
-        task.setUpdatedAt(createdAt.plusHours(4));
-        return taskRepository.save(task);
+        task.setUpdatedAt(updatedAt);
+
+        Task savedTask = taskRepository.save(task);
+        overrideTaskTimestamps(savedTask, createdAt, updatedAt);
+        return savedTask;
+    }
+
+    private void resetPresentationDemoTasks() {
+        DemoUsers users = createUsers();
+        Roommate cemil = roommateRepository.findByUserIdAndActiveTrue(users.cemil().getId()).orElse(null);
+
+        if (cemil == null) {
+            LOGGER.warn("Cannot refresh presentation task demo data because Cemil is not an active roommate.");
+            return;
+        }
+
+        Household household = cemil.getHousehold();
+        entityManager.flush();
+        entityManager.createQuery("delete from Task task where task.household.id = :householdId")
+            .setParameter("householdId", household.getId())
+            .executeUpdate();
+        entityManager.createQuery("delete from CleaningSchedule schedule where schedule.household.id = :householdId")
+            .setParameter("householdId", household.getId())
+            .executeUpdate();
+
+        List<CleaningSchedule> schedules = createCleaningSchedules(household, users);
+        createTasks(household, users, schedules);
+        LOGGER.info("Presentation task demo data refreshed with distributed completion, overdue, and open dates.");
+    }
+
+    private void overrideTaskTimestamps(Task task, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        entityManager.flush();
+        entityManager.createQuery("update Task task set task.createdAt = :createdAt, task.updatedAt = :updatedAt where task.id = :id")
+            .setParameter("createdAt", createdAt)
+            .setParameter("updatedAt", updatedAt)
+            .setParameter("id", task.getId())
+            .executeUpdate();
     }
 
     // -------------------------------------------------------------------------
@@ -668,11 +731,7 @@ public class DemoDataGenerator implements ApplicationRunner {
     }
 
     private void overrideTaskUpdatedAt(Task task, LocalDateTime updatedAt) {
-        entityManager.flush();
-        entityManager.createQuery("update Task task set task.updatedAt = :updatedAt where task.id = :id")
-            .setParameter("updatedAt", updatedAt)
-            .setParameter("id", task.getId())
-            .executeUpdate();
+        overrideTaskTimestamps(task, updatedAt.minusHours(2), updatedAt);
     }
 
     // -------------------------------------------------------------------------
@@ -1036,6 +1095,75 @@ public class DemoDataGenerator implements ApplicationRunner {
             split.setAmountOwed(share.amountOwed());
             expenseSplitRepository.save(split);
         }
+    }
+
+
+    private void ensurePresentationDemoPayments() {
+        DemoUsers users = createUsers();
+        Roommate cemil = roommateRepository.findByUserIdAndActiveTrue(users.cemil().getId()).orElse(null);
+
+        if (cemil == null) {
+            LOGGER.warn("Cannot create payment demo data because Cemil is not an active roommate.");
+            return;
+        }
+
+        Household household = cemil.getHousehold();
+        if (paymentRepository.existsByHouseholdId(household.getId())) {
+            LOGGER.info("Payment demo data already exists. Skipping payment generation.");
+            return;
+        }
+
+        DemoRoommates roommates = new DemoRoommates(
+            findRoommateInHousehold(users.cemil(), household),
+            findRoommateInHousehold(users.dzovani(), household),
+            findRoommateInHousehold(users.joan(), household),
+            findRoommateInHousehold(users.daniel(), household),
+            findRoommateInHousehold(users.taras(), household),
+            findRoommateInHousehold(users.andrei(), household)
+        );
+        createPayments(household, roommates);
+        LOGGER.info("Payment demo data generated for existing presentation household.");
+    }
+
+    private Roommate findRoommateInHousehold(ApplicationUser user, Household household) {
+        return roommateRepository.findByUserIdAndHouseholdId(user.getId(), household.getId())
+            .orElseThrow(() -> new IllegalStateException("Demo roommate does not exist for user " + user.getEmail()));
+    }
+
+    private void createPayments(Household household, DemoRoommates roommates) {
+        LocalDate today = LocalDate.now();
+
+        createPayment(household, roommates.dzovani(), roommates.cemil(), "180.00", today.minusDays(48));
+        createPayment(household, roommates.joan(), roommates.cemil(), "160.00", today.minusDays(44));
+        createPayment(household, roommates.daniel(), roommates.cemil(), "145.00", today.minusDays(40));
+        createPayment(household, roommates.taras(), roommates.cemil(), "125.00", today.minusDays(36));
+        createPayment(household, roommates.andrei(), roommates.cemil(), "150.00", today.minusDays(33));
+
+        createPayment(household, roommates.cemil(), roommates.dzovani(), "18.40", today.minusDays(30));
+        createPayment(household, roommates.daniel(), roommates.joan(), "22.75", today.minusDays(27));
+        createPayment(household, roommates.andrei(), roommates.dzovani(), "16.20", today.minusDays(24));
+        createPayment(household, roommates.taras(), roommates.joan(), "27.50", today.minusDays(20));
+
+        createPayment(household, roommates.dzovani(), roommates.cemil(), "175.00", today.minusDays(17));
+        createPayment(household, roommates.joan(), roommates.cemil(), "155.00", today.minusDays(14));
+        createPayment(household, roommates.daniel(), roommates.taras(), "19.60", today.minusDays(10));
+        createPayment(household, roommates.andrei(), roommates.daniel(), "24.30", today.minusDays(6));
+        createPayment(household, roommates.taras(), roommates.dzovani(), "12.80", today.minusDays(2));
+    }
+
+    private Payment createPayment(Household household,
+                                  Roommate fromRoommate,
+                                  Roommate toRoommate,
+                                  String amount,
+                                  LocalDate date) {
+        Payment payment = new Payment();
+        payment.setHousehold(household);
+        payment.setFromRoommate(fromRoommate);
+        payment.setToRoommate(toRoommate);
+        payment.setCreatedBy(fromRoommate);
+        payment.setAmount(new BigDecimal(amount).setScale(2, RoundingMode.HALF_UP));
+        payment.setDate(date);
+        return paymentRepository.save(payment);
     }
 
     // -------------------------------------------------------------------------
