@@ -287,6 +287,33 @@ public class InvitationEndpointTest implements TestData {
 
 
     @Test
+    public void givenFormerMember_whenAcceptInvitationAgain_thenReactivatesMembership() throws Exception {
+        InvitationDto invitationDto = createInvitation("userB@test.com");
+        String rawToken = invitationDto.inviteUrl().substring(invitationDto.inviteUrl().lastIndexOf("/") + 1);
+
+        MvcResult firstAccept = this.mockMvc.perform(post("/api/v1/invitations/" + rawToken + "/accept")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userB@test.com", USER_ROLES)))
+            .andReturn();
+        assertEquals(HttpStatus.OK.value(), firstAccept.getResponse().getStatus());
+
+        MvcResult leaveResult = this.mockMvc.perform(delete("/api/v1/users/me/household")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userB@test.com", USER_ROLES)))
+            .andReturn();
+        assertEquals(HttpStatus.OK.value(), leaveResult.getResponse().getStatus());
+        assertFalse(roommateRepository.existsByUserIdAndHouseholdIdAndActiveTrue(userB.getId(), household.getId()));
+
+        InvitationDto rejoinInvitation = createInvitation("userB@test.com");
+        String rejoinToken = rejoinInvitation.inviteUrl().substring(rejoinInvitation.inviteUrl().lastIndexOf("/") + 1);
+
+        MvcResult rejoinAccept = this.mockMvc.perform(post("/api/v1/invitations/" + rejoinToken + "/accept")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userB@test.com", USER_ROLES)))
+            .andReturn();
+        assertEquals(HttpStatus.OK.value(), rejoinAccept.getResponse().getStatus());
+        assertTrue(roommateRepository.existsByUserIdAndHouseholdIdAndActiveTrue(userB.getId(), household.getId()));
+        assertEquals(2, roommateRepository.findAllByHouseholdIdAndActiveTrue(household.getId()).size());
+    }
+
+    @Test
     public void givenCreatedInvitation_whenInspectTokenStorage_thenTokenIsHashedAndExpiredInvitationFails() throws Exception {
         InvitationDto invitationDto = createInvitation("userB@test.com");
         String rawToken = invitationDto.inviteUrl().substring(invitationDto.inviteUrl().lastIndexOf("/") + 1);

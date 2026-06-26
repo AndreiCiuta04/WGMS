@@ -30,7 +30,7 @@ describe('StatisticsBarListComponent', () => {
   });
 
   it('supports member-value labels', () => {
-    const item = { key: '1', displayName: 'Main Tenant', value: 4 };
+    const item = { roommateId: 1, displayName: 'Main Tenant', value: 4 };
 
     expect(component.labelOf(item)).toBe('Main Tenant');
     expect(component.valueOf(item)).toBe(4);

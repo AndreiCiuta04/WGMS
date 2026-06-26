@@ -156,13 +156,23 @@ public class InvitationServiceImpl implements InvitationService {
             throw new ForbiddenException("This invitation is not assigned to this email address.");
         }
 
+        Long householdId = invitation.getHousehold().getId();
         Roommate roommate = roommateRepository
-            .findByUserIdAndHouseholdId(currentUser.getId(), invitation.getHousehold().getId())
-            .orElseGet(Roommate::new);
-        roommate.setUser(currentUser);
-        roommate.setHousehold(invitation.getHousehold());
-        roommate.setRole(HouseholdRole.ROOMMATE);
-        roommate.setActive(true);
+            .findByUserIdAndHouseholdId(currentUser.getId(), householdId)
+            .orElse(null);
+
+        if (roommate == null) {
+            roommate = new Roommate();
+            roommate.setUser(currentUser);
+            roommate.setHousehold(invitation.getHousehold());
+            roommate.setRole(invitation.getRoleToAssign());
+            roommate.setActive(true);
+        } else if (roommate.isActive()) {
+            throw new ConflictException("User already belongs to a household.");
+        } else {
+            roommate.setActive(true);
+            roommate.setRole(invitation.getRoleToAssign());
+        }
         roommateRepository.save(roommate);
 
         invitation.setUsedAt(LocalDateTime.now());
