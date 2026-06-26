@@ -417,13 +417,20 @@ public class PaymentEndpointTest implements TestData {
             pendingResult.getResponse().getContentAsString(),
             jsonMapper.getTypeFactory().constructCollectionType(List.class, PendingSettlementDto.class)
         );
+        String expectedRemainingSettlementId = settlementId(
+            roommateRecord,
+            secondCreditor,
+            "7.00",
+            expenseRepository.findMaxIdByHouseholdId(household.getId()),
+            paymentRepository.findMaxIdByHouseholdId(household.getId())
+        );
 
         assertAll(
             () -> assertEquals(HttpStatus.OK.value(), approveResult.getResponse().getStatus()),
             () -> assertEquals(1, paymentRepository.findAll().size()),
             () -> assertEquals(1, settlementDecisionRepository.findAll().size()),
             () -> assertEquals(1, pending.size()),
-            () -> assertEquals(roommateRecord.getId() + "-" + secondCreditor.getId() + "-700", pending.get(0).id()),
+            () -> assertEquals(expectedRemainingSettlementId, pending.get(0).id()),
             () -> assertEquals(0, money("7.00").compareTo(pending.get(0).amount()))
         );
     }

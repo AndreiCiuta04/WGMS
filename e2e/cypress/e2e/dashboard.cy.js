@@ -9,7 +9,7 @@ function registerUser(email, firstName, lastName) {
   return cy.request({
     method: 'POST',
     url: `${apiUrl}/users`,
-    body: { email, password, firstName, lastName },
+    body: { email, password, firstName, lastName, termsAccepted: true },
   }).then((response) => String(response.body));
 }
 
@@ -214,7 +214,8 @@ describe('FR-12 Dashboard E2E Workflow', () => {
       // 1. Create a shopping item via UI form
       cy.visit('/#/shopping-items/create');
       cy.get('#name').type('Organic Bananas');
-      cy.get('#quantity').type('1 bunch');
+      cy.get('[data-cy="quantity-amount"]').type('1');
+      cy.get('[data-cy="quantity-unit"]').select('pack');
       cy.get('#notes').type('Fairtrade certified');
       cy.get('#visibility').select('SHARED');
 
@@ -251,7 +252,7 @@ describe('FR-12 Dashboard E2E Workflow', () => {
 
       // Verify the needed shopping items card has the new shopping item
       cy.contains('.shopping-item', 'Organic Bananas').should('be.visible');
-      cy.contains('.shopping-item', 'Organic Bananas').contains('(1 bunch)').should('be.visible');
+      cy.contains('.shopping-item', 'Organic Bananas').contains('1 pack').should('be.visible');
       cy.contains('.shopping-item', 'Organic Bananas').contains('Fairtrade certified').should('be.visible');
 
       // Verify empty states are no longer shown

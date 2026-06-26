@@ -28,7 +28,8 @@ function registerUser(user) {
       email: user.email,
       password: user.password,
       firstName: user.firstName,
-      lastName: user.lastName
+      lastName: user.lastName,
+      termsAccepted: true
     }
   });
 }
