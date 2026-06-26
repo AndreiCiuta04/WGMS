@@ -98,12 +98,21 @@ Cypress.Commands.add('createHousehold', ({ name, address }) => {
 });
 
 Cypress.Commands.add('createInvitation', ({ invitedEmail }) => {
-    cy.visit('/#/household/invitations');
+    const runToken = `${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+    const householdAlias = `getHousehold_${runToken}`;
+    const invitationsAlias = `getInvitations_${runToken}`;
 
-    cy.contains('Manage Invitations').should('be.visible');
+    cy.intercept('GET', '**/api/v1/households/me').as(householdAlias);
+    cy.intercept('GET', '**/api/v1/households/*/invitations').as(invitationsAlias);
+    cy.visit('/#/household/invitations');
+    cy.location('hash', { timeout: 10000 }).should('eq', '#/household/invitations');
+
+    cy.wait(`@${householdAlias}`, { timeout: 10000 }).its('response.statusCode').should('eq', 200);
+    cy.wait(`@${invitationsAlias}`, { timeout: 10000 });
+    cy.get('#expiry', { timeout: 10000 }).should('be.visible');
 
     if (invitedEmail) {
-        cy.get('#email').clear().type(invitedEmail);
+        cy.get('#email').should('be.visible').clear().type(invitedEmail);
     }
 
     cy.get('#expiry').select('168');

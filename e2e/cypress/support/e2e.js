@@ -18,5 +18,8 @@ import './commands'
 import 'cypress-axe';
 import 'cypress-real-events';
 
+// Accessibility (axe) assertions for UC-01 a11y coverage.
+import 'cypress-axe'
+
 // Alternatively you can use CommonJS syntax:
 // require('./commands')

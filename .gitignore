@@ -1,0 +1,3 @@
+# Local-only manual QA tooling (Playwright walkthrough). Evidence is kept under
+# docs/QA-usecases/uc01-evidence/. The tooling itself must not be committed.
+qa-walkthrough/
