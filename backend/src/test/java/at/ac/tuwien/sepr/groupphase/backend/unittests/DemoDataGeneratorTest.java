@@ -17,6 +17,7 @@ import at.ac.tuwien.sepr.groupphase.backend.repository.RoommateRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.ShoppingItemRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.TaskRepository;
 import at.ac.tuwien.sepr.groupphase.backend.repository.UserRepository;
+import at.ac.tuwien.sepr.groupphase.backend.repository.PaymentRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +56,9 @@ public class DemoDataGeneratorTest {
     private ExpenseRepository expenseRepository;
 
     @Mock
+    private PaymentRepository paymentRepository;
+
+    @Mock
     private ExpenseSplitRepository expenseSplitRepository;
 
     @Mock
@@ -84,6 +88,7 @@ public class DemoDataGeneratorTest {
             taskRepository,
             expenseRepository,
             expenseSplitRepository,
+            paymentRepository,
             shoppingItemRepository,
             passwordEncoder,
             entityManager
