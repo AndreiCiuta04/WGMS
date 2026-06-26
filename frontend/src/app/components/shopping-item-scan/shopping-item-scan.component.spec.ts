@@ -73,6 +73,40 @@ describe('ShoppingItemScanComponent', () => {
     expect(shoppingSpy.scan).not.toHaveBeenCalled();
   });
 
+  it('ignores manual payload while already submitting', () => {
+    component.state = 'submitting';
+
+    component.submitManual('{"name":"Milk"}');
+
+    expect(shoppingSpy.scan).not.toHaveBeenCalled();
+  });
+
+  it('uses backend error messages when scan validation returns one', () => {
+    shoppingSpy.scan.and.returnValue(throwError(() => ({ error: { message: 'Duplicate scanned item' } })));
+
+    component.submitManual('{"name":"Milk"}');
+
+    expect(component.state).toBe('error');
+    expect(component.errorMessage).toBe('Duplicate scanned item');
+  });
+
+  it('maps authentication, household and generic scan errors to safe messages', () => {
+    shoppingSpy.scan.and.returnValues(
+      throwError(() => ({ status: 401 })),
+      throwError(() => ({ status: 403 })),
+      throwError(() => ({ status: 500 }))
+    );
+
+    component.submitManual('expired-session');
+    expect(component.errorMessage).toContain('session has expired');
+
+    component.submitManual('no-household');
+    expect(component.errorMessage).toContain('part of a household');
+
+    component.submitManual('server-error');
+    expect(component.errorMessage).toContain('Could not add');
+  });
+
   it('rescan() resets state and restarts the camera', () => {
     component.state = 'error';
     component.errorMessage = 'oops';
@@ -81,5 +115,60 @@ describe('ShoppingItemScanComponent', () => {
 
     expect(component.errorMessage).toBeNull();
     expect(component.startCamera).toHaveBeenCalled();
+  });
+
+  it('toggleManual() flips the manual fallback visibility', () => {
+    expect(component.showManual).toBeFalse();
+
+    component.toggleManual();
+    expect(component.showManual).toBeTrue();
+
+    component.toggleManual();
+    expect(component.showManual).toBeFalse();
+  });
+
+  it('startCamera() exposes manual fallback when no camera API exists', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
+    Object.defineProperty(navigator, 'mediaDevices', { value: undefined, configurable: true });
+    (component.startCamera as jasmine.Spy).and.callThrough();
+
+    await component.startCamera();
+
+    expect(component.cameraError).toContain('No camera is available');
+    expect(component.showManual).toBeTrue();
+
+    Object.defineProperty(navigator, 'mediaDevices', descriptor ?? { value: undefined, configurable: true });
+  });
+
+  it('startCamera() exposes manual fallback when camera permission is rejected', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: () => Promise.reject(new Error('denied')) },
+      configurable: true
+    });
+    (component.startCamera as jasmine.Spy).and.callThrough();
+
+    await component.startCamera();
+
+    expect(component.cameraError).toContain('Camera access was blocked');
+    expect(component.showManual).toBeTrue();
+
+    Object.defineProperty(navigator, 'mediaDevices', descriptor ?? { value: undefined, configurable: true });
+  });
+
+  it('ngOnDestroy() stops camera tracks and cancels pending animation frame', () => {
+    const stop = jasmine.createSpy('stop');
+    const cancelSpy = spyOn(window, 'cancelAnimationFrame');
+    (component as unknown as { stream: MediaStream | null }).stream = {
+      getTracks: () => [{ stop }]
+    } as unknown as MediaStream;
+    (component as unknown as { rafId: number | null }).rafId = 123;
+    component.cameraActive = true;
+
+    component.ngOnDestroy();
+
+    expect(stop).toHaveBeenCalled();
+    expect(cancelSpy).toHaveBeenCalledWith(123);
+    expect(component.cameraActive).toBeFalse();
   });
 });

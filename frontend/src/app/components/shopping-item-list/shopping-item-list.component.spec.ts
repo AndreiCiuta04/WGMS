@@ -15,6 +15,7 @@ describe('ShoppingItemListComponent', () => {
   let fixture: ComponentFixture<ShoppingItemListComponent>;
   let serviceSpy: jasmine.SpyObj<ShoppingItemService>;
   let confirmDialog: jasmine.SpyObj<ConfirmDialogService>;
+  let modalService: jasmine.SpyObj<NgbModal>;
 
   const personal: ShoppingItemDto = {
     id: 1, name: 'My personal', quantityCount: null, quantityAmount: null, quantityUnit: null, notes: null,
@@ -150,6 +151,8 @@ describe('ShoppingItemListComponent', () => {
     serviceSpy.deleteSuggestion.and.returnValue(of(void 0));
     confirmDialog = jasmine.createSpyObj<ConfirmDialogService>('ConfirmDialogService', ['confirm']);
     confirmDialog.confirm.and.returnValue(Promise.resolve(true));
+    modalService = jasmine.createSpyObj<NgbModal>('NgbModal', ['open']);
+    modalService.open.and.returnValue({ componentInstance: {} } as never);
 
 
     await TestBed.configureTestingModule({
@@ -162,7 +165,7 @@ describe('ShoppingItemListComponent', () => {
       providers: [
         { provide: ShoppingItemService, useValue: serviceSpy },
         { provide: ConfirmDialogService, useValue: confirmDialog },
-        { provide: NgbModal, useValue: jasmine.createSpyObj('NgbModal', ['open']) }
+        { provide: NgbModal, useValue: modalService }
       ]
     }).compileComponents();
 
@@ -423,5 +426,104 @@ describe('ShoppingItemListComponent', () => {
     expect(serviceSpy.createSuggestion).not.toHaveBeenCalled();
     expect(component.actionError)
       .toBe('Quantity amount and unit must be provided together.');
+  });
+
+  it('openQrShare() opens the QR modal and passes the selected item', () => {
+    component.openQrShare(personal);
+
+    expect(modalService.open).toHaveBeenCalled();
+    expect((modalService.open.calls.mostRecent().returnValue.componentInstance as { item: ShoppingItemDto }).item)
+      .toBe(personal);
+  });
+
+  it('toggleCompletedExpanded() toggles the completed section', () => {
+    expect(component.completedExpanded).toBeFalse();
+
+    component.toggleCompletedExpanded();
+    expect(component.completedExpanded).toBeTrue();
+
+    component.toggleCompletedExpanded();
+    expect(component.completedExpanded).toBeFalse();
+  });
+
+  it('neededItems and completedItems split active tab by status', () => {
+    component.allItems = [
+      personal,
+      { ...personal, id: 30, status: ShoppingItemStatus.BOUGHT },
+      { ...personal, id: 31, status: ShoppingItemStatus.CANCELLED }
+    ];
+
+    expect(component.neededItems.map(item => item.id)).toEqual([1]);
+    expect(component.completedItems.map(item => item.id)).toEqual([30, 31]);
+  });
+
+  it('deleteItem() surfaces delete errors after confirmation', fakeAsync(() => {
+    serviceSpy.delete.and.returnValue(throwError(() => ({ status: 403 })));
+    confirmDialog.confirm.and.returnValue(Promise.resolve(true));
+
+    component.deleteItem(personal);
+    tick();
+
+    expect(component.actionError).toBe('You are not allowed to perform this action.');
+  }));
+
+  it('updateStatus() surfaces validation arrays from the backend', () => {
+    serviceSpy.updateStatus.and.returnValue(throwError(() => ({
+      error: { 'Validation errors': ['status must not be null', 'id is invalid'] }
+    })));
+
+    component.markAsBought(personal);
+
+    expect(component.actionError).toBe('status must not be null, id is invalid');
+  });
+
+  it('createSuggestion() surfaces service errors and resets submitting state', () => {
+    serviceSpy.createSuggestion.and.returnValue(throwError(() => ({ status: 401 })));
+    component.suggestionName = 'Tea';
+
+    component.createSuggestion();
+
+    expect(component.suggestionSubmitting).toBeFalse();
+    expect(component.actionError).toContain('session has expired');
+  });
+
+  it('suggestion actions are ignored while the same suggestion is pending', () => {
+    component.suggestionActionIds.add(suggestion.id);
+    const confirmSpy = spyOn(window, 'confirm');
+
+    component.voteForSuggestion(suggestion);
+    component.removeVoteFromSuggestion(suggestion);
+    component.promoteSuggestion(suggestion);
+    component.deleteSuggestion(suggestion);
+
+    expect(serviceSpy.voteForSuggestion).not.toHaveBeenCalled();
+    expect(serviceSpy.removeVoteFromSuggestion).not.toHaveBeenCalled();
+    expect(serviceSpy.promoteSuggestion).not.toHaveBeenCalled();
+    expect(serviceSpy.deleteSuggestion).not.toHaveBeenCalled();
+    expect(confirmSpy).not.toHaveBeenCalled();
+  });
+
+  it('suggestion action errors remove pending state and expose safe messages', () => {
+    serviceSpy.voteForSuggestion.and.returnValue(throwError(() => ({ status: 403 })));
+    serviceSpy.removeVoteFromSuggestion.and.returnValue(throwError(() => ({ error: { message: 'Vote missing' } })));
+    serviceSpy.promoteSuggestion.and.returnValue(throwError(() => ({ status: 500 })));
+    serviceSpy.deleteSuggestion.and.returnValue(throwError(() => ({ status: 401 })));
+    spyOn(window, 'confirm').and.returnValue(true);
+
+    component.voteForSuggestion(suggestion);
+    expect(component.isSuggestionActionPending(suggestion.id)).toBeFalse();
+    expect(component.actionError).toBe('You are not allowed to perform this action.');
+
+    component.removeVoteFromSuggestion(suggestion);
+    expect(component.isSuggestionActionPending(suggestion.id)).toBeFalse();
+    expect(component.actionError).toBe('Vote missing');
+
+    component.promoteSuggestion(suggestion);
+    expect(component.isSuggestionActionPending(suggestion.id)).toBeFalse();
+    expect(component.actionError).toBe('Failed to add the suggestion to the shopping list.');
+
+    component.deleteSuggestion(suggestion);
+    expect(component.isSuggestionActionPending(suggestion.id)).toBeFalse();
+    expect(component.actionError).toContain('session has expired');
   });
 });
