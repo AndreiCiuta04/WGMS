@@ -31,7 +31,7 @@ This form's own rules require, for PASS: **named automated proof + video/API/DB 
   in the user docs + surface the 409 in the UI so it reads as by-design).
 - **No open findings.** Everything that was a finding is now either fixed (#38, axe) or a decided, documented design choice (#39).
 - **Remaining — not automatable / human capture (10 items):**
-    - PARTIAL coverage, focused test or capture closes them: E2E-013 (control inventory), E2E-015 (dashboard/chart stale-data two-tab reconciliation), E2E-019 (full audit/privacy lifecycle chain — partly covered by the #42 regression).
+    - PARTIAL coverage,  a focused test or capture closes them: E2E-013 (control inventory), E2E-015 (dashboard/chart stale-data two-tab reconciliation), E2E-019 (full audit/privacy lifecycle chain — partly covered by the #42 regression).
     - MANUAL human capture: E2E-018 (restart/seed — procedure + verified H2 modes ready), E2E-020 (console/backend log scan), E2E-022 (peer test), E2E-025 (real-device matrix), E2E-026 (200% zoom), E2E-029 (docs walkthrough), E2E-030 (final reviewer sign-off).
 
 **No fabricated evidence.** Every PASS is backed by a named test that was executed (backend `mvn` BUILD
