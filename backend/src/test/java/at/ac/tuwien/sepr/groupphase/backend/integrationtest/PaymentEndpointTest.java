@@ -338,7 +338,7 @@ public class PaymentEndpointTest implements TestData {
         assertAll(
             () -> assertEquals(HttpStatus.OK.value(), mvcResult.getResponse().getStatus()),
             () -> assertEquals(1, settlements.size()),
-            () -> assertEquals(roommateRecord.getId() + "-" + mainTenantRoommate.getId() + "-1000", settlements.get(0).id()),
+            () -> assertEquals(settlementId(roommateRecord, mainTenantRoommate, "10.00", expense.getId(), 0L), settlements.get(0).id()),
             () -> assertEquals("Internet bill", settlements.get(0).expenseDescription()),
             () -> assertEquals(roommateRecord.getId(), settlements.get(0).fromRoommateId()),
             () -> assertEquals(mainTenantRoommate.getId(), settlements.get(0).toRoommateId()),
@@ -373,7 +373,7 @@ public class PaymentEndpointTest implements TestData {
         Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Internet bill", money("20.00"));
         saveSplit(expense, mainTenantRoommate, money("10.00"));
         saveSplit(expense, roommateRecord, money("10.00"));
-        String settlementId = roommateRecord.getId() + "-" + mainTenantRoommate.getId() + "-1000";
+        String settlementId = settlementId(roommateRecord, mainTenantRoommate, "10.00", expense.getId(), 0L);
 
         MvcResult approveResult = this.mockMvc.perform(post(PAYMENT_BASE_URI + "/settlement-approvals/" + settlementId + "/approve")
                 .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
@@ -479,7 +479,7 @@ public class PaymentEndpointTest implements TestData {
         Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Internet bill", money("20.00"));
         saveSplit(expense, mainTenantRoommate, money("10.00"));
         saveSplit(expense, roommateRecord, money("10.00"));
-        String settlementId = roommateRecord.getId() + "-" + mainTenantRoommate.getId() + "-1000";
+        String settlementId = settlementId(roommateRecord, mainTenantRoommate, "10.00", expense.getId(), 0L);
 
         MvcResult rejectResult = this.mockMvc.perform(post(PAYMENT_BASE_URI + "/settlement-approvals/" + settlementId + "/reject")
                 .header(securityProperties.getAuthHeader(), tokenFor(ROOMMATE_EMAIL)))
@@ -553,7 +553,7 @@ public class PaymentEndpointTest implements TestData {
         Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Internet bill", money("20.00"));
         saveSplit(expense, mainTenantRoommate, money("10.00"));
         saveSplit(expense, roommateRecord, money("10.00"));
-        String settlementId = roommateRecord.getId() + "-" + mainTenantRoommate.getId() + "-1000";
+        String settlementId = settlementId(roommateRecord, mainTenantRoommate, "10.00", expense.getId(), 0L);
 
         MvcResult mvcResult = this.mockMvc.perform(post(PAYMENT_BASE_URI + "/settlement-approvals/" + settlementId + "/approve")
                 .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
@@ -627,6 +627,11 @@ public class PaymentEndpointTest implements TestData {
 
     private BigDecimal money(String amount) {
         return new BigDecimal(amount);
+    }
+
+    private String settlementId(Roommate fromRoommate, Roommate toRoommate, String amount, Long maxExpenseId, Long maxPaymentId) {
+        long cents = money(amount).setScale(2).movePointRight(2).longValueExact();
+        return fromRoommate.getId() + "-" + toRoommate.getId() + "-" + cents + "-e" + maxExpenseId + "p" + maxPaymentId;
     }
 
     private ApplicationUser saveUser(String email, String firstName, String lastName) {

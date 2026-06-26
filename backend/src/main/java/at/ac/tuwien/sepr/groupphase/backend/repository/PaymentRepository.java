@@ -16,6 +16,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     boolean existsByHouseholdId(Long householdId);
 
+    @Query("SELECT COALESCE(MAX(p.id), 0) FROM Payment p WHERE p.household.id = :householdId")
+    Long findMaxIdByHouseholdId(@Param("householdId") Long householdId);
+
     @EntityGraph(attributePaths = {"household", "fromRoommate", "fromRoommate.user", "toRoommate", "toRoommate.user", "createdBy", "createdBy.user"})
     @Query("""
         SELECT p

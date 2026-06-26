@@ -105,7 +105,7 @@ public class PaymentServiceImpl implements PaymentService {
         Long householdId = currentRoommate.getHousehold().getId();
         lockHouseholdForSettlement(householdId);
 
-        Roommate toRoommate = getRoommateInHousehold(
+        Roommate toRoommate = getActiveRoommateInHousehold(
             paymentCreateDto.toRoommateId(),
             householdId
         );
@@ -159,7 +159,7 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = new Payment();
         payment.setHousehold(currentRoommate.getHousehold());
         payment.setFromRoommate(currentRoommate);
-        payment.setToRoommate(getRoommateInHousehold(balance.toRoommateId(), householdId));
+        payment.setToRoommate(getActiveRoommateInHousehold(balance.toRoommateId(), householdId));
         payment.setAmount(toMoney(balance.amount()));
         payment.setDate(LocalDate.now());
         payment.setCreatedBy(currentRoommate);
@@ -219,9 +219,9 @@ public class PaymentServiceImpl implements PaymentService {
             .orElseThrow(() -> new ForbiddenException("User does not belong to an active household."));
     }
 
-    private Roommate getRoommateInHousehold(Long roommateId, Long householdId) {
-        return roommateRepository.findByIdAndHouseholdId(roommateId, householdId)
-            .orElseThrow(() -> new NotFoundException("Roommate is not a member of your household."));
+    private Roommate getActiveRoommateInHousehold(Long roommateId, Long householdId) {
+        return roommateRepository.findByIdAndHouseholdIdAndActiveTrue(roommateId, householdId)
+            .orElseThrow(() -> new NotFoundException("Roommate is not an active member of your household."));
     }
 
     private List<BalanceDto> calculateOpenBalances(Long householdId) {
@@ -238,7 +238,7 @@ public class PaymentServiceImpl implements PaymentService {
             throw new ForbiddenException("Only the roommate who owes the settlement may approve or reject it.");
         }
 
-        Roommate toRoommate = getRoommateInHousehold(settlementKey.toRoommateId(), householdId);
+        Roommate toRoommate = getActiveRoommateInHousehold(settlementKey.toRoommateId(), householdId);
         validateDifferentRoommates(currentRoommate, toRoommate);
 
         BigDecimal amount = settlementKey.amount();
@@ -281,7 +281,7 @@ public class PaymentServiceImpl implements PaymentService {
         SettlementDecision decision = new SettlementDecision();
         decision.setHousehold(currentRoommate.getHousehold());
         decision.setFromRoommate(currentRoommate);
-        decision.setToRoommate(getRoommateInHousehold(balance.toRoommateId(), currentRoommate.getHousehold().getId()));
+        decision.setToRoommate(getActiveRoommateInHousehold(balance.toRoommateId(), currentRoommate.getHousehold().getId()));
         decision.setAmount(toMoney(balance.amount()));
         decision.setStatus(status);
         decision.setDecidedBy(currentRoommate);
