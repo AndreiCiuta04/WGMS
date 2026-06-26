@@ -156,6 +156,80 @@ describe('ShoppingItemScanComponent', () => {
     Object.defineProperty(navigator, 'mediaDevices', descriptor ?? { value: undefined, configurable: true });
   });
 
+  it('startCamera() stops the stream when the component is destroyed before playback', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
+    const stop = jasmine.createSpy('stop');
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: () => Promise.resolve({ getTracks: () => [{ stop }] }) },
+      configurable: true
+    });
+    (component.startCamera as jasmine.Spy).and.callThrough();
+    (component as unknown as { destroyed: boolean }).destroyed = true;
+
+    await component.startCamera();
+
+    expect(stop).toHaveBeenCalled();
+    expect(component.cameraActive).toBeFalse();
+
+    Object.defineProperty(navigator, 'mediaDevices', descriptor ?? { value: undefined, configurable: true });
+  });
+
+  it('startCamera() activates scanning with a valid fake video stream', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: () => Promise.resolve({ getTracks: () => [] }) },
+      configurable: true
+    });
+    const requestFrameSpy = spyOn(window, 'requestAnimationFrame').and.returnValue(123);
+    const video = {
+      srcObject: null,
+      setAttribute: jasmine.createSpy('setAttribute'),
+      play: jasmine.createSpy('play').and.resolveTo(),
+      readyState: 0,
+      HAVE_ENOUGH_DATA: 4
+    } as unknown as HTMLVideoElement;
+    (component as unknown as { videoRef: { nativeElement: HTMLVideoElement } }).videoRef = { nativeElement: video };
+    (component.startCamera as jasmine.Spy).and.callThrough();
+
+    await component.startCamera();
+
+    expect(video.setAttribute).toHaveBeenCalledWith('playsinline', 'true');
+    expect(video.play).toHaveBeenCalled();
+    expect(component.cameraActive).toBeTrue();
+    expect(component.state).toBe('scanning');
+    expect(requestFrameSpy).toHaveBeenCalled();
+
+    Object.defineProperty(navigator, 'mediaDevices', descriptor ?? { value: undefined, configurable: true });
+  });
+
+  it('scanLoop() returns while not scanning and schedules another frame when no QR data is available', () => {
+    const requestFrameSpy = spyOn(window, 'requestAnimationFrame').and.returnValue(456);
+
+    (component as unknown as { scanLoop: () => void }).scanLoop();
+    expect(requestFrameSpy).not.toHaveBeenCalled();
+
+    component.state = 'scanning';
+    const video = {
+      readyState: 4,
+      HAVE_ENOUGH_DATA: 4,
+      videoWidth: 120,
+      videoHeight: 80
+    } as HTMLVideoElement;
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: jasmine.createSpy('getContext').and.returnValue(null)
+    } as unknown as HTMLCanvasElement;
+    (component as unknown as { videoRef: { nativeElement: HTMLVideoElement } }).videoRef = { nativeElement: video };
+    (component as unknown as { canvasRef: { nativeElement: HTMLCanvasElement } }).canvasRef = { nativeElement: canvas };
+
+    (component as unknown as { scanLoop: () => void }).scanLoop();
+
+    expect(canvas.width).toBe(120);
+    expect(canvas.height).toBe(80);
+    expect(requestFrameSpy).toHaveBeenCalledWith(jasmine.any(Function));
+  });
+
   it('ngOnDestroy() stops camera tracks and cancels pending animation frame', () => {
     const stop = jasmine.createSpy('stop');
     const cancelSpy = spyOn(window, 'cancelAnimationFrame');

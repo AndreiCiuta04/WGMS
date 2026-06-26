@@ -96,6 +96,27 @@ describe('ProfileComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/login']);
   }));
 
+  it('should not delete account when confirmation is cancelled', fakeAsync(() => {
+    confirmDialog.confirm.and.returnValue(Promise.resolve(false));
+
+    component.deleteAccount();
+    tick();
+
+    expect(authService.anonymizeCurrentUser).not.toHaveBeenCalled();
+    expect(component.deleting).toBeFalse();
+  }));
+
+  it('should show an error when account deletion fails', fakeAsync(() => {
+    authService.anonymizeCurrentUser.and.returnValue(throwError(() => new Error('failed')));
+
+    component.deleteAccount();
+    tick();
+
+    expect(component.deleting).toBeFalse();
+    expect(component.errorMessage).toBe('Could not delete your account.');
+    expect(authService.logoutUser).not.toHaveBeenCalled();
+  }));
+
   it('should request my data export', () => {
     spyOn(window.URL, 'createObjectURL').and.returnValue('blob:url');
     spyOn(window.URL, 'revokeObjectURL');
@@ -105,6 +126,23 @@ describe('ProfileComponent', () => {
 
     expect(authService.getMyDataExport).toHaveBeenCalled();
     expect(component.exportMessage).toBe('Data export generated.');
+  });
+
+  it('should show an error when data export fails', () => {
+    authService.getMyDataExport.and.returnValue(throwError(() => new Error('failed')));
+
+    component.exportMyData();
+
+    expect(component.exporting).toBeFalse();
+    expect(component.errorMessage).toBe('Could not export your data.');
+  });
+
+  it('should use fallback display names for unloaded and blank profiles', () => {
+    component.profile = null;
+    expect(component.getDisplayName()).toBe('Your profile');
+
+    component.profile = profile({ firstName: ' ', lastName: ' ' });
+    expect(component.getDisplayName()).toBe('');
   });
 });
 

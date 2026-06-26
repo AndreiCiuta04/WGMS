@@ -1,29 +1,34 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { RegisterComponent } from './register.component';
 import { AuthService } from '../../services/auth.service';
 import { RegisterDraftService } from '../../services/register-draft.service';
+import { NotificationService } from '../../services/notification.service';
 
 describe('RegisterComponent', () => {
   let component: RegisterComponent;
   let fixture: ComponentFixture<RegisterComponent>;
   let authServiceSpy: jasmine.SpyObj<AuthService>;
+  let notificationServiceSpy: jasmine.SpyObj<NotificationService>;
   let routerSpy: jasmine.SpyObj<Router>;
   let registerDraftService: RegisterDraftService;
 
   beforeEach(async () => {
     authServiceSpy = jasmine.createSpyObj<AuthService>('AuthService', ['registerUser']);
+    notificationServiceSpy = jasmine.createSpyObj<NotificationService>('NotificationService', ['verifyUser']);
     routerSpy = jasmine.createSpyObj<Router>('Router', ['navigate']);
+    notificationServiceSpy.verifyUser.and.returnValue(of('jwt-token'));
 
     await TestBed.configureTestingModule({
       declarations: [RegisterComponent],
-      imports: [ReactiveFormsModule],
+      imports: [FormsModule, ReactiveFormsModule],
       providers: [
         { provide: AuthService, useValue: authServiceSpy },
+        { provide: NotificationService, useValue: notificationServiceSpy },
         { provide: Router, useValue: routerSpy }
       ],
       schemas: [NO_ERRORS_SCHEMA]
@@ -142,6 +147,30 @@ describe('RegisterComponent', () => {
     expect(component.errorMessage).toBe('Email is already registered.');
   });
 
+  it('should switch to verification when backend requires an email code', () => {
+    authServiceSpy.registerUser.and.returnValue(throwError(() => ({
+      status: 403,
+      error: { message: 'VERIFICATION_REQUIRED' }
+    })));
+    component.registerForm.patchValue(validRegistration());
+
+    component.registerUser();
+
+    expect(component.showVerification).toBeTrue();
+    expect(component.verificationEmail).toBe('anna@example.com');
+    expect(component.error).toBeFalse();
+  });
+
+  it('should show a restart hint when the registration endpoint is missing', () => {
+    authServiceSpy.registerUser.and.returnValue(throwError(() => ({ status: 404 })));
+    component.registerForm.patchValue(validRegistration());
+
+    component.registerUser();
+
+    expect(component.error).toBeTrue();
+    expect(component.errorMessage).toBe('Registration endpoint not found. Did you restart the backend?');
+  });
+
   it('should show a readable error message for generic backend errors', () => {
     authServiceSpy.registerUser.and.returnValue(
       throwError(() => ({ status: 500, error: { detail: 'Registration service unavailable.' } }))
@@ -154,6 +183,34 @@ describe('RegisterComponent', () => {
     expect(component.errorMessage).toBe('Registration service unavailable.');
   });
 
+  it('should show raw string and message backend errors', () => {
+    authServiceSpy.registerUser.and.returnValue(throwError(() => ({ status: 400, error: 'Raw backend problem.' })));
+    component.registerForm.patchValue(validRegistration());
+
+    component.registerUser();
+
+    expect(component.errorMessage).toBe('Raw backend problem.');
+
+    authServiceSpy.registerUser.and.returnValue(throwError(() => ({ status: 400, error: { message: 'Message problem.' } })));
+    component.registerUser();
+
+    expect(component.errorMessage).toBe('Message problem.');
+  });
+
+  it('should show object error and unknown fallback registration messages', () => {
+    authServiceSpy.registerUser.and.returnValue(throwError(() => ({ status: 400, error: { error: 'Nested error problem.' } })));
+    component.registerForm.patchValue(validRegistration());
+
+    component.registerUser();
+
+    expect(component.errorMessage).toBe('Nested error problem.');
+
+    authServiceSpy.registerUser.and.returnValue(throwError(() => ({ status: 400, error: {} })));
+    component.registerUser();
+
+    expect(component.errorMessage).toBe('Unknown error occurred. Please try again.');
+  });
+
   it('should show validation errors returned by the backend', () => {
     authServiceSpy.registerUser.and.returnValue(
       throwError(() => ({ status: 400, error: { 'Validation errors': ['Terms must be accepted.', 'Password is too weak.'] } }))
@@ -164,6 +221,60 @@ describe('RegisterComponent', () => {
 
     expect(component.error).toBeTrue();
     expect(component.errorMessage).toBe('Terms must be accepted. Password is too weak.');
+  });
+
+  it('should verify registration code and navigate home', () => {
+    component.verificationEmail = 'anna@example.com';
+    component.verificationCode = '123456';
+
+    component.submitVerificationCode();
+
+    expect(notificationServiceSpy.verifyUser).toHaveBeenCalledOnceWith({
+      email: 'anna@example.com',
+      code: '123456'
+    });
+    expect(component.verificationSubmitting).toBeFalse();
+    expect(routerSpy.navigate).toHaveBeenCalledWith(['/']);
+  });
+
+  it('should verify registration code and continue pending invitation', () => {
+    localStorage.setItem('pendingInviteToken', 'invite-after-verify');
+    component.verificationEmail = 'anna@example.com';
+    component.verificationCode = '123456';
+
+    component.submitVerificationCode();
+
+    expect(routerSpy.navigate).toHaveBeenCalledWith(['/invite', 'invite-after-verify']);
+  });
+
+  it('should show invalid-code and generic verification errors', () => {
+    notificationServiceSpy.verifyUser.and.returnValue(throwError(() => ({ status: 400 })));
+
+    component.submitVerificationCode();
+
+    expect(component.verificationSubmitting).toBeFalse();
+    expect(component.verificationError).toBe('Invalid or expired verification code.');
+
+    notificationServiceSpy.verifyUser.and.returnValue(throwError(() => ({ status: 500 })));
+    component.submitVerificationCode();
+
+    expect(component.verificationError).toBe('An error occurred during verification. Please try again.');
+  });
+
+  it('should clear registration errors and save empty drafts safely', () => {
+    component.error = true;
+
+    component.vanishError();
+    component.saveDraft();
+
+    expect(component.error).toBeFalse();
+    expect(registerDraftService.load()).toEqual({
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      termsAccepted: false
+    });
   });
 
   it('should restore register form state after navigating to terms and back', () => {

@@ -150,6 +150,26 @@ describe('PaymentStatusComponent', () => {
     expect(component.isLoading).toBeFalse();
   });
 
+  it('should use empty fallbacks for null overview, null settlements, and nullable totals', () => {
+    paymentServiceSpy.getOverview.and.returnValue(of(null as unknown as PaymentOverviewDto));
+    paymentServiceSpy.getPendingSettlements.and.returnValue(of(null as unknown as PendingSettlementDto[]));
+
+    fixture.detectChanges();
+    component.overview = {
+      openBalances: null as any,
+      payments: null as any,
+      totalIOwe: null as any,
+      totalOwedToMe: null as any
+    };
+
+    expect(component.openBalances()).toEqual([]);
+    expect(component.payments()).toEqual([]);
+    expect(component.settlements()).toEqual([]);
+    expect(component.totalIOwe()).toBe(0);
+    expect(component.totalOwedToMe()).toBe(0);
+    expect(component.showSettlementOverlay()).toBeFalse();
+  });
+
   it('should show empty state when there are no balances or payments', () => {
     fixture.detectChanges();
 
@@ -329,6 +349,36 @@ describe('PaymentStatusComponent', () => {
     expect((paymentServiceSpy.create.calls.mostRecent().args[0] as any).householdId).toBeUndefined();
   });
 
+  it('should ignore submit while saving or without a selected balance', () => {
+    component.submit();
+    expect(paymentServiceSpy.create).not.toHaveBeenCalled();
+
+    component.selectBalance(populatedOverview.openBalances[0]);
+    component.isSaving = true;
+    component.paymentForm.patchValue({amount: '1,00', date: '2026-05-31'});
+
+    component.submit();
+
+    expect(paymentServiceSpy.create).not.toHaveBeenCalled();
+  });
+
+  it('should show required-field and backend payment errors', () => {
+    component.selectBalance(populatedOverview.openBalances[0]);
+    component.paymentForm.patchValue({amount: '', date: ''});
+
+    component.submit();
+
+    expect(component.errorMessage).toBe('Please fill in all required fields.');
+    expect(paymentServiceSpy.create).not.toHaveBeenCalled();
+
+    paymentServiceSpy.create.and.returnValue(throwError(() => ({ error: 'Backend payment problem.' })));
+    component.paymentForm.patchValue({amount: '4,00', date: '2026-05-31'});
+    component.submit();
+
+    expect(component.errorMessage).toBe('Backend payment problem.');
+    expect(component.isSaving).toBeFalse();
+  });
+
   it('should reject invalid and excessive payment amounts before calling the backend', () => {
     component.selectBalance(populatedOverview.openBalances[0]);
 
@@ -340,6 +390,14 @@ describe('PaymentStatusComponent', () => {
     component.submit();
     expect(component.errorMessage).toBe('Payment cannot exceed the open balance.');
     expect(paymentServiceSpy.create).not.toHaveBeenCalled();
+  });
+
+  it('should parse null-like payment amounts as invalid', () => {
+    const parseAmount = (component as unknown as { parseAmount: (value: unknown) => number | null }).parseAmount.bind(component);
+
+    expect(parseAmount(null)).toBeNull();
+    expect(parseAmount(undefined)).toBeNull();
+    expect(parseAmount('')).toBeNull();
   });
 
   it('should normalize valid comma and dot amounts and leave invalid values unchanged', () => {
@@ -394,6 +452,48 @@ describe('PaymentStatusComponent', () => {
     component.finishSettlementSwipe(settlement, {clientX: 0} as MouseEvent);
     expect(paymentServiceSpy.rejectSettlement).toHaveBeenCalledWith(settlement.id);
   });
+
+  it('should guard settlement swipe controls and use pointer capture APIs when available', fakeAsync(() => {
+    const settlement = pendingSettlements[0];
+    const otherSettlement = { ...settlement, id: 'other-settlement' };
+    const target = {
+      setPointerCapture: jasmine.createSpy('setPointerCapture'),
+      releasePointerCapture: jasmine.createSpy('releasePointerCapture')
+    };
+
+    component.settlementActionId = 'busy';
+    component.startSettlementSwipe(settlement, {clientX: 1} as MouseEvent);
+    expect(component.isSettlementSwiping(settlement)).toBeFalse();
+
+    component.settlementActionId = null;
+    component.startSettlementSwipe({...settlement, canDecide: false}, {clientX: 1} as MouseEvent);
+    expect(component.isSettlementSwiping(settlement)).toBeFalse();
+
+    component.startSettlementSwipe(settlement, {
+      clientX: 10,
+      pointerId: 7,
+      currentTarget: target
+    } as unknown as PointerEvent);
+    expect(target.setPointerCapture).toHaveBeenCalledWith(7);
+
+    component.startSettlementSwipe(otherSettlement, {clientX: 20} as MouseEvent);
+    expect(component.isSettlementSwiping(otherSettlement)).toBeFalse();
+
+    component.moveSettlementSwipe(otherSettlement, {clientX: 30, preventDefault: jasmine.createSpy()} as unknown as MouseEvent);
+    expect(component.settlementSwipeOffsets[otherSettlement.id]).toBeUndefined();
+
+    component.finishSettlementSwipe(settlement, {
+      clientX: 20,
+      pointerId: 7,
+      currentTarget: target
+    } as unknown as PointerEvent);
+    expect(target.releasePointerCapture).toHaveBeenCalledWith(7);
+    expect(component.settlementSwipeOffsets[settlement.id]).toBe(0);
+    tick(181);
+
+    component.cancelSettlementSwipe(otherSettlement);
+    expect(component.isSettlementSettling(otherSettlement)).toBeFalse();
+  }));
 
   it('should reset short and cancelled settlement swipes', fakeAsync(() => {
     const settlement = pendingSettlements[0];
