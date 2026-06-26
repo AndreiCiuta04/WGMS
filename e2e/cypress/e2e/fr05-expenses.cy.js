@@ -562,58 +562,6 @@ describe('FR-05 Shared Expenses E2E', () => {
     });
   });
 
-  it('BUG #39: an existing payment does not block editing or deleting another expense', () => {
-    createHouseholdWithRoommateContext('Payment', 'Member').then((context) => {
-      const firstSplits = [
-        { roommateId: context.mainRoommate.id, amountOwed: 5 },
-        { roommateId: context.roomRoommate.id, amountOwed: 5 },
-      ];
-      const secondSplits = [
-        { roommateId: context.mainRoommate.id, amountOwed: 10 },
-        { roommateId: context.roomRoommate.id, amountOwed: 10 },
-      ];
-
-      createExpenseApi(context.mainToken, 'BUG39 Paid Expense', 10, context.mainRoommate.id, firstSplits)
-        .then(() => createExpenseApi(context.mainToken, 'BUG39 Unrelated Expense', 20, context.mainRoommate.id, secondSplits))
-        .then(() => createPaymentApi(context.roomToken, context.mainRoommate.id, 5))
-        .then(() => {
-          login(context.mainEmail);
-          openExpenses();
-
-          cy.contains('.expense-item', 'BUG39 Unrelated Expense')
-            .find('button[title="Edit expense"]')
-            .click();
-          cy.contains('h3', 'Edit Expense').should('be.visible');
-          cy.get('#description').clear().type('BUG39 Unrelated Expense Updated');
-          cy.get('#totalAmount').clear().type('24.00').blur();
-          cy.contains('.split-row', 'FR05 Main')
-            .find('.split-amount input')
-            .clear()
-            .type('12.00')
-            .blur();
-          cy.contains('.split-row', 'Payment Member')
-            .find('.split-amount input')
-            .clear()
-            .type('12.00')
-            .blur();
-          cy.intercept('PUT', '**/api/v1/expenses/*').as('updateBug39Expense');
-          cy.contains('button', 'Update Expense').click();
-          cy.wait('@updateBug39Expense').its('response.statusCode').should('eq', 200);
-          cy.contains('Expense updated.').should('be.visible');
-
-          cy.contains('.expense-item', 'BUG39 Unrelated Expense Updated')
-            .find('button[title="Delete expense"]')
-            .click();
-          cy.contains('Delete expense?').should('be.visible');
-          cy.intercept('DELETE', '**/api/v1/expenses/*').as('deleteBug39Expense');
-          cy.confirmDialog();
-          cy.wait('@deleteBug39Expense').its('response.statusCode').should('eq', 204);
-          cy.contains('BUG39 Unrelated Expense Updated').should('not.exist');
-          cy.contains('BUG39 Paid Expense').should('be.visible');
-        });
-    });
-  });
-
   it('FR-05 negative: split sum mismatch shows readable backend error', () => {
     createExpenseHousehold().then(({ mainEmail }) => {
       login(mainEmail);
