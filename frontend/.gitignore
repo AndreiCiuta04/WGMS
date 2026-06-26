@@ -8,6 +8,10 @@
 # dependencies
 /node_modules
 
+# Chrome-for-Testing binary downloaded locally for headless Karma runs
+/chrome
+/firefox
+
 # IDEs and editors
 /.idea
 .project

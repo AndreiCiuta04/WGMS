@@ -1,0 +1,114 @@
+{
+  "runId": 1782434944192,
+  "total": 24,
+  "pass": 24,
+  "fail": 0,
+  "results": [
+    {
+      "name": "Public onboarding: protected route redirects to login (logged out)",
+      "ok": true,
+      "detail": "http://127.0.0.1:4200/#/login"
+    },
+    {
+      "name": "Edge: malformed email/weak password disables Register submit",
+      "ok": true
+    },
+    {
+      "name": "Register new user (owner) via UI",
+      "ok": true,
+      "detail": "owner.1782434944192@test.com"
+    },
+    {
+      "name": "Logout then login again (owner)",
+      "ok": true
+    },
+    {
+      "name": "Edge: wrong password shows Authentication problem",
+      "ok": true
+    },
+    {
+      "name": "Edge: duplicate email registration is rejected",
+      "ok": true
+    },
+    {
+      "name": "Create WG; creator becomes Main Tenant",
+      "ok": true,
+      "detail": "QA Walkthrough WG 1782434944192"
+    },
+    {
+      "name": "Main Tenant creates expiring invitation link",
+      "ok": true,
+      "detail": "link generated"
+    },
+    {
+      "name": "Edge: invalid invite token shows readable feedback",
+      "ok": true
+    },
+    {
+      "name": "Invite + new user registers and joins as Roommate",
+      "ok": true,
+      "detail": "roommate.1782434944192@test.com"
+    },
+    {
+      "name": "Both Main Tenant and Roommate visible in members",
+      "ok": true
+    },
+    {
+      "name": "Already-active member invite rejected (E2E-011)",
+      "ok": true
+    },
+    {
+      "name": "Edge: Roommate invitation management restricted (UI)",
+      "ok": true,
+      "detail": "no create control"
+    },
+    {
+      "name": "Existing logged-in account accepts invitation (BUG #35)",
+      "ok": true,
+      "detail": "existing.1782434944192@test.com"
+    },
+    {
+      "name": "Edge: email-mismatch invite warns and disables accept",
+      "ok": true
+    },
+    {
+      "name": "Invalid session shows no WG data and recovers via login (E2E-004)",
+      "ok": true
+    },
+    {
+      "name": "Malformed login blocked before auth (E2E-003)",
+      "ok": true
+    },
+    {
+      "name": "Protected routes redirect to login when logged out (E2E-001)",
+      "ok": true
+    },
+    {
+      "name": "Invitation state matrix: expired/revoked/used tokens (E2E-008)",
+      "ok": true
+    },
+    {
+      "name": "Leave then rejoin same WG — BUG #38 (E2E-012)",
+      "ok": true,
+      "detail": "roommate.1782434944192@test.com"
+    },
+    {
+      "name": "Two-household API isolation (E2E-014)",
+      "ok": true,
+      "detail": "owner→403 outsider→403"
+    },
+    {
+      "name": "Session cache isolation after user switch (E2E-036)",
+      "ok": true
+    },
+    {
+      "name": "360px viewport primary actions reachable (E2E-034)",
+      "ok": true
+    },
+    {
+      "name": "No password/JWT leak in API response bodies (E2E-020)",
+      "ok": true,
+      "detail": "clean"
+    }
+  ]
+}

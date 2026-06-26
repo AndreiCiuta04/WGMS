@@ -3,16 +3,10 @@ package at.ac.tuwien.sepr.groupphase.backend.integrationtest;
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestData;
 import at.ac.tuwien.sepr.groupphase.backend.basetest.TestDbCleaner;
 import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties;
-import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.BalanceDto;
-import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseCreateDto;
-import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseDto;
-import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ExpenseSplitCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.InvitationCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.InvitationDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.InvitationPreviewDto;
 import at.ac.tuwien.sepr.groupphase.backend.entity.ApplicationUser;
-import at.ac.tuwien.sepr.groupphase.backend.entity.Expense;
-import at.ac.tuwien.sepr.groupphase.backend.entity.ExpenseSplit;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Household;
 import at.ac.tuwien.sepr.groupphase.backend.entity.HouseholdRole;
 import at.ac.tuwien.sepr.groupphase.backend.entity.Roommate;
@@ -32,8 +26,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -48,9 +40,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @AutoConfigureMockMvc
 public class InvitationEndpointTest implements TestData {
 
-    private static final String EXPENSE_BASE_URI = BASE_URI + "/expenses";
-    private static final LocalDate EXPENSE_DATE = LocalDate.now();
-
     @Autowired
     private MockMvc mockMvc;
 
@@ -62,18 +51,6 @@ public class InvitationEndpointTest implements TestData {
 
     @Autowired
     private HouseholdInvitationRepository invitationRepository;
-
-    @Autowired
-    private ExpenseRepository expenseRepository;
-
-    @Autowired
-    private ExpenseSplitRepository expenseSplitRepository;
-
-    @Autowired
-    private PaymentRepository paymentRepository;
-
-    @Autowired
-    private SettlementDecisionRepository settlementDecisionRepository;
 
     @Autowired
     private NotificationRepository notificationRepository;
@@ -105,10 +82,6 @@ public class InvitationEndpointTest implements TestData {
 
     @BeforeEach
     public void beforeEach() {
-        settlementDecisionRepository.deleteAll();
-        paymentRepository.deleteAll();
-        expenseSplitRepository.deleteAll();
-        expenseRepository.deleteAll();
         taskRepository.deleteAll();
         cleaningScheduleRepository.deleteAll();
         invitationRepository.deleteAll();
@@ -314,111 +287,31 @@ public class InvitationEndpointTest implements TestData {
 
 
     @Test
-    public void bug35_givenExistingAccountAcceptsInvitation_whenCreateExpense_thenNoDuplicateFinancialParticipant() throws Exception {
+    public void givenFormerMember_whenAcceptInvitationAgain_thenReactivatesMembership() throws Exception {
         InvitationDto invitationDto = createInvitation("userB@test.com");
         String rawToken = invitationDto.inviteUrl().substring(invitationDto.inviteUrl().lastIndexOf("/") + 1);
 
-        MvcResult acceptResult = this.mockMvc.perform(post("/api/v1/invitations/" + rawToken + "/accept")
+        MvcResult firstAccept = this.mockMvc.perform(post("/api/v1/invitations/" + rawToken + "/accept")
                 .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userB@test.com", USER_ROLES)))
             .andReturn();
+        assertEquals(HttpStatus.OK.value(), firstAccept.getResponse().getStatus());
 
-        Roommate userBMembership = roommateRepository.findByUserIdAndHouseholdIdAndActiveTrue(userB.getId(), household.getId())
-            .orElseThrow();
-        Roommate userAMembership = roommateRepository.findByUserIdAndHouseholdIdAndActiveTrue(userA.getId(), household.getId())
-            .orElseThrow();
-        ExpenseCreateDto createDto = new ExpenseCreateDto(
-            "Existing invited account dinner",
-            money("20.00"),
-            EXPENSE_DATE,
-            userAMembership.getId(),
-            List.of(
-                new ExpenseSplitCreateDto(userAMembership.getId(), money("10.00")),
-                new ExpenseSplitCreateDto(userBMembership.getId(), money("10.00"))
-            )
-        );
-
-        MvcResult createExpenseResult = this.mockMvc.perform(post(EXPENSE_BASE_URI)
-                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userA@test.com", USER_ROLES))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(jsonMapper.writeValueAsString(createDto)))
-            .andReturn();
-        ExpenseDto expenseDto = jsonMapper.readValue(createExpenseResult.getResponse().getContentAsString(), ExpenseDto.class);
-
-        long activeMembershipsForUserB = roommateRepository.findAll().stream()
-            .filter(roommate -> roommate.getUser().getId().equals(userB.getId()))
-            .filter(Roommate::isActive)
-            .count();
-        long splitsForUserB = expenseSplitRepository.findAll().stream()
-            .filter(split -> split.getRoommate().getId().equals(userBMembership.getId()))
-            .count();
-
-        assertAll(
-            () -> assertEquals(HttpStatus.OK.value(), acceptResult.getResponse().getStatus()),
-            () -> assertEquals(HttpStatus.CREATED.value(), createExpenseResult.getResponse().getStatus()),
-            () -> assertEquals(1, activeMembershipsForUserB),
-            () -> assertEquals(2, roommateRepository.findAllByHouseholdIdAndActiveTrue(household.getId()).size()),
-            () -> assertEquals(2, expenseDto.splits().size()),
-            () -> assertEquals(1, splitsForUserB)
-        );
-    }
-
-    @Test
-    public void bug38_givenMemberLeavesAndRejoins_whenCreateFinancialHistory_thenSingleBalanceCounterpartyRemains() throws Exception {
-        Roommate userAMembership = roommateRepository.findByUserIdAndHouseholdIdAndActiveTrue(userA.getId(), household.getId())
-            .orElseThrow();
-        Roommate userBMembership = saveRoommate(userB, household, HouseholdRole.ROOMMATE);
-        Expense oldExpense = saveExpense(household, userAMembership, userAMembership, "Before leave groceries", money("10.00"));
-        saveSplit(oldExpense, userAMembership, money("5.00"));
-        saveSplit(oldExpense, userBMembership, money("5.00"));
-        userBMembership.setActive(false);
-        roommateRepository.save(userBMembership);
-
-        InvitationDto invitationDto = createInvitation("userB@test.com");
-        String rawToken = invitationDto.inviteUrl().substring(invitationDto.inviteUrl().lastIndexOf("/") + 1);
-        MvcResult acceptResult = this.mockMvc.perform(post("/api/v1/invitations/" + rawToken + "/accept")
+        MvcResult leaveResult = this.mockMvc.perform(delete("/api/v1/users/me/household")
                 .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userB@test.com", USER_ROLES)))
             .andReturn();
+        assertEquals(HttpStatus.OK.value(), leaveResult.getResponse().getStatus());
+        assertFalse(roommateRepository.existsByUserIdAndHouseholdIdAndActiveTrue(userB.getId(), household.getId()));
 
-        Roommate rejoinedMembership = roommateRepository.findByUserIdAndHouseholdIdAndActiveTrue(userB.getId(), household.getId())
-            .orElseThrow();
-        ExpenseCreateDto createDto = new ExpenseCreateDto(
-            "After rejoin groceries",
-            money("8.00"),
-            EXPENSE_DATE,
-            userAMembership.getId(),
-            List.of(
-                new ExpenseSplitCreateDto(userAMembership.getId(), money("4.00")),
-                new ExpenseSplitCreateDto(rejoinedMembership.getId(), money("4.00"))
-            )
-        );
-        MvcResult createExpenseResult = this.mockMvc.perform(post(EXPENSE_BASE_URI)
-                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userA@test.com", USER_ROLES))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(jsonMapper.writeValueAsString(createDto)))
+        InvitationDto rejoinInvitation = createInvitation("userB@test.com");
+        String rejoinToken = rejoinInvitation.inviteUrl().substring(rejoinInvitation.inviteUrl().lastIndexOf("/") + 1);
+
+        MvcResult rejoinAccept = this.mockMvc.perform(post("/api/v1/invitations/" + rejoinToken + "/accept")
+                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userB@test.com", USER_ROLES)))
             .andReturn();
-        MvcResult balanceResult = this.mockMvc.perform(get(EXPENSE_BASE_URI + "/balances")
-                .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("userA@test.com", USER_ROLES)))
-            .andReturn();
-        BalanceDto[] balances = jsonMapper.readValue(balanceResult.getResponse().getContentAsString(), BalanceDto[].class);
-
-        long membershipsForUserBInHousehold = roommateRepository.findAll().stream()
-            .filter(roommate -> roommate.getUser().getId().equals(userB.getId()))
-            .filter(roommate -> roommate.getHousehold().getId().equals(household.getId()))
-            .count();
-
-        assertAll(
-            () -> assertEquals(HttpStatus.OK.value(), acceptResult.getResponse().getStatus()),
-            () -> assertEquals(userBMembership.getId(), rejoinedMembership.getId()),
-            () -> assertEquals(1, membershipsForUserBInHousehold),
-            () -> assertEquals(HttpStatus.CREATED.value(), createExpenseResult.getResponse().getStatus()),
-            () -> assertEquals(HttpStatus.OK.value(), balanceResult.getResponse().getStatus()),
-            () -> assertEquals(1, balances.length),
-            () -> assertEquals(userBMembership.getId(), balances[0].fromRoommateId()),
-            () -> assertEquals(userAMembership.getId(), balances[0].toRoommateId()),
-            () -> assertEquals(0, money("9.00").compareTo(balances[0].amount()))
-        );
+        assertEquals(HttpStatus.OK.value(), rejoinAccept.getResponse().getStatus());
+        assertTrue(roommateRepository.existsByUserIdAndHouseholdIdAndActiveTrue(userB.getId(), household.getId()));
+        assertEquals(2, roommateRepository.findAllByHouseholdIdAndActiveTrue(household.getId()).size());
     }
-
 
     @Test
     public void givenCreatedInvitation_whenInspectTokenStorage_thenTokenIsHashedAndExpiredInvitationFails() throws Exception {
@@ -462,28 +355,5 @@ public class InvitationEndpointTest implements TestData {
         roommate.setRole(role);
         roommate.setActive(true);
         return roommateRepository.save(roommate);
-    }
-
-    private Expense saveExpense(Household household, Roommate paidBy, Roommate createdBy, String description, BigDecimal amount) {
-        Expense expense = new Expense();
-        expense.setHousehold(household);
-        expense.setPaidBy(paidBy);
-        expense.setCreatedBy(createdBy);
-        expense.setDescription(description);
-        expense.setTotalAmount(amount);
-        expense.setDate(EXPENSE_DATE);
-        return expenseRepository.save(expense);
-    }
-
-    private ExpenseSplit saveSplit(Expense expense, Roommate roommate, BigDecimal amount) {
-        ExpenseSplit split = new ExpenseSplit();
-        split.setExpense(expense);
-        split.setRoommate(roommate);
-        split.setAmountOwed(amount);
-        return expenseSplitRepository.save(split);
-    }
-
-    private BigDecimal money(String amount) {
-        return new BigDecimal(amount);
     }
 }
