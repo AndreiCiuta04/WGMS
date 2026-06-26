@@ -35,16 +35,34 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers(
+                    "/",
+                    "/index.html",
+                    "/favicon.ico",
+                    "/assets/**",
+                    "/*.js",
+                    "/*.css",
+                    "/*.ico",
+                    "/*.png",
+                    "/*.jpg",
+                    "/*.jpeg",
+                    "/*.svg",
+                    "/*.webp",
+                    "/*.woff",
+                    "/*.woff2",
+                    "/*.ttf"
+                ).permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/users/verify").permitAll()
                 .requestMatchers("/api/v1/authentication/**").permitAll()
                 .requestMatchers("/api/v1/invitations/*").permitAll()
-                .requestMatchers("/health/**").permitAll()
+                .requestMatchers("/health/**", "/actuator/health").permitAll()
                 .requestMatchers(
                     "/v3/api-docs/**",
                     "/swagger-ui/**",
                     "/swagger-ui.html"
                 ).permitAll()
+
                 .anyRequest().authenticated()
             )
             .headers(httpSecurityHeadersConfigurer -> httpSecurityHeadersConfigurer.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
