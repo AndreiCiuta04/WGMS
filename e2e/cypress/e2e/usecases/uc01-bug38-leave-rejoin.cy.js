@@ -51,6 +51,9 @@ function acceptInviteWhileLoggedIn(inviteUrl) {
   cy.contains('Join a Household').should('be.visible');
   cy.contains('button', 'Accept and Enter WG').should('be.visible').and('not.be.disabled').click();
   cy.contains('You have successfully joined the household!').should('be.visible');
+  // invitation-accept schedules a redirect to / after 2s; wait for it so it cannot fire later
+  // and yank a subsequent login page away (BUG #38 was a flaky failure caused by this).
+  cy.location('hash', { timeout: 5000 }).should('eq', '#/');
 }
 
 // Leaves the current WG through the profile-edit UI (with the shared confirm dialog).
