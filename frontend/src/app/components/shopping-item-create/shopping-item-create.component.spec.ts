@@ -118,6 +118,30 @@ describe('ShoppingItemCreateComponent', () => {
     expect(dto.quantityUnit).toBe(QuantityUnit.LITER);
   });
 
+  it('BUG #36 should reject quantity amount without a structured unit before create', () => {
+    component.itemForm.patchValue({
+      name: 'Ambiguous milk', quantityAmount: 2, quantityUnit: null
+    });
+    fixture.detectChanges();
+
+    component.onSubmit();
+
+    expect(component.itemForm.errors?.['quantityMeasureIncomplete']).toBeTrue();
+    expect(shoppingSpy.create).not.toHaveBeenCalled();
+  });
+
+  it('BUG #36 should reject quantity unit without a structured amount before create', () => {
+    component.itemForm.patchValue({
+      name: 'Ambiguous pack', quantityAmount: null, quantityUnit: QuantityUnit.PACK
+    });
+    fixture.detectChanges();
+
+    component.onSubmit();
+
+    expect(component.itemForm.errors?.['quantityMeasureIncomplete']).toBeTrue();
+    expect(shoppingSpy.create).not.toHaveBeenCalled();
+  });
+
   it('builds a live "5 × 3 L" quantity preview', () => {
     component.itemForm.patchValue({ quantityCount: 5, quantityAmount: 3, quantityUnit: QuantityUnit.LITER });
     expect(component.quantityPreview).toBe('5 × 3 L');

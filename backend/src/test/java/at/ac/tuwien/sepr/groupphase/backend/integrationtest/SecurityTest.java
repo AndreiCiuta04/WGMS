@@ -158,6 +158,25 @@ public class SecurityTest implements TestData {
     }
 
     @Test
+    public void givenNoOneLoggedIn_whenFetchOpenApiDocs_thenJsonAndYamlArePublic() throws Exception {
+        MockHttpServletResponse jsonResponse = this.mockMvc.perform(get("/v3/api-docs"))
+            .andReturn()
+            .getResponse();
+        MockHttpServletResponse yamlResponse = this.mockMvc.perform(get("/v3/api-docs.yaml"))
+            .andReturn()
+            .getResponse();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), jsonResponse.getStatus()),
+            () -> assertTrue(jsonResponse.getContentType().startsWith(MediaType.APPLICATION_JSON_VALUE)),
+            () -> assertTrue(jsonResponse.getContentAsString().contains("/api/v1/expenses")),
+            () -> assertEquals(HttpStatus.OK.value(), yamlResponse.getStatus()),
+            () -> assertTrue(yamlResponse.getContentType().contains("openapi")),
+            () -> assertTrue(yamlResponse.getContentAsString().contains("/api/v1/payments"))
+        );
+    }
+
+    @Test
     public void givenMalformedAuthorizationHeaderWithoutBearerPrefix_whenFindAll_then401AndInvalidTokenMessage() throws Exception {
         MvcResult mvcResult = this.mockMvc.perform(get(MESSAGE_BASE_URI)
                 .header(securityProperties.getAuthHeader(), "invalid.token.value"))

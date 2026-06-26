@@ -9,7 +9,7 @@ function registerUser(email, firstName, lastName) {
   return cy.request({
     method: 'POST',
     url: `${apiUrl}/users`,
-    body: { email, password, firstName, lastName },
+    body: { email, password, firstName, lastName, termsAccepted: true },
   }).then((response) => String(response.body));
 }
 
@@ -100,7 +100,7 @@ describe('FR-05 Expenses E2E Workflow', () => {
       cy.get('#description').clear().type('Invalid QA Expense');
       cy.get('#totalAmount').clear().type('-5.00');
       cy.contains('button', 'Create Expense').click();
-      cy.contains('Enter a positive total amount.').should('be.visible');
+      cy.contains('Enter a positive total amount with at most two decimal places.').should('be.visible');
     });
   });
 

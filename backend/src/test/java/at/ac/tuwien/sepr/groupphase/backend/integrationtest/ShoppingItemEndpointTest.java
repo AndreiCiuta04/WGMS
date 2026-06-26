@@ -6,6 +6,7 @@ import at.ac.tuwien.sepr.groupphase.backend.config.properties.SecurityProperties
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemStatusUpdateDto;
+import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemUpdateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.AggregatedShoppingItemDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionCreateDto;
 import at.ac.tuwien.sepr.groupphase.backend.endpoint.dto.ShoppingItemSuggestionDto;
@@ -51,6 +52,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -181,6 +183,58 @@ public class ShoppingItemEndpointTest implements TestData {
         assertEquals(ShoppingItemStatus.NEEDED, created.status());
         assertEquals(household.getId(), created.householdId());
         assertEquals("usera@test.com", created.createdByEmail());
+    }
+
+    @Test
+    public void bug36_givenQuantityAmountWithoutUnit_whenCreateItem_then400AndNoAmbiguousItemPersisted() throws Exception {
+        ShoppingItemCreateDto dto = new ShoppingItemCreateDto(
+            "Ambiguous milk", null, new BigDecimal("2"), null, null, ShoppingItemVisibility.SHARED, null);
+
+        MvcResult result = mockMvc.perform(post(SHOPPING_ITEM_BASE_URI)
+            .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("usera@test.com", USER_ROLES))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(jsonMapper.writeValueAsString(dto))).andReturn();
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+        assertTrue(shoppingItemRepository.findAll().stream()
+            .noneMatch(item -> item.getName().equals("Ambiguous milk")));
+    }
+
+    @Test
+    public void bug36_givenQuantityUnitWithoutAmount_whenCreateItem_then400AndNoAmbiguousItemPersisted() throws Exception {
+        ShoppingItemCreateDto dto = new ShoppingItemCreateDto(
+            "Ambiguous pack", null, null, QuantityUnit.PACK, null, ShoppingItemVisibility.SHARED, null);
+
+        MvcResult result = mockMvc.perform(post(SHOPPING_ITEM_BASE_URI)
+            .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("usera@test.com", USER_ROLES))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(jsonMapper.writeValueAsString(dto))).andReturn();
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+        assertTrue(shoppingItemRepository.findAll().stream()
+            .noneMatch(item -> item.getName().equals("Ambiguous pack")));
+    }
+
+    @Test
+    public void bug36_givenQuantityAmountWithoutUnit_whenUpdateItem_then400AndExistingStructuredQuantityIsPreserved() throws Exception {
+        ShoppingItem item = seedItem("Structured rice", userA, ShoppingItemVisibility.SHARED, null);
+        item.setQuantityAmount(new BigDecimal("1.5"));
+        item.setQuantityUnit(QuantityUnit.KILOGRAM);
+        shoppingItemRepository.saveAndFlush(item);
+
+        ShoppingItemUpdateDto dto = new ShoppingItemUpdateDto(
+            "Structured rice edited", null, new BigDecimal("2"), null, null, ShoppingItemVisibility.SHARED, null);
+
+        MvcResult result = mockMvc.perform(put(SHOPPING_ITEM_BASE_URI + "/" + item.getId())
+            .header(securityProperties.getAuthHeader(), jwtTokenizer.getAuthToken("usera@test.com", USER_ROLES))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(jsonMapper.writeValueAsString(dto))).andReturn();
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), result.getResponse().getStatus());
+        ShoppingItem unchanged = shoppingItemRepository.findById(item.getId()).orElseThrow();
+        assertEquals("Structured rice", unchanged.getName());
+        assertEquals(0, new BigDecimal("1.5").compareTo(unchanged.getQuantityAmount()));
+        assertEquals(QuantityUnit.KILOGRAM, unchanged.getQuantityUnit());
     }
 
     @Test

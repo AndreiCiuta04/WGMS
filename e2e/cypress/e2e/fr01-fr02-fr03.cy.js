@@ -34,20 +34,12 @@ describe('FR-01 FR-02 FR-03 frontend workflow', () => {
     it('FR-01 validates registration and login forms', () => {
         cy.visit('/#/register');
 
-        cy.contains('button', 'Register').click();
-
-        cy.contains('First name is required').should('be.visible');
-        cy.contains('Last name is required').should('be.visible');
-        cy.contains('Email is required').should('be.visible');
-        cy.contains('Password is required').should('be.visible');
+        cy.contains('button', 'Register').should('be.disabled');
 
         cy.get('input[name="email"]').type('not-an-email');
         cy.get('input[name="password"]').type('weak');
 
-        cy.contains('button', 'Register').click();
-
-        cy.contains('Please provide a valid email').should('be.visible');
-        cy.contains('At least 8 characters required').should('be.visible');
+        cy.contains('button', 'Register').should('be.disabled');
 
         cy.visit('/#/login');
 
@@ -85,6 +77,7 @@ describe('FR-01 FR-02 FR-03 frontend workflow', () => {
             cy.get('input[formcontrolname="lastName"]').clear().type(lukas.lastName);
             cy.get('input[formcontrolname="email"]').should('have.value', lukas.email);
             cy.get('input[formcontrolname="password"]').clear().type(lukas.password);
+            cy.get('input[formcontrolname="termsAccepted"]').check();
 
             cy.intercept('POST', '**/api/v1/users').as('registerLukasRequest');
             cy.intercept('POST', '**/api/v1/invitations/*/accept').as('acceptInvitationRequest');
@@ -138,7 +131,7 @@ describe('FR-01 FR-02 FR-03 frontend workflow', () => {
                 .its('response.statusCode')
                 .should('eq', 200);
 
-            cy.contains('DONE').should('be.visible');
+            cy.contains('Done').should('be.visible');
         });
     });
 

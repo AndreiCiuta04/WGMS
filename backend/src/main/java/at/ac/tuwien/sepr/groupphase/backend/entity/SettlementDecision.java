@@ -35,6 +35,9 @@ public class SettlementDecision {
     @JoinColumn(name = "to_roommate_id", nullable = false)
     private Roommate toRoommate;
 
+    @Column(nullable = false, length = 80)
+    private String settlementId;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
@@ -91,6 +94,14 @@ public class SettlementDecision {
 
     public void setToRoommate(Roommate toRoommate) {
         this.toRoommate = toRoommate;
+    }
+
+    public String getSettlementId() {
+        return settlementId;
+    }
+
+    public void setSettlementId(String settlementId) {
+        this.settlementId = settlementId;
     }
 
     public BigDecimal getAmount() {

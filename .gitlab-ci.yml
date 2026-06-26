@@ -38,6 +38,64 @@ test-frontend:
       - frontend/dist
     expire_in: 1 hour
 
+e2e-test:
+  stage: test
+  image: registry.reset.inso-w.at/pub/docker/cypress:latest
+  script:
+    - cd backend
+    - mvn -B clean install -DskipTests
+    - >
+      java -jar target/*.jar
+      --spring.profiles.active=generateData
+      --wgms.mail.verification-enabled=false
+      "--spring.datasource.url=jdbc:h2:mem:e2e;DB_CLOSE_DELAY=-1"
+      --spring.datasource.username=sa
+      "--spring.datasource.password="
+      --spring.jpa.hibernate.ddl-auto=create
+      --logging.file.name=./log/e2e-backend.log &
+    - cd ../frontend
+    # Same env-file generation as test-frontend; the dev server imports environment.ts.
+    # FR-14 Cypress stubs the Vision API, so the placeholder key is enough when no CI key is set.
+    - cp src/environments/environment.ts.example src/environments/environment.ts
+    - 'if [ -n "${GOOGLE_VISION_API_KEY:-}" ]; then sed -i "s|YOUR_GOOGLE_VISION_API_KEY|${GOOGLE_VISION_API_KEY}|" src/environments/environment.ts; fi'
+    - npm ci --legacy-peer-deps
+    - npm start -- --host 0.0.0.0 --port 4200 &
+    - |
+      wait_for_url() {
+        local url="$1"
+        local attempts=60
+        local delay=2
+
+        for i in $(seq 1 "$attempts"); do
+          if curl --silent --fail "$url" > /dev/null; then
+            echo "Ready: $url"
+            return 0
+          fi
+
+          echo "Waiting for $url ($i/$attempts)..."
+          sleep "$delay"
+        done
+
+        echo "Timed out waiting for $url"
+        return 1
+      }
+
+      wait_for_url http://localhost:8080/health
+      wait_for_url http://localhost:4200/
+    - cd ../e2e
+    - npm ci --legacy-peer-deps
+    - npx cypress run
+  artifacts:
+    when: always
+    expire_in: 1 hour
+    reports:
+      junit:
+        - '**/cypress/results/*.xml'
+    paths:
+      - '**/cypress/videos/*.mp4'
+      - '**/cypress/screenshots/*.png'
+      - '**/cypress/reports/html/**'
+
 gitinspector:
   stage: test
   image: registry.reset.inso-w.at/pub/docker/gitinspector:latest

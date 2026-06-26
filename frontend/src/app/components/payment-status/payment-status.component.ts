@@ -128,7 +128,7 @@ export class PaymentStatusComponent implements OnInit {
 
     const amount = this.parseAmount(this.paymentForm.get('amount')?.value);
     if (amount === null || amount <= 0) {
-      this.errorMessage = 'Enter a positive amount.';
+      this.errorMessage = 'Enter a positive amount with at most two decimal places.';
       return;
     }
 
@@ -209,14 +209,15 @@ export class PaymentStatusComponent implements OnInit {
         this.successMessage = decision === 'APPROVE'
           ? 'Settlement approved and payment recorded.'
           : 'Settlement rejected.';
-        this.pendingSettlements = this.pendingSettlements.filter(s => s.id !== settlement.id);
-        if (this.currentSettlementIndex >= this.pendingSettlements.length) {
-          this.currentSettlementIndex = Math.max(0, this.pendingSettlements.length - 1);
-        }
-        if (this.pendingSettlements.length === 0) {
-          this.settlementOverlayDismissed = true;
-        }
+        this.pendingSettlements = [];
+        this.currentSettlementIndex = 0;
+        this.settlementSwipeOffsets = {};
+        this.swipeStartX = null;
+        this.swipedSettlementId = null;
+        this.settlingSettlementId = null;
+        this.settlementOverlayDismissed = false;
         this.loadOverview();
+        this.loadPendingSettlements();
       },
       error: err => {
         this.errorMessage = this.extractErrorMessage(err, 'Could not update settlement.');
@@ -378,12 +379,16 @@ export class PaymentStatusComponent implements OnInit {
       return null;
     }
 
-    const normalized = String(value).replace(',', '.');
+    const normalized = String(value).trim().replace(',', '.');
+    if (!/^-?\d+(\.\d{1,2})?$/.test(normalized)) {
+      return null;
+    }
+
     const parsed = Number(normalized);
     if (!Number.isFinite(parsed)) {
       return null;
     }
-    return Math.round(parsed * 100) / 100;
+    return parsed;
   }
 
   private formatAmount(value: number): string {

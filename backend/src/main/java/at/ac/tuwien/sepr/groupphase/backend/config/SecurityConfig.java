@@ -58,6 +58,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/invitations/*").permitAll()
                 .requestMatchers("/health/**", "/actuator/health").permitAll()
                 .requestMatchers(
+                    "/v3/api-docs",
+                    "/v3/api-docs.yaml",
                     "/v3/api-docs/**",
                     "/swagger-ui/**",
                     "/swagger-ui.html"

@@ -6,6 +6,7 @@ import { HouseholdService } from '../../services/household.service';
 import { AuthService } from '../../services/auth.service';
 import { Roommate } from '../../dtos/roommate';
 import { ShoppingItemCreateDto, ShoppingItemVisibility, QUANTITY_UNIT_OPTIONS, formatQuantity } from '../../dtos/shopping-item';
+import { structuredQuantityValidator } from '../shopping-item-quantity.validator';
 
 @Component({
   selector: 'app-shopping-item-create',
@@ -40,7 +41,7 @@ export class ShoppingItemCreateComponent implements OnInit {
       notes: ['', [Validators.maxLength(2000)]],
       visibility: [ShoppingItemVisibility.PERSONAL, [Validators.required]],
       targetUserEmail: ['']
-    });
+    }, { validators: structuredQuantityValidator });
   }
 
   ngOnInit(): void {

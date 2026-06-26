@@ -139,7 +139,7 @@
           <h4>Splits</h4>
           <p class="caption mb-0">You are the payer and must be included.</p>
         </div>
-        <button type="button" class="btn btn-outline-primary btn-sm" (click)="calculateEqualSplit()" [disabled]="!!editingExpense">
+        <button type="button" class="btn btn-outline-primary btn-sm" (click)="calculateEqualSplit()">
           Equal Split
         </button>
       </div>
@@ -151,7 +151,7 @@
               <input
                 type="checkbox"
                 [checked]="row.selected"
-                [disabled]="!!editingExpense || currentRoommate?.id === row.roommate.id"
+                [disabled]="currentRoommate?.id === row.roommate.id"
                 (change)="updateSplitSelection(row, $any($event.target).checked)">
               <span class="split-member-name">
                 {{ row.roommate.firstName }} {{ row.roommate.lastName }}
@@ -168,6 +168,7 @@
                 [disabled]="!row.selected"
                 [(ngModel)]="row.amountOwed"
                 [ngModelOptions]="{standalone: true}"
+                [attr.aria-label]="'Split amount for ' + row.roommate.firstName + ' ' + row.roommate.lastName"
                 placeholder="0,00"
                 (blur)="normalizeSplitAmount(row)">
               <span class="amount-currency">EUR</span>
@@ -179,10 +180,6 @@
           </div>
         }
       </div>
-
-      @if (editingExpense) {
-        <p class="caption mt-3 mb-0">Participants cannot be changed while editing; only amounts and expense details are updated.</p>
-      }
 
       <div class="form-actions">
         <button type="submit" class="btn btn-primary" [disabled]="isSaving" [attr.aria-busy]="isSaving">
@@ -276,10 +273,10 @@
         <div class="expense-item-right">
           <span class="expense-total">{{ expense.totalAmount | currency:'EUR':'symbol':'1.2-2' }}</span>
           <div class="item-actions">
-            <button type="button" class="action-btn" (click)="editExpense(expense)" title="Edit expense">
+            <button type="button" class="action-btn" (click)="editExpense(expense)" title="Edit expense" aria-label="Edit expense">
               <lucide-icon name="pencil" [size]="14" [strokeWidth]="2"></lucide-icon>
             </button>
-            <button type="button" class="action-btn danger" (click)="deleteExpense(expense)" title="Delete expense">
+            <button type="button" class="action-btn danger" (click)="deleteExpense(expense)" title="Delete expense" aria-label="Delete expense">
               <lucide-icon name="trash-2" [size]="14" [strokeWidth]="2"></lucide-icon>
             </button>
           </div>

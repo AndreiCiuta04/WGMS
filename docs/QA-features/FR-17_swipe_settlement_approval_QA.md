@@ -49,7 +49,43 @@ cd e2e
 npx cypress run --headed --browser chrome --spec "cypress/e2e/fr17-swipe-settlement-approval.cy.js"
 ```
 
-Result: 2 passing, 0 failing.
+Historical result: 2 passing, 0 failing.
+
+## Merged-Branch QA Evidence — 2026-06-25
+
+Branch context: `UC-03/QA`, HEAD `00b867c` (`Merge remote-tracking branch 'origin/dev' into UC-03/QA`), dirty working tree with QA fixes.
+
+Verified commands:
+
+```bash
+cd backend
+mvn -Dtest=ExpenseEndpointTest,PaymentEndpointTest,SecurityTest test
+mvn test
+```
+
+Result: PASS. Focused backend suite ran 58 tests with 0 failures/errors/skips. Full backend suite ran 397 tests with 0 failures/errors/skips.
+
+```bash
+cd frontend
+npm run lint
+npm run build
+npx ng test --watch=false --browsers=ChromeHeadless
+```
+
+Result: PASS. Lint reported all files pass, build emitted `frontend/dist/sepr-group-phase`, and Angular ran 404 successful specs.
+
+```bash
+cd e2e
+npx cypress run --spec "cypress/e2e/fr17-swipe-settlement-approval.cy.js,cypress/e2e/fr05-expenses.cy.js,cypress/e2e/fr06-payment-status.cy.js,cypress/e2e/fr14-bill-scanner.cy.js,cypress/e2e/fr07-shopping-crud.cy.js"
+npx cypress run
+```
+
+Result: PASS. Focused UC-03/FR-17 Cypress bundle ran 33 tests with 0 failures. Full Cypress suite ran 112 tests across 30 specs with 0 failures.
+
+Additional fixes from this QA pass:
+- OpenAPI YAML was returning 403 because `/v3/api-docs.yaml` was not explicitly permitted. Fixed in `SecurityConfig.java` and covered by `SecurityTest.givenNoOneLoggedIn_whenFetchOpenApiDocs_thenJsonAndYamlArePublic`.
+- FR-17 overlay could cover the FR-06 payment button in full-suite order. Fixed the FR-06 Cypress helper to close the overlay based on the settlement API response before interacting with payment controls.
+- Whole-project Cypress failures in FR-09 and UC-04 were stale shopping quantity fixtures. Added explicit quantity units to preserve stricter validation and keep the full suite green.
 
 ---
 
@@ -86,7 +122,7 @@ FR-17 must add a swipe-based approval interface for pending settlements while pr
 
 ## Status
 
-- [ ] Passed
+- [x] Passed
 - [ ] Partially passed
 - [ ] Failed
 
@@ -94,11 +130,11 @@ FR-17 must add a swipe-based approval interface for pending settlements while pr
 
 ```text
 Evidence generated:
-- Backend files reviewed:
-- Frontend files reviewed:
-- Existing settlement tests reviewed:
-- Existing tests preserved:
-- Remaining issues:
+- Backend files reviewed: PaymentEndpoint.java; PaymentServiceImpl.java; ExpenseServiceImpl.java; SecurityConfig.java; DemoDataGenerator.java.
+- Frontend files reviewed: payment-status.component.ts/html/scss; payment.service.ts.
+- Existing settlement tests reviewed: PaymentServiceTest; PaymentEndpointTest; payment-status.component.spec.ts; payment.service.spec.ts; fr17-swipe-settlement-approval.cy.js.
+- Existing tests preserved: full backend 397/397, frontend 404/404, Cypress 112/112.
+- Remaining issues: no automated FR-17 blocker; real iPhone Safari/Firefox manual proof remains outside this form's automated evidence.
 ```
 
 ---
@@ -144,7 +180,7 @@ The backend must process approval/rejection decisions consistently and must not 
 
 ## Status
 
-- [ ] Passed
+- [x] Passed
 - [ ] Partially passed
 - [ ] Failed
 
@@ -152,12 +188,12 @@ The backend must process approval/rejection decisions consistently and must not 
 
 ```text
 Evidence generated:
-- Settlement approval service reviewed:
-- Settlement/payment repositories reviewed:
-- DTO/status model reviewed:
-- Unit tests:
-- Integration tests:
-- Remaining issues:
+- Settlement approval service reviewed: PaymentServiceImpl derives pending settlements server-side and records approval as Payment plus SettlementDecision.
+- Settlement/payment repositories reviewed: PaymentRepository; SettlementDecisionRepository; RoommateRepository fallback behavior.
+- DTO/status model reviewed: PendingSettlementDto and settlement decision status values.
+- Unit tests: PaymentServiceTest settlement/payment/rounding cases.
+- Integration tests: PaymentEndpointTest approval, rejection, double decision, wrong actor, no-token, anonymized counterparty, target-only decision tests.
+- Remaining issues: none found in automated backend evidence.
 ```
 
 ---
@@ -197,7 +233,7 @@ Only authorized users in the same household may approve/reject pending settlemen
 
 ## Status
 
-- [ ] Passed
+- [x] Passed
 - [ ] Partially passed
 - [ ] Failed
 
@@ -205,11 +241,11 @@ Only authorized users in the same household may approve/reject pending settlemen
 
 ```text
 Evidence generated:
-- Endpoint reviewed:
-- Auth/current-user resolution reviewed:
-- Household scoping tests:
-- Authorization tests:
-- Remaining issues:
+- Endpoint reviewed: PaymentEndpoint settlement approval routes.
+- Auth/current-user resolution reviewed: backend Authentication/JWT path through PaymentServiceImpl.
+- Household scoping tests: PaymentEndpointTest and full Cypress creditor/other-user exclusions.
+- Authorization tests: no-token endpoints return 403; only debtor can approve/reject; unrelated settlement state is not mutated.
+- Remaining issues: none found in automated backend evidence.
 ```
 
 ---
@@ -258,7 +294,7 @@ SettlementDecisionDto:
 
 ## Status
 
-- [ ] Passed
+- [x] Passed
 - [ ] Partially passed
 - [ ] Failed
 
@@ -266,11 +302,11 @@ SettlementDecisionDto:
 
 ```text
 Evidence generated:
-- Endpoint paths:
-- DTO files:
-- API docs:
-- Validation behavior:
-- Remaining issues:
+- Endpoint paths: GET /api/v1/payments/settlement-approvals; POST /api/v1/payments/settlement-approvals/{settlementId}/approve; POST /api/v1/payments/settlement-approvals/{settlementId}/reject.
+- DTO files: PendingSettlementDto; PaymentCreateDto; PaymentDto.
+- API docs: /v3/api-docs and /v3/api-docs.yaml both return 200 and list the FR-17 paths.
+- Validation behavior: invalid/double/forbidden state transitions return safe errors and do not create duplicate payments.
+- Remaining issues: none found in automated contract evidence.
 ```
 
 ---
@@ -316,7 +352,7 @@ The frontend must provide a usable swipe-based approval interface while also sup
 
 ## Status
 
-- [ ] Passed
+- [x] Passed
 - [ ] Partially passed
 - [ ] Failed
 
@@ -324,11 +360,11 @@ The frontend must provide a usable swipe-based approval interface while also sup
 
 ```text
 Evidence generated:
-- Frontend components reviewed:
-- Swipe implementation reviewed:
-- CSS/style changes:
-- Component/service tests:
-- Remaining issues:
+- Frontend components reviewed: payment-status.component.ts/html/scss.
+- Swipe implementation reviewed: Cypress covers left/right swipe and button fallback.
+- CSS/style changes: existing overlay/card styles render at desktop and mobile Cypress viewports.
+- Component/service tests: payment-status.component.spec.ts and payment.service.spec.ts included in Angular 404/404 pass.
+- Remaining issues: real iPhone Safari and Firefox desktop manual/browser proof not executed in this Linux workspace.
 ```
 
 ---
@@ -387,7 +423,7 @@ Restarting the backend with the datagen profile recreates the FR-17 pending sett
 
 ## Status
 
-- [ ] Passed
+- [x] Passed
 - [ ] Partially passed
 - [ ] Failed
 
@@ -395,12 +431,12 @@ Restarting the backend with the datagen profile recreates the FR-17 pending sett
 
 ```text
 Evidence generated:
-- Seed/datagen file:
-- Demo profile:
-- Demo users:
-- Expected settlement states:
-- Manual verification result:
-- Remaining issues:
+- Seed/datagen file: DemoDataGenerator resets FR-17 settlement approval demo data on generateData startup.
+- Demo profile: backend started with `mvn spring-boot:run -Dspring-boot.run.profiles=generateData`.
+- Demo users: debtor.fr17@example.com / Password123! plus creditor accounts from seed.
+- Expected settlement states: EUR 15.90, EUR 21.00, EUR 32.00 pending for debtor after seed reset.
+- Manual verification result: automated Cypress login and workflow verified same seeded account.
+- Remaining issues: no real manual tester sign-off captured.
 ```
 
 ---
@@ -442,7 +478,7 @@ npx cypress run --spec "cypress/e2e/fr17-swipe-settlement-approval.cy.js"
 
 ## Status
 
-- [ ] Passed
+- [x] Passed
 - [ ] Partially passed
 - [ ] Failed
 
@@ -450,11 +486,11 @@ npx cypress run --spec "cypress/e2e/fr17-swipe-settlement-approval.cy.js"
 
 ```text
 Evidence generated:
-- E2E spec:
-- E2E command/result:
-- Test data used:
-- Pipeline result:
-- Remaining issues:
+- E2E spec: e2e/cypress/e2e/fr17-swipe-settlement-approval.cy.js.
+- E2E command/result: `npx cypress run --spec "cypress/e2e/fr17-swipe-settlement-approval.cy.js"` passed 8/8 inside focused and full Cypress runs.
+- Test data used: generateData FR-17 debtor/creditor seed.
+- Pipeline result: local CI-equivalent full Cypress run passed 112/112; GitLab pipeline was not run from this workspace.
+- Remaining issues: no external pipeline URL captured.
 ```
 
 ---
@@ -508,7 +544,7 @@ npx cypress run
 
 ## Status
 
-- [ ] Passed
+- [x] Passed
 - [ ] Partially passed
 - [ ] Failed
 
@@ -516,13 +552,13 @@ npx cypress run
 
 ```text
 Evidence generated:
-- Backend command/result:
-- Frontend command/result:
-- E2E command/result:
-- Pipeline result:
-- Existing tests changed:
-- Existing tests deleted/replaced:
-- Remaining issues:
+- Backend command/result: `mvn test` passed 397/397.
+- Frontend command/result: `npm run lint`, `npm run build`, and `npx ng test --watch=false --browsers=ChromeHeadless` passed; Angular 404/404.
+- E2E command/result: focused UC-03/FR-17 Cypress passed 33/33; full Cypress passed 112/112.
+- Pipeline result: local CI-equivalent commands passed; remote pipeline not executed.
+- Existing tests changed: FR-06 helper made overlay close deterministic; FR-09/UC-04 fixtures given explicit units to satisfy current validation.
+- Existing tests deleted/replaced: none.
+- Remaining issues: none in automated regression suite; remote CI proof still external.
 ```
 
 ---
@@ -531,28 +567,28 @@ Evidence generated:
 
 | NFR | FR-17-specific check | Status | Evidence |
 |---|---|---|---|
-| NFR-01 Security & Access Control | Approval/rejection endpoints require login; household and actor permissions are enforced backend-side. | [ ] Pass [ ] Partial [ ] Fail |  |
-| NFR-02 Data Privacy & GDPR | Settlement approval UI/API exposes only current-household financial data needed for the workflow. | [ ] Pass [ ] Partial [ ] Fail |  |
-| NFR-03 Reliability | Settlement decisions are persisted consistently and do not corrupt deterministic balances or payment history. | [ ] Pass [ ] Partial [ ] Fail |  |
-| NFR-04 Usability & Compatibility | Swipe UI has button fallback and works on desktop/mobile reference viewports. | [ ] Pass [ ] Partial [ ] Fail |  |
-| NFR-05 Maintainability | Settlement decision logic is backend service logic; frontend only triggers approval/rejection and renders DTOs. | [ ] Pass [ ] Partial [ ] Fail |  |
-| NFR-06 Auditability | Approval/rejection actions are traceable by responsible user and timestamp where supported. | [ ] Pass [ ] Partial [ ] Fail |  |
+| NFR-01 Security & Access Control | Approval/rejection endpoints require login; household and actor permissions are enforced backend-side. | [x] Pass [ ] Partial [ ] Fail | PaymentEndpointTest no-token/wrong-actor tests; Cypress creditor exclusion. |
+| NFR-02 Data Privacy & GDPR | Settlement approval UI/API exposes only current-household financial data needed for the workflow. | [x] Pass [ ] Partial [ ] Fail | BUG #42 anonymized counterparty tests; GDPR history full-suite pass. |
+| NFR-03 Reliability | Settlement decisions are persisted consistently and do not corrupt deterministic balances or payment history. | [x] Pass [ ] Partial [ ] Fail | PaymentEndpointTest double-decision/target-only tests; full Cypress 112/112. |
+| NFR-04 Usability & Compatibility | Swipe UI has button fallback and works on desktop/mobile reference viewports. | [ ] Pass [x] Partial [ ] Fail | Cypress desktop/mobile viewport and button fallback pass; real iPhone Safari/Firefox manual proof not run. |
+| NFR-05 Maintainability | Settlement decision logic is backend service logic; frontend only triggers approval/rejection and renders DTOs. | [x] Pass [ ] Partial [ ] Fail | PaymentServiceImpl service logic; payment.service.ts API calls; Angular/backend tests. |
+| NFR-06 Auditability | Approval/rejection actions are traceable by responsible user and timestamp where supported. | [x] Pass [ ] Partial [ ] Fail | SettlementDecision persistence verified by PaymentEndpointTest. |
 
 ## Status
 
 - [ ] Passed
-- [ ] Partially passed
+- [x] Partially passed
 - [ ] Failed
 
 ## Notes
 
 ```text
 Evidence generated:
-- Security/privacy checks:
-- Reliability checks:
-- Usability/accessibility checks:
-- Maintainability checks:
-- Auditability checks:
+- Security/privacy checks: backend no-token/wrong-actor tests and Cypress creditor exclusion pass.
+- Reliability checks: full backend and Cypress suites pass; double-decision regressions covered.
+- Usability/accessibility checks: Cypress mobile viewport and accessible button fallback pass; real device/browser and external accessibility audit not run.
+- Maintainability checks: service/component split covered by tests and reviewed implementation files.
+- Auditability checks: decision persistence stores actor/status/timestamp where supported.
 ```
 
 ---
@@ -561,57 +597,63 @@ Evidence generated:
 
 | Area | Status | Notes |
 |---|---|---|
-| Feature scope preserved | [ ] Pass [ ] Partial [ ] Fail |  |
-| Backend settlement decision logic correct | [ ] Pass [ ] Partial [ ] Fail |  |
-| Household scoping/security correct | [ ] Pass [ ] Partial [ ] Fail |  |
-| API/DTO contract clear | [ ] Pass [ ] Partial [ ] Fail |  |
-| Swipe/button frontend works | [ ] Pass [ ] Partial [ ] Fail |  |
-| Test account/demo data sufficient | [ ] Pass [ ] Partial [ ] Fail |  |
-| Backend tests sufficient | [ ] Pass [ ] Partial [ ] Fail |  |
-| Frontend tests sufficient | [ ] Pass [ ] Partial [ ] Fail |  |
-| E2E coverage sufficient | [ ] Pass [ ] Partial [ ] Fail |  |
-| Existing tests still pass | [ ] Pass [ ] Partial [ ] Fail |  |
-| NFRs satisfied | [ ] Pass [ ] Partial [ ] Fail |  |
+| Feature scope preserved | [x] Pass [ ] Partial [ ] Fail | Full Cypress 112/112 and focused UC-03/FR-17 33/33. |
+| Backend settlement decision logic correct | [x] Pass [ ] Partial [ ] Fail | PaymentServiceTest/PaymentEndpointTest pass. |
+| Household scoping/security correct | [x] Pass [ ] Partial [ ] Fail | No-token/wrong-actor/creditor exclusion tests pass. |
+| API/DTO contract clear | [x] Pass [ ] Partial [ ] Fail | JSON/YAML OpenAPI probes pass and list FR-17 routes. |
+| Swipe/button frontend works | [x] Pass [ ] Partial [ ] Fail | Cypress swipe and button fallback tests pass. |
+| Test account/demo data sufficient | [x] Pass [ ] Partial [ ] Fail | generateData seed reset and Cypress account flow pass. |
+| Backend tests sufficient | [x] Pass [ ] Partial [ ] Fail | Full backend 397/397. |
+| Frontend tests sufficient | [x] Pass [ ] Partial [ ] Fail | Angular 404/404, lint/build pass. |
+| E2E coverage sufficient | [x] Pass [ ] Partial [ ] Fail | FR-17 8/8; full Cypress 112/112. |
+| Existing tests still pass | [x] Pass [ ] Partial [ ] Fail | Full backend/frontend/Cypress gates pass. |
+| NFRs satisfied | [ ] Pass [x] Partial [ ] Fail | Automated NFRs pass; real device/browser/manual accessibility proof still external. |
 
 ## Overall result
 
 - [ ] FR-17 QA passed
-- [ ] FR-17 QA partially passed with documented limitations
+- [x] FR-17 QA partially passed with documented limitations
 - [ ] FR-17 QA failed / blocking issues remain
 
 ## Remaining limitations
 
 ```text
-- 
+- Automated FR-17/backend/frontend/E2E evidence is green on the merged branch.
+- Real iPhone 12 Pro Safari, Firefox desktop, and external manual accessibility/peer-test evidence were not executed in this Linux workspace.
+- Remote GitLab pipeline proof was not produced by this local QA run.
 ```
 
 ## Evidence links
 
 ```text
 Backend tests:
-- 
+- backend/src/test/java/at/ac/tuwien/sepr/groupphase/backend/unittests/PaymentServiceTest.java
+- backend/src/test/java/at/ac/tuwien/sepr/groupphase/backend/integrationtest/PaymentEndpointTest.java
+- backend/src/test/java/at/ac/tuwien/sepr/groupphase/backend/integrationtest/SecurityTest.java
 
 Frontend tests:
-- 
+- frontend/src/app/services/payment.service.spec.ts
+- frontend/src/app/components/payment-status/payment-status.component.spec.ts
 
 E2E tests:
-- 
+- e2e/cypress/e2e/fr17-swipe-settlement-approval.cy.js
+- Full suite: npx cypress run, 112/112 passing
 
 Manual verification:
-- 
+- Not separately performed beyond local automated browser runs.
 
 Seed/demo data:
-- 
+- DemoDataGenerator FR-17 seed: debtor.fr17@example.com / Password123!, pending EUR 15.90, EUR 21.00, EUR 32.00
 
 GitLab issue / merge request:
-- 
+- Not available from local workspace.
 ```
 
 ## QA sign-off
 
 ```text
-Reviewer:
-Date:
-Branch / commit:
-Result:
+Reviewer: Codex
+Date: 2026-06-25
+Branch / commit: UC-03/QA / 00b867c dirty working tree
+Result: Automated FR-17 QA passed; final status partial only because real-device/manual/pipeline evidence is external.
 ```

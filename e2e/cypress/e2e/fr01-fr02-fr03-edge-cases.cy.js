@@ -51,9 +51,8 @@ describe('FR-01 FR-02 FR-03 frontend edge cases', () => {
         cy.get('input[name="email"]').clear().type(`weak.password.${runId}@test.com`);
         cy.get('input[name="password"]').clear().type('weak');
 
-        cy.contains('button', 'Register').click();
+        cy.contains('button', 'Register').should('be.disabled');
 
-        cy.contains('At least 8 characters required').should('be.visible');
         cy.location('hash').should('eq', '#/register');
 
         cy.get('@registerRequest.all').should('have.length', 0);

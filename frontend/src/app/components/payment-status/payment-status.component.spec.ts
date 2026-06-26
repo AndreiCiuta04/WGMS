@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { of, Subject, throwError } from 'rxjs';
 import { LucideAngularModule, CircleCheck, CircleX, Clock, HandCoins, Scale } from 'lucide-angular';
@@ -150,6 +150,26 @@ describe('PaymentStatusComponent', () => {
     expect(component.isLoading).toBeFalse();
   });
 
+  it('should use empty fallbacks for null overview, null settlements, and nullable totals', () => {
+    paymentServiceSpy.getOverview.and.returnValue(of(null as unknown as PaymentOverviewDto));
+    paymentServiceSpy.getPendingSettlements.and.returnValue(of(null as unknown as PendingSettlementDto[]));
+
+    fixture.detectChanges();
+    component.overview = {
+      openBalances: null as any,
+      payments: null as any,
+      totalIOwe: null as any,
+      totalOwedToMe: null as any
+    };
+
+    expect(component.openBalances()).toEqual([]);
+    expect(component.payments()).toEqual([]);
+    expect(component.settlements()).toEqual([]);
+    expect(component.totalIOwe()).toBe(0);
+    expect(component.totalOwedToMe()).toBe(0);
+    expect(component.showSettlementOverlay()).toBeFalse();
+  });
+
   it('should show empty state when there are no balances or payments', () => {
     fixture.detectChanges();
 
@@ -212,6 +232,8 @@ describe('PaymentStatusComponent', () => {
     expect(text).toContain('Groceries');
     expect(text).toContain('Max Mustermann owes Anna Musterfrau');
     expect(text).toContain('€12.50');
+    expect(fixture.nativeElement.querySelector('[data-cy="approve-settlement-button"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-cy="reject-settlement-button"]')).not.toBeNull();
   });
 
   it('should close the settlement approval overlay with the close button', () => {
@@ -232,19 +254,53 @@ describe('PaymentStatusComponent', () => {
     paymentServiceSpy.getPendingSettlements.and.returnValue(of(pendingSettlements));
     fixture.detectChanges();
 
-    component.decideSettlement(pendingSettlements[0], 'APPROVE');
+    const approveButton = fixture.nativeElement.querySelector('[data-cy="approve-settlement-button"]') as HTMLButtonElement;
+    approveButton.click();
 
     expect(paymentServiceSpy.approveSettlement).toHaveBeenCalledOnceWith('10-11-1250');
     expect(component.successMessage).toBe('Settlement approved and payment recorded.');
     expect(paymentServiceSpy.getOverview).toHaveBeenCalledTimes(2);
-    expect(paymentServiceSpy.getPendingSettlements).toHaveBeenCalledTimes(1);
+    expect(paymentServiceSpy.getPendingSettlements).toHaveBeenCalledTimes(2);
+  });
+
+  it('should hide stale settlement cards while refreshed settlement ids load after a decision', () => {
+    const staleSecondSettlement: PendingSettlementDto = {
+      ...pendingSettlements[0],
+      id: '10-12-stale',
+      toRoommateId: 12,
+      toRoommateName: 'Chris Creditor',
+      toRoommateEmail: 'chris@test.com'
+    };
+    const refreshedSecondSettlement: PendingSettlementDto = {
+      ...staleSecondSettlement,
+      id: '10-12-refreshed'
+    };
+    const refreshSubject = new Subject<PendingSettlementDto[]>();
+    paymentServiceSpy.getPendingSettlements.and.returnValues(
+      of([pendingSettlements[0], staleSecondSettlement]),
+      refreshSubject.asObservable()
+    );
+    fixture.detectChanges();
+
+    component.decideSettlement(pendingSettlements[0], 'APPROVE');
+
+    expect(component.pendingSettlements).toEqual([]);
+    expect(component.currentSettlement()).toBeNull();
+    expect(component.showSettlementOverlay()).toBeFalse();
+
+    refreshSubject.next([refreshedSecondSettlement]);
+    refreshSubject.complete();
+
+    expect(component.currentSettlement()?.id).toBe('10-12-refreshed');
+    expect(component.showSettlementOverlay()).toBeTrue();
   });
 
   it('should reject a pending settlement via button fallback', () => {
     paymentServiceSpy.getPendingSettlements.and.returnValue(of(pendingSettlements));
     fixture.detectChanges();
 
-    component.decideSettlement(pendingSettlements[0], 'REJECT');
+    const rejectButton = fixture.nativeElement.querySelector('[data-cy="reject-settlement-button"]') as HTMLButtonElement;
+    rejectButton.click();
 
     expect(paymentServiceSpy.rejectSettlement).toHaveBeenCalledOnceWith('10-11-1250');
     expect(component.successMessage).toBe('Settlement rejected.');
@@ -292,4 +348,167 @@ describe('PaymentStatusComponent', () => {
     });
     expect((paymentServiceSpy.create.calls.mostRecent().args[0] as any).householdId).toBeUndefined();
   });
+
+  it('should ignore submit while saving or without a selected balance', () => {
+    component.submit();
+    expect(paymentServiceSpy.create).not.toHaveBeenCalled();
+
+    component.selectBalance(populatedOverview.openBalances[0]);
+    component.isSaving = true;
+    component.paymentForm.patchValue({amount: '1,00', date: '2026-05-31'});
+
+    component.submit();
+
+    expect(paymentServiceSpy.create).not.toHaveBeenCalled();
+  });
+
+  it('should show required-field and backend payment errors', () => {
+    component.selectBalance(populatedOverview.openBalances[0]);
+    component.paymentForm.patchValue({amount: '', date: ''});
+
+    component.submit();
+
+    expect(component.errorMessage).toBe('Please fill in all required fields.');
+    expect(paymentServiceSpy.create).not.toHaveBeenCalled();
+
+    paymentServiceSpy.create.and.returnValue(throwError(() => ({ error: 'Backend payment problem.' })));
+    component.paymentForm.patchValue({amount: '4,00', date: '2026-05-31'});
+    component.submit();
+
+    expect(component.errorMessage).toBe('Backend payment problem.');
+    expect(component.isSaving).toBeFalse();
+  });
+
+  it('should reject invalid and excessive payment amounts before calling the backend', () => {
+    component.selectBalance(populatedOverview.openBalances[0]);
+
+    component.paymentForm.patchValue({amount: '12.345', date: '2026-05-31'});
+    component.submit();
+    expect(component.errorMessage).toBe('Enter a positive amount with at most two decimal places.');
+
+    component.paymentForm.patchValue({amount: '12.51', date: '2026-05-31'});
+    component.submit();
+    expect(component.errorMessage).toBe('Payment cannot exceed the open balance.');
+    expect(paymentServiceSpy.create).not.toHaveBeenCalled();
+  });
+
+  it('should parse null-like payment amounts as invalid', () => {
+    const parseAmount = (component as unknown as { parseAmount: (value: unknown) => number | null }).parseAmount.bind(component);
+
+    expect(parseAmount(null)).toBeNull();
+    expect(parseAmount(undefined)).toBeNull();
+    expect(parseAmount('')).toBeNull();
+  });
+
+  it('should normalize valid comma and dot amounts and leave invalid values unchanged', () => {
+    component.paymentForm.patchValue({amount: '4.5'});
+    component.normalizeAmount();
+    expect(component.paymentForm.get('amount')?.value).toBe('4,50');
+
+    component.paymentForm.patchValue({amount: 'abc'});
+    component.normalizeAmount();
+    expect(component.paymentForm.get('amount')?.value).toBe('abc');
+  });
+
+  it('should handle pending settlement load failures with fallback text', () => {
+    paymentServiceSpy.getPendingSettlements.and.returnValue(throwError(() => ({error: {}})));
+
+    component.loadPendingSettlements();
+
+    expect(component.pendingSettlements).toEqual([]);
+    expect(component.settlementLoadFailed).toBeTrue();
+    expect(component.errorMessage).toBe('Could not load settlement approvals.');
+    expect(component.showSettlementOverlay()).toBeFalse();
+  });
+
+  it('should ignore settlement decisions while another action is running or when user cannot decide', () => {
+    component.settlementActionId = 'busy';
+    component.decideSettlement(pendingSettlements[0], 'APPROVE');
+    expect(paymentServiceSpy.approveSettlement).not.toHaveBeenCalled();
+
+    component.settlementActionId = null;
+    component.decideSettlement({...pendingSettlements[0], canDecide: false}, 'REJECT');
+    expect(paymentServiceSpy.rejectSettlement).not.toHaveBeenCalled();
+  });
+
+  it('should approve and reject settlements through swipe thresholds', () => {
+    const settlement = pendingSettlements[0];
+    const preventDefault = jasmine.createSpy('preventDefault');
+
+    component.startSettlementSwipe(settlement, {clientX: 10} as MouseEvent);
+    component.moveSettlementSwipe(settlement, {clientX: 130, preventDefault} as unknown as MouseEvent);
+    expect(preventDefault).toHaveBeenCalled();
+    expect(component.settlementSwipeDirection(settlement)).toBe('approve');
+    expect(component.settlementSwipeTransform(settlement)).toContain('translateX(120px)');
+    component.finishSettlementSwipe(settlement, {clientX: 130} as MouseEvent);
+    expect(paymentServiceSpy.approveSettlement).toHaveBeenCalledWith(settlement.id);
+
+    paymentServiceSpy.approveSettlement.calls.reset();
+    component.pendingSettlements = [settlement];
+    component.settlementOverlayDismissed = false;
+    component.startSettlementSwipe(settlement, {clientX: 130} as MouseEvent);
+    component.moveSettlementSwipe(settlement, {clientX: 0, preventDefault} as unknown as MouseEvent);
+    expect(component.settlementSwipeDirection(settlement)).toBe('reject');
+    component.finishSettlementSwipe(settlement, {clientX: 0} as MouseEvent);
+    expect(paymentServiceSpy.rejectSettlement).toHaveBeenCalledWith(settlement.id);
+  });
+
+  it('should guard settlement swipe controls and use pointer capture APIs when available', fakeAsync(() => {
+    const settlement = pendingSettlements[0];
+    const otherSettlement = { ...settlement, id: 'other-settlement' };
+    const target = {
+      setPointerCapture: jasmine.createSpy('setPointerCapture'),
+      releasePointerCapture: jasmine.createSpy('releasePointerCapture')
+    };
+
+    component.settlementActionId = 'busy';
+    component.startSettlementSwipe(settlement, {clientX: 1} as MouseEvent);
+    expect(component.isSettlementSwiping(settlement)).toBeFalse();
+
+    component.settlementActionId = null;
+    component.startSettlementSwipe({...settlement, canDecide: false}, {clientX: 1} as MouseEvent);
+    expect(component.isSettlementSwiping(settlement)).toBeFalse();
+
+    component.startSettlementSwipe(settlement, {
+      clientX: 10,
+      pointerId: 7,
+      currentTarget: target
+    } as unknown as PointerEvent);
+    expect(target.setPointerCapture).toHaveBeenCalledWith(7);
+
+    component.startSettlementSwipe(otherSettlement, {clientX: 20} as MouseEvent);
+    expect(component.isSettlementSwiping(otherSettlement)).toBeFalse();
+
+    component.moveSettlementSwipe(otherSettlement, {clientX: 30, preventDefault: jasmine.createSpy()} as unknown as MouseEvent);
+    expect(component.settlementSwipeOffsets[otherSettlement.id]).toBeUndefined();
+
+    component.finishSettlementSwipe(settlement, {
+      clientX: 20,
+      pointerId: 7,
+      currentTarget: target
+    } as unknown as PointerEvent);
+    expect(target.releasePointerCapture).toHaveBeenCalledWith(7);
+    expect(component.settlementSwipeOffsets[settlement.id]).toBe(0);
+    tick(181);
+
+    component.cancelSettlementSwipe(otherSettlement);
+    expect(component.isSettlementSettling(otherSettlement)).toBeFalse();
+  }));
+
+  it('should reset short and cancelled settlement swipes', fakeAsync(() => {
+    const settlement = pendingSettlements[0];
+
+    component.startSettlementSwipe(settlement, {clientX: 10} as MouseEvent);
+    component.moveSettlementSwipe(settlement, {clientX: 40, preventDefault: jasmine.createSpy()} as unknown as MouseEvent);
+    component.finishSettlementSwipe(settlement, {clientX: 40} as MouseEvent);
+    expect(component.settlementSwipeOffsets[settlement.id]).toBe(0);
+    expect(component.isSettlementSettling(settlement)).toBeTrue();
+    tick(181);
+    expect(component.isSettlementSettling(settlement)).toBeFalse();
+
+    component.startSettlementSwipe(settlement, {clientX: 10} as MouseEvent);
+    component.cancelSettlementSwipe(settlement);
+    expect(component.isSettlementSwiping(settlement)).toBeFalse();
+    expect(component.settlementSwipeOffsets[settlement.id]).toBe(0);
+  }));
 });

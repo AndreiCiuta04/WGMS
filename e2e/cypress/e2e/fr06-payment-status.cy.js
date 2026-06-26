@@ -119,14 +119,14 @@ function visitPaymentStatusWithoutSettlementOverlay() {
   cy.intercept('GET', '**/api/v1/payments/overview').as('getPaymentOverview');
   cy.visit('/#/payment-status');
   cy.contains('h2', 'Payment Status').should('be.visible');
-  cy.wait('@getSettlements').its('response.statusCode').should('eq', 200);
-  cy.wait('@getPaymentOverview').its('response.statusCode').should('eq', 200);
-
-  cy.get('body').then(($body) => {
-    if ($body.find('[data-cy="close-settlement-overlay"]').length) {
-      cy.get('[data-cy="close-settlement-overlay"]').click();
+  cy.wait('@getSettlements').then((interception) => {
+    expect(interception.response?.statusCode).to.eq(200);
+    const pendingSettlements = interception.response?.body ?? [];
+    if (pendingSettlements.length > 0) {
+      cy.get('[data-cy="close-settlement-overlay"]').should('be.visible').click();
     }
   });
+  cy.wait('@getPaymentOverview').its('response.statusCode').should('eq', 200);
   cy.get('[data-cy="settlement-approval-overlay"]').should('not.exist');
 }
 

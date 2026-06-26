@@ -130,6 +130,31 @@ describe('FR-07 Shopping CRUD E2E', () => {
         cy.contains(updatedItem.name).should('not.exist');
     });
 
+    it('BUG #36: rejects ambiguous shopping quantities without sending a create request', () => {
+        const u = {
+            firstName: 'Quantity',
+            lastName: 'Tester',
+            email: `quantity.tester.${Date.now()}@test.com`,
+            password
+        };
+        cy.registerUser(u);
+        cy.createHousehold({ name: `Quantity WG ${Date.now()}`, address: 'Vienna' });
+
+        cy.visit('/#/shopping-items/create');
+        cy.get('#name').type(`Ambiguous Milk ${Date.now()}`);
+        cy.get('[data-cy="quantity-amount"]').clear().type('2');
+        const createShoppingItem = cy.spy().as('createShoppingItem');
+        cy.intercept('POST', '**/api/v1/shopping-items', createShoppingItem);
+
+        cy.contains('button', 'Add Item').click();
+
+        cy.get('[data-cy="quantity-structured-error"]')
+            .should('be.visible')
+            .and('contain', 'Amount and unit must be provided together.');
+        cy.get('@createShoppingItem').should('not.have.been.called');
+        cy.location('hash').should('eq', '#/shopping-items/create');
+    });
+
     it('FR-07 positive: shopping list shows All Items and Targeted at Me tabs', () => {
         const u = {
             firstName: 'Tab',

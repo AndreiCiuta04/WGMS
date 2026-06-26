@@ -99,6 +99,30 @@ describe('ShoppingItemEditComponent', () => {
     expect(routerSpy.navigate).toHaveBeenCalledWith(['/shopping-items']);
   });
 
+  it('BUG #36 should reject quantity amount without a structured unit before update', () => {
+    fixture.detectChanges();
+    component.itemForm.patchValue({
+      name: 'Milk', quantityAmount: 2, quantityUnit: null
+    });
+
+    component.onSubmit();
+
+    expect(component.itemForm.errors?.['quantityMeasureIncomplete']).toBeTrue();
+    expect(shoppingSpy.update).not.toHaveBeenCalled();
+  });
+
+  it('BUG #36 should reject quantity unit without a structured amount before update', () => {
+    fixture.detectChanges();
+    component.itemForm.patchValue({
+      name: 'Milk', quantityAmount: null, quantityUnit: QuantityUnit.PACK
+    });
+
+    component.onSubmit();
+
+    expect(component.itemForm.errors?.['quantityMeasureIncomplete']).toBeTrue();
+    expect(shoppingSpy.update).not.toHaveBeenCalled();
+  });
+
   it('handles loading errors', () => {
     shoppingSpy.findOne.and.returnValue(throwError(() => ({ status: 404 })));
     fixture.detectChanges();
@@ -111,5 +135,160 @@ describe('ShoppingItemEditComponent', () => {
     component.submitting = true;
     component.onSubmit();
     expect(shoppingSpy.update).not.toHaveBeenCalled();
+  });
+
+  it('navigates back to the list when the route has no id', async () => {
+    TestBed.resetTestingModule();
+    shoppingSpy = jasmine.createSpyObj('ShoppingItemService', ['findOne', 'update']);
+    householdSpy = jasmine.createSpyObj('HouseholdService', ['getMyHousehold', 'getMembers']);
+    authSpy = jasmine.createSpyObj('AuthService', ['getUserEmail']);
+    routerSpy = jasmine.createSpyObj('Router', ['navigate']);
+
+    await TestBed.configureTestingModule({
+      declarations: [ShoppingItemEditComponent],
+      imports: [HttpClientTestingModule, ReactiveFormsModule, RouterModule.forRoot([])],
+      providers: [
+        { provide: ShoppingItemService, useValue: shoppingSpy },
+        { provide: HouseholdService, useValue: householdSpy },
+        { provide: AuthService, useValue: authSpy },
+        { provide: Router, useValue: routerSpy },
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({}) } } }
+      ]
+    }).compileComponents();
+
+    const noIdFixture = TestBed.createComponent(ShoppingItemEditComponent);
+    noIdFixture.detectChanges();
+
+    expect(routerSpy.navigate).toHaveBeenCalledWith(['/shopping-items']);
+    expect(shoppingSpy.findOne).not.toHaveBeenCalled();
+  });
+
+  it('handles household and member loading failures', () => {
+    householdSpy.getMyHousehold.and.returnValue(throwError(() => ({status: 500})));
+
+    fixture.detectChanges();
+
+    expect(component.error).toBeTrue();
+    expect(component.errorMessage).toBe('Failed to load household.');
+    expect(component.loading).toBeFalse();
+
+    householdSpy.getMyHousehold.and.returnValue(of({id: 10, name: 'WG'} as any));
+    householdSpy.getMembers.and.returnValue(throwError(() => ({status: 403})));
+    const secondFixture = TestBed.createComponent(ShoppingItemEditComponent);
+    const second = secondFixture.componentInstance;
+
+    secondFixture.detectChanges();
+
+    expect(second.error).toBeTrue();
+    expect(second.errorMessage).toBe('Failed to load household members.');
+    expect(second.loading).toBeFalse();
+  });
+
+  it('keeps an inactive current target selectable when loading a targeted item', () => {
+    shoppingSpy.findOne.and.returnValue(of({
+      ...existing,
+      targetUserId: 999,
+      targetUserEmail: 'former@test.com',
+      targetUserFirstName: null,
+      targetUserLastName: null
+    }));
+
+    fixture.detectChanges();
+
+    expect(component.roommates.some(member => member.email === 'former@test.com')).toBeTrue();
+    const inactive = component.roommates.find(member => member.email === 'former@test.com');
+    expect(inactive?.firstName).toBe('Inactive');
+    expect(inactive?.lastName).toBe('User');
+  });
+
+  it('previews quantities and adjusts count without dropping below one', () => {
+    fixture.detectChanges();
+
+    component.itemForm.patchValue({quantityCount: '', quantityAmount: 'abc', quantityUnit: QuantityUnit.PACK});
+    expect(component.quantityPreview).toBe('pack');
+
+    component.itemForm.patchValue({quantityCount: 1});
+    component.adjustCount(2);
+    expect(component.itemForm.get('quantityCount')?.value).toBe(3);
+
+    component.adjustCount(-5);
+    expect(component.itemForm.get('quantityCount')?.value).toBeNull();
+    expect(component.itemForm.get('quantityCount')?.dirty).toBeTrue();
+  });
+
+  it('requires a target email for targeted visibility before update', () => {
+    fixture.detectChanges();
+    component.itemForm.patchValue({
+      name: 'Milk',
+      quantityAmount: 2,
+      quantityUnit: QuantityUnit.LITER,
+      visibility: ShoppingItemVisibility.TARGETED,
+      targetUserEmail: ''
+    });
+
+    component.onSubmit();
+
+    expect(shoppingSpy.update).not.toHaveBeenCalled();
+  });
+
+  it('updates targeted items with normalized optional fields', () => {
+    fixture.detectChanges();
+    component.itemForm.patchValue({
+      name: 'Oats',
+      quantityCount: '2',
+      quantityAmount: '0.5',
+      quantityUnit: QuantityUnit.KILOGRAM,
+      notes: '',
+      visibility: ShoppingItemVisibility.TARGETED,
+      targetUserEmail: 'bob@test.com'
+    });
+
+    component.onSubmit();
+
+    const dto = shoppingSpy.update.calls.mostRecent().args[1];
+    expect(dto).toEqual({
+      name: 'Oats',
+      quantityCount: 2,
+      quantityAmount: 0.5,
+      quantityUnit: QuantityUnit.KILOGRAM,
+      notes: undefined,
+      visibility: ShoppingItemVisibility.TARGETED,
+      targetUserEmail: 'bob@test.com'
+    });
+  });
+
+  it('shows parsed validation errors from object and string backend responses', () => {
+    fixture.detectChanges();
+    shoppingSpy.update.and.returnValue(throwError(() => ({
+      error: {
+        message: 'Invalid item.',
+        'Validation errors': ['name must not be blank', 'notes too long']
+      }
+    })));
+
+    component.itemForm.patchValue({name: 'Milk', visibility: ShoppingItemVisibility.SHARED});
+    component.onSubmit();
+
+    expect(component.submitting).toBeFalse();
+    expect(component.error).toBeTrue();
+    expect(component.errorMessage).toBe('must not be blank, too long');
+
+    shoppingSpy.update.and.returnValue(throwError(() => ({
+      error: 'Validation errors=[quantityAmount must be positive, plain problem]'
+    })));
+
+    component.onSubmit();
+
+    expect(component.errorMessage).toBe('must be positive, plain problem');
+  });
+
+  it('falls back to generic update error message when backend has no readable body', () => {
+    fixture.detectChanges();
+    shoppingSpy.update.and.returnValue(throwError(() => ({error: {}})));
+
+    component.itemForm.patchValue({name: 'Milk', visibility: ShoppingItemVisibility.SHARED});
+    component.onSubmit();
+
+    expect(component.errorMessage).toBe('An error occurred while updating the item. Please try again.');
   });
 });

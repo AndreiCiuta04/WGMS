@@ -16,13 +16,13 @@ describe('FR-07 Shopping List E2E Workflow', () => {
 
     const shoppingItem = {
         name: `Milk ${runId}`,
-        quantity: '2 Liters',
+        quantity: '2 L',
         notes: 'Whole milk preferred'
     };
 
     const updatedItem = {
         name: `Soy Milk ${runId}`,
-        quantity: '3 Liters',
+        quantity: '3 L',
         notes: 'Unsweetened'
     };
 
@@ -57,7 +57,8 @@ describe('FR-07 Shopping List E2E Workflow', () => {
 
         // Create a valid shopping item
         cy.get('#name').type(shoppingItem.name);
-        cy.get('#quantity').type(shoppingItem.quantity);
+        cy.get('[data-cy="quantity-amount"]').type('2');
+        cy.get('[data-cy="quantity-unit"]').select('L');
         cy.get('#notes').type(shoppingItem.notes);
         
         cy.intercept('POST', '**/api/v1/shopping-items').as('createRequest');
@@ -75,7 +76,8 @@ describe('FR-07 Shopping List E2E Workflow', () => {
         cy.location('hash').should('include', '/edit');
         
         cy.get('#name').clear().type(updatedItem.name);
-        cy.get('#quantity').clear().type(updatedItem.quantity);
+        cy.get('[data-cy="quantity-amount"]').clear().type('3');
+        cy.get('[data-cy="quantity-unit"]').select('L');
         cy.get('#notes').clear().type(updatedItem.notes);
 
         cy.intercept('PUT', '**/api/v1/shopping-items/*').as('updateRequest');
@@ -119,6 +121,7 @@ describe('FR-07 Shopping List E2E Workflow', () => {
         // Delete the item
         cy.intercept('DELETE', '**/api/v1/shopping-items/*').as('deleteRequest');
         cy.contains('.completed-item', updatedItem.name).find('button[title="Delete"]').click();
+        cy.confirmDialog();
         cy.wait('@deleteRequest').its('response.statusCode').should('eq', 204);
 
         // Verify it is gone entirely

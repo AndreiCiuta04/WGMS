@@ -114,6 +114,7 @@ describe('FR-09 Shopping Aggregation and History E2E', () => {
         createShoppingItem({
             name: boughtName,
             quantityAmount: 1,
+            quantityUnit: 'PIECE',
             notes: 'Should stay out of active aggregate list'
         }, 'BOUGHT');
 
@@ -183,6 +184,7 @@ describe('FR-09 Shopping Aggregation and History E2E', () => {
         createShoppingItem({
             name: otherHouseholdHistoryName,
             quantityAmount: 1,
+            quantityUnit: 'PIECE',
             notes: 'Must not leak into owner history'
         }, 'BOUGHT');
 

@@ -171,7 +171,7 @@ describe('UC-05 Expense Tracking, Payment Status, and History E2E', () => {
       cy.get('#description').clear().type('UC05 Invalid Expense');
       cy.get('#totalAmount').clear().type('-5.00');
       cy.contains('button', 'Create Expense').click();
-      cy.contains('Enter a positive total amount.').should('be.visible');
+      cy.contains('Enter a positive total amount with at most two decimal places.').should('be.visible');
 
       cy.get('#description').clear().type('UC05 Mismatch Expense');
       cy.get('#totalAmount').clear().type('10.00').blur();

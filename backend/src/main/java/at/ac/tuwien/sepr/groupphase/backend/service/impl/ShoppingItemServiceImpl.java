@@ -73,6 +73,8 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         LOGGER.debug("Create shopping item {} ({}) for user {}",
             dto.name(), dto.visibility(), currentUser.getEmail());
 
+        validateStructuredQuantity(dto.quantityAmount(), dto.quantityUnit());
+
         Roommate roommate = requireActiveRoommate(currentUser);
 
         ApplicationUser target = resolveAndValidateTarget(
@@ -142,6 +144,8 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
     @Transactional
     public ShoppingItemDto update(Long id, ShoppingItemUpdateDto dto, ApplicationUser currentUser) {
         LOGGER.debug("Update shopping item {} by user {}", id, currentUser.getEmail());
+
+        validateStructuredQuantity(dto.quantityAmount(), dto.quantityUnit());
 
         ShoppingItem item = loadAndAuthorizeManage(id, currentUser);
 
@@ -387,6 +391,13 @@ public class ShoppingItemServiceImpl implements ShoppingItemService {
         return roommateRepository.findByUserIdAndActiveTrue(currentUser.getId())
             .orElseThrow(() -> new ForbiddenException(
                 "User does not belong to any active household."));
+    }
+
+    private void validateStructuredQuantity(BigDecimal quantityAmount, QuantityUnit quantityUnit) {
+        if ((quantityAmount == null) != (quantityUnit == null)) {
+            throw new ValidationException(
+                "Quantity amount and unit must be provided together.");
+        }
     }
 
     private ShoppingItem loadAndAuthorizeView(Long id, ApplicationUser currentUser) {

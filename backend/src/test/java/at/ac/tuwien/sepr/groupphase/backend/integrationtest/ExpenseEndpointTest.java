@@ -203,6 +203,48 @@ public class ExpenseEndpointTest implements TestData {
     }
 
     @Test
+    public void givenNoToken_whenAccessExpenseEndpoints_then403AndNoFinancialMutationOccurs() throws Exception {
+        Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Protected", money("12.00"));
+        saveSplit(expense, mainTenantRoommate, money("12.00"));
+        EqualSplitRequestDto equalSplitRequestDto = new EqualSplitRequestDto(
+            money("12.00"),
+            List.of(mainTenantRoommate.getId(), roommateRecord.getId())
+        );
+        BillExpensePreviewRequestDto previewRequestDto = new BillExpensePreviewRequestDto(
+            "Receipt",
+            money("12.00"),
+            EXPENSE_DATE,
+            List.of(mainTenantRoommate.getId(), roommateRecord.getId())
+        );
+
+        List<Integer> statuses = List.of(
+            this.mockMvc.perform(get(EXPENSE_BASE_URI)).andReturn().getResponse().getStatus(),
+            this.mockMvc.perform(get(EXPENSE_BASE_URI + "/{id}", expense.getId())).andReturn().getResponse().getStatus(),
+            this.mockMvc.perform(get(EXPENSE_BASE_URI + "/balances")).andReturn().getResponse().getStatus(),
+            this.mockMvc.perform(put(EXPENSE_BASE_URI + "/{id}", expense.getId())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(jsonMapper.writeValueAsString(validUpdateDto("No token update"))))
+                .andReturn().getResponse().getStatus(),
+            this.mockMvc.perform(delete(EXPENSE_BASE_URI + "/{id}", expense.getId())).andReturn().getResponse().getStatus(),
+            this.mockMvc.perform(post(EXPENSE_BASE_URI + "/equal-split")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(jsonMapper.writeValueAsString(equalSplitRequestDto)))
+                .andReturn().getResponse().getStatus(),
+            this.mockMvc.perform(post(EXPENSE_BASE_URI + "/bill-preview")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(jsonMapper.writeValueAsString(previewRequestDto)))
+                .andReturn().getResponse().getStatus()
+        );
+
+        assertAll(
+            () -> assertTrue(statuses.stream().allMatch(status -> status == HttpStatus.FORBIDDEN.value())),
+            () -> assertEquals(1, expenseRepository.findAll().size()),
+            () -> assertEquals(1, expenseSplitRepository.findAll().size()),
+            () -> assertEquals("Protected", expenseRepository.findById(expense.getId()).orElseThrow().getDescription())
+        );
+    }
+
+    @Test
     public void givenInvalidAmount_whenCreateExpense_then400AndNoExpenseIsCreated() throws Exception {
         ExpenseCreateDto createDto = new ExpenseCreateDto(
             "Invalid amount",
@@ -225,11 +267,73 @@ public class ExpenseEndpointTest implements TestData {
     }
 
     @Test
+    public void givenOverscaleMonetaryValues_whenCreateExpense_then400AndNoExpenseIsCreated() throws Exception {
+        ExpenseCreateDto invalidTotalDto = new ExpenseCreateDto(
+            "Overscale total",
+            money("12.005"),
+            EXPENSE_DATE,
+            mainTenantRoommate.getId(),
+            List.of(new ExpenseSplitCreateDto(mainTenantRoommate.getId(), money("12.00")))
+        );
+        ExpenseCreateDto invalidSplitDto = new ExpenseCreateDto(
+            "Overscale split",
+            money("12.00"),
+            EXPENSE_DATE,
+            mainTenantRoommate.getId(),
+            List.of(new ExpenseSplitCreateDto(mainTenantRoommate.getId(), money("12.005")))
+        );
+
+        MvcResult totalResult = this.mockMvc.perform(post(EXPENSE_BASE_URI)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(invalidTotalDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+        MvcResult splitResult = this.mockMvc.perform(post(EXPENSE_BASE_URI)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(invalidSplitDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.BAD_REQUEST.value(), totalResult.getResponse().getStatus()),
+            () -> assertEquals(HttpStatus.BAD_REQUEST.value(), splitResult.getResponse().getStatus()),
+            () -> assertEquals(0, expenseRepository.findAll().size()),
+            () -> assertEquals(0, expenseSplitRepository.findAll().size())
+        );
+    }
+
+    @Test
     public void givenInvalidSplitSum_whenCreateExpense_then409AndNoPartialExpenseIsCreated() throws Exception {
         ExpenseCreateDto createDto = validCreateDto(
             mainTenantRoommate.getId(),
             new ExpenseSplitCreateDto(mainTenantRoommate.getId(), money("5.00")),
             new ExpenseSplitCreateDto(roommateRecord.getId(), money("5.00"))
+        );
+
+        MvcResult mvcResult = this.mockMvc.perform(post(EXPENSE_BASE_URI)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(createDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.CONFLICT.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals(0, expenseRepository.findAll().size()),
+            () -> assertEquals(0, expenseSplitRepository.findAll().size())
+        );
+    }
+
+    @Test
+    public void givenDuplicateParticipant_whenCreateExpense_then409AndNoPartialExpenseIsCreated() throws Exception {
+        ExpenseCreateDto createDto = new ExpenseCreateDto(
+            "Duplicate split",
+            money("12.00"),
+            EXPENSE_DATE,
+            mainTenantRoommate.getId(),
+            List.of(
+                new ExpenseSplitCreateDto(mainTenantRoommate.getId(), money("6.00")),
+                new ExpenseSplitCreateDto(mainTenantRoommate.getId(), money("6.00"))
+            )
         );
 
         MvcResult mvcResult = this.mockMvc.perform(post(EXPENSE_BASE_URI)
@@ -348,7 +452,7 @@ public class ExpenseEndpointTest implements TestData {
     }
 
     @Test
-    public void givenCreator_whenUpdateExpense_then200AndExpenseAndSplitsAreUpdated() throws Exception {
+    public void bug32_givenCreator_whenUpdateExpense_then200AndExpenseAndSplitsAreUpdated() throws Exception {
         Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Old expense", money("12.00"));
         saveSplit(expense, mainTenantRoommate, money("6.00"));
         saveSplit(expense, roommateRecord, money("6.00"));
@@ -440,19 +544,20 @@ public class ExpenseEndpointTest implements TestData {
     }
 
     @Test
-    public void givenRecordedPayment_whenUpdateExpense_then409AndExpenseIsUnchanged() throws Exception {
-        Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Old expense", money("12.00"));
+    public void bug31_givenEqualSplitExpense_whenEditAmountAndParticipants_thenRecomputesSplitsWithoutStaleRows() throws Exception {
+        Roommate secondRoommate = saveRoommate(saveUser(SECOND_ROOMMATE_EMAIL, "Second", "Roommate"), household, HouseholdRole.ROOMMATE);
+        Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Old equal split", money("12.00"));
         saveSplit(expense, mainTenantRoommate, money("6.00"));
         saveSplit(expense, roommateRecord, money("6.00"));
-        savePayment(roommateRecord, mainTenantRoommate, money("6.00"));
         ExpenseUpdateDto updateDto = new ExpenseUpdateDto(
-            "Updated expense",
-            money("20.00"),
+            "Updated equal split",
+            money("10.00"),
             EXPENSE_DATE,
             mainTenantRoommate.getId(),
             List.of(
-                new ExpenseSplitCreateDto(mainTenantRoommate.getId(), money("10.00")),
-                new ExpenseSplitCreateDto(roommateRecord.getId(), money("10.00"))
+                new ExpenseSplitCreateDto(mainTenantRoommate.getId(), money("3.34")),
+                new ExpenseSplitCreateDto(roommateRecord.getId(), money("3.33")),
+                new ExpenseSplitCreateDto(secondRoommate.getId(), money("3.33"))
             )
         );
 
@@ -462,13 +567,59 @@ public class ExpenseEndpointTest implements TestData {
                 .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
             .andReturn();
 
-        Expense unchangedExpense = expenseRepository.findById(expense.getId()).orElseThrow();
+        ExpenseDto expenseDto = jsonMapper.readValue(mvcResult.getResponse().getContentAsString(), ExpenseDto.class);
+        BigDecimal splitSum = expenseDto.splits().stream()
+            .map(split -> split.amountOwed())
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        List<ExpenseSplit> persistedSplits = expenseSplitRepository.findAllByExpenseId(expense.getId());
 
         assertAll(
-            () -> assertEquals(HttpStatus.CONFLICT.value(), mvcResult.getResponse().getStatus()),
-            () -> assertEquals("Old expense", unchangedExpense.getDescription()),
-            () -> assertEquals(0, money("12.00").compareTo(unchangedExpense.getTotalAmount())),
-            () -> assertEquals(2, expenseSplitRepository.findAll().size())
+            () -> assertEquals(HttpStatus.OK.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals("Updated equal split", expenseDto.description()),
+            () -> assertEquals(3, expenseDto.splits().size()),
+            () -> assertEquals(3, persistedSplits.size()),
+            () -> assertEquals(0, money("10.00").compareTo(splitSum)),
+            () -> assertTrue(persistedSplits.stream().anyMatch(split -> split.getRoommate().getId().equals(secondRoommate.getId()))),
+            () -> assertEquals(0, money("3.34").compareTo(expenseDto.splits().get(0).amountOwed())),
+            () -> assertEquals(0, money("3.33").compareTo(expenseDto.splits().get(1).amountOwed())),
+            () -> assertEquals(0, money("3.33").compareTo(expenseDto.splits().get(2).amountOwed()))
+        );
+    }
+
+    @Test
+    public void bug39_givenRecordedPaymentInHousehold_whenUpdateUnrelatedExpense_then200AndExpenseIsUpdated() throws Exception {
+        Expense paidExpense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Paid expense", money("12.00"));
+        saveSplit(paidExpense, mainTenantRoommate, money("6.00"));
+        saveSplit(paidExpense, roommateRecord, money("6.00"));
+        savePayment(roommateRecord, mainTenantRoommate, money("6.00"));
+        Expense unrelatedExpense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Old expense", money("8.00"));
+        saveSplit(unrelatedExpense, mainTenantRoommate, money("4.00"));
+        saveSplit(unrelatedExpense, roommateRecord, money("4.00"));
+        ExpenseUpdateDto updateDto = new ExpenseUpdateDto(
+            "Updated expense",
+            money("10.00"),
+            EXPENSE_DATE,
+            mainTenantRoommate.getId(),
+            List.of(
+                new ExpenseSplitCreateDto(mainTenantRoommate.getId(), money("5.00")),
+                new ExpenseSplitCreateDto(roommateRecord.getId(), money("5.00"))
+            )
+        );
+
+        MvcResult mvcResult = this.mockMvc.perform(put(EXPENSE_BASE_URI + "/{id}", unrelatedExpense.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(updateDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        Expense updatedExpense = expenseRepository.findById(unrelatedExpense.getId()).orElseThrow();
+
+        assertAll(
+            () -> assertEquals(HttpStatus.OK.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals("Updated expense", updatedExpense.getDescription()),
+            () -> assertEquals(0, money("10.00").compareTo(updatedExpense.getTotalAmount())),
+            () -> assertEquals(4, expenseSplitRepository.findAll().size()),
+            () -> assertEquals(1, paymentRepository.findAll().size())
         );
     }
 
@@ -673,20 +824,62 @@ public class ExpenseEndpointTest implements TestData {
     }
 
     @Test
-    public void givenRecordedPayment_whenDeleteExpense_then409AndExpenseIsKept() throws Exception {
-        Expense expense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Delete me", money("12.00"));
-        saveSplit(expense, mainTenantRoommate, money("6.00"));
-        saveSplit(expense, roommateRecord, money("6.00"));
+    public void bug39_givenRecordedPaymentInHousehold_whenDeleteUnrelatedExpense_then204AndOnlyTargetExpenseIsDeleted() throws Exception {
+        Expense paidExpense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Paid expense", money("12.00"));
+        saveSplit(paidExpense, mainTenantRoommate, money("6.00"));
+        saveSplit(paidExpense, roommateRecord, money("6.00"));
         savePayment(roommateRecord, mainTenantRoommate, money("6.00"));
+        Expense unrelatedExpense = saveExpense(household, mainTenantRoommate, mainTenantRoommate, "Delete me", money("8.00"));
+        saveSplit(unrelatedExpense, mainTenantRoommate, money("4.00"));
+        saveSplit(unrelatedExpense, roommateRecord, money("4.00"));
 
-        MvcResult mvcResult = this.mockMvc.perform(delete(EXPENSE_BASE_URI + "/{id}", expense.getId())
+        MvcResult mvcResult = this.mockMvc.perform(delete(EXPENSE_BASE_URI + "/{id}", unrelatedExpense.getId())
                 .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
             .andReturn();
 
         assertAll(
-            () -> assertEquals(HttpStatus.CONFLICT.value(), mvcResult.getResponse().getStatus()),
+            () -> assertEquals(HttpStatus.NO_CONTENT.value(), mvcResult.getResponse().getStatus()),
             () -> assertEquals(1, expenseRepository.findAll().size()),
-            () -> assertEquals(2, expenseSplitRepository.findAll().size())
+            () -> assertTrue(expenseRepository.existsById(paidExpense.getId())),
+            () -> assertFalse(expenseRepository.existsById(unrelatedExpense.getId())),
+            () -> assertEquals(2, expenseSplitRepository.findAll().size()),
+            () -> assertEquals(1, paymentRepository.findAll().size())
+        );
+    }
+
+    @Test
+    public void bug37_givenSameDescriptionAndAmount_whenCreateTwoExpenses_thenBothPersistAsDistinctRecords() throws Exception {
+        ExpenseCreateDto createDto = validCreateDto(
+            mainTenantRoommate.getId(),
+            new ExpenseSplitCreateDto(mainTenantRoommate.getId(), money("6.00")),
+            new ExpenseSplitCreateDto(roommateRecord.getId(), money("6.00"))
+        );
+
+        MvcResult firstResult = this.mockMvc.perform(post(EXPENSE_BASE_URI)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(createDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+        MvcResult secondResult = this.mockMvc.perform(post(EXPENSE_BASE_URI)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(createDto))
+                .header(securityProperties.getAuthHeader(), tokenFor(MAIN_TENANT_EMAIL)))
+            .andReturn();
+
+        ExpenseDto firstExpense = jsonMapper.readValue(firstResult.getResponse().getContentAsString(), ExpenseDto.class);
+        ExpenseDto secondExpense = jsonMapper.readValue(secondResult.getResponse().getContentAsString(), ExpenseDto.class);
+
+        assertAll(
+            () -> assertEquals(HttpStatus.CREATED.value(), firstResult.getResponse().getStatus()),
+            () -> assertEquals(HttpStatus.CREATED.value(), secondResult.getResponse().getStatus()),
+            () -> assertEquals("Groceries", firstExpense.description()),
+            () -> assertEquals("Groceries", secondExpense.description()),
+            () -> assertEquals(0, firstExpense.totalAmount().compareTo(secondExpense.totalAmount())),
+            () -> assertNotNull(firstExpense.id()),
+            () -> assertNotNull(secondExpense.id()),
+            () -> assertFalse(firstExpense.id().equals(secondExpense.id())),
+            () -> assertEquals(2, expenseRepository.findAll().size()),
+            () -> assertEquals(4, expenseSplitRepository.findAll().size())
         );
     }
 
