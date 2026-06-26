@@ -106,10 +106,14 @@
       </section>
 
       <div class="statistics-section-tabs" role="tablist" aria-label="Statistics sections">
-        <button type="button" [class.active]="activeStatisticsSection === 'overview'" (click)="setStatisticsSection('overview')">Overview</button>
-        <button type="button" [class.active]="activeStatisticsSection === 'tasks'" (click)="setStatisticsSection('tasks')">Tasks & Cleaning</button>
-        <button type="button" [class.active]="activeStatisticsSection === 'expenses'" (click)="setStatisticsSection('expenses')">Expenses & Payments</button>
-        <button type="button" [class.active]="activeStatisticsSection === 'shopping'" (click)="setStatisticsSection('shopping')">Shopping</button>
+        <button type="button" role="tab" [attr.aria-selected]="activeStatisticsSection === 'overview'"
+                [class.active]="activeStatisticsSection === 'overview'" (click)="setStatisticsSection('overview')">Overview</button>
+        <button type="button" role="tab" [attr.aria-selected]="activeStatisticsSection === 'tasks'"
+                [class.active]="activeStatisticsSection === 'tasks'" (click)="setStatisticsSection('tasks')">Tasks &amp; Cleaning</button>
+        <button type="button" role="tab" [attr.aria-selected]="activeStatisticsSection === 'expenses'"
+                [class.active]="activeStatisticsSection === 'expenses'" (click)="setStatisticsSection('expenses')">Expenses &amp; Payments</button>
+        <button type="button" role="tab" [attr.aria-selected]="activeStatisticsSection === 'shopping'"
+                [class.active]="activeStatisticsSection === 'shopping'" (click)="setStatisticsSection('shopping')">Shopping</button>
       </div>
 
       @if (activeStatisticsSection === 'overview') {

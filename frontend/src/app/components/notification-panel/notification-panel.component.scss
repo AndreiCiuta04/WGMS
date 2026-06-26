@@ -11,7 +11,7 @@ $text-secondary: #5F6B5F;
 .trigger-btn {
   color: $text-secondary;
   transition: color 0.15s ease, transform 0.1s ease;
-  
+
   &:hover {
     color: $forest-green;
     transform: scale(1.05);
@@ -55,7 +55,7 @@ $text-secondary: #5F6B5F;
 .mark-all-btn {
   font-size: 0.8rem;
   color: $forest-green !important;
-  
+
   &:hover {
     color: $forest-green-hover !important;
   }
@@ -76,14 +76,14 @@ $text-secondary: #5F6B5F;
   cursor: pointer;
   background-color: #FFFFFF;
   transition: background-color 0.15s ease;
-  
+
   &:hover {
     background-color: rgba(52, 103, 57, 0.02);
   }
-  
+
   &.unread {
     background-color: rgba(52, 103, 57, 0.05);
-    
+
     &:hover {
       background-color: rgba(52, 103, 57, 0.07);
     }
@@ -109,4 +109,10 @@ $text-secondary: #5F6B5F;
 .small-dot {
   font-size: 8px;
   color: $forest-green !important;
+}
+
+.notification-dropdown-card {
+  .text-muted {
+    color: $text-secondary !important;
+  }
 }
