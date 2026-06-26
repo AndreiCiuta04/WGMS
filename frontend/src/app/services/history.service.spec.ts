@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { HistoryService } from './history.service';
 import { Globals } from '../global/globals';
-import { HistoryDto } from '../dtos/history';
+import { HistoryDto, StatisticsFilter } from '../dtos/history';
 
 describe('HistoryService', () => {
   let service: HistoryService;
@@ -54,5 +54,51 @@ describe('HistoryService', () => {
 
     httpMock.expectOne(globals.backendUri + '/history')
       .flush({ message: 'Forbidden' }, { status: 403, statusText: 'Forbidden' });
+  });
+
+  it('statistics calls should include date and grouping filters', () => {
+    const filter: StatisticsFilter = {
+      from: '2026-01-01',
+      to: '2026-01-31',
+      grouping: 'DAY',
+      modules: ['TASKS', 'EXPENSES']
+    } as any;
+
+    service.getTaskStatistics(filter).subscribe();
+    let req = httpMock.expectOne(globals.backendUri + '/history/statistics/tasks?from=2026-01-01&to=2026-01-31&grouping=DAY');
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.has('modules')).toBeFalse();
+    req.flush({} as any);
+
+    service.getExpenseStatistics(filter).subscribe();
+    req = httpMock.expectOne(globals.backendUri + '/history/statistics/expenses?from=2026-01-01&to=2026-01-31&grouping=DAY');
+    expect(req.request.method).toBe('GET');
+    req.flush({} as any);
+
+    service.getShoppingStatistics(filter).subscribe();
+    req = httpMock.expectOne(globals.backendUri + '/history/statistics/shopping?from=2026-01-01&to=2026-01-31&grouping=DAY');
+    expect(req.request.method).toBe('GET');
+    req.flush({} as any);
+  });
+
+  it('overview statistics should include selected modules when provided', () => {
+    const filter: StatisticsFilter = {
+      from: '2026-02-01',
+      to: '2026-02-28',
+      grouping: 'MONTH',
+      modules: ['SHOPPING', 'TASKS']
+    } as any;
+
+    service.getStatisticsOverview(filter).subscribe();
+
+    const req = httpMock.expectOne(request =>
+      request.url === globals.backendUri + '/history/statistics/overview'
+      && request.params.get('from') === '2026-02-01'
+      && request.params.get('to') === '2026-02-28'
+      && request.params.get('grouping') === 'MONTH'
+      && request.params.getAll('modules')?.join(',') === 'SHOPPING,TASKS'
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush({} as any);
   });
 });

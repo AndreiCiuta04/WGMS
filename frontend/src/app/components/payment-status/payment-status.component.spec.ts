@@ -240,7 +240,39 @@ describe('PaymentStatusComponent', () => {
     expect(paymentServiceSpy.approveSettlement).toHaveBeenCalledOnceWith('10-11-1250');
     expect(component.successMessage).toBe('Settlement approved and payment recorded.');
     expect(paymentServiceSpy.getOverview).toHaveBeenCalledTimes(2);
-    expect(paymentServiceSpy.getPendingSettlements).toHaveBeenCalledTimes(1);
+    expect(paymentServiceSpy.getPendingSettlements).toHaveBeenCalledTimes(2);
+  });
+
+  it('should hide stale settlement cards while refreshed settlement ids load after a decision', () => {
+    const staleSecondSettlement: PendingSettlementDto = {
+      ...pendingSettlements[0],
+      id: '10-12-stale',
+      toRoommateId: 12,
+      toRoommateName: 'Chris Creditor',
+      toRoommateEmail: 'chris@test.com'
+    };
+    const refreshedSecondSettlement: PendingSettlementDto = {
+      ...staleSecondSettlement,
+      id: '10-12-refreshed'
+    };
+    const refreshSubject = new Subject<PendingSettlementDto[]>();
+    paymentServiceSpy.getPendingSettlements.and.returnValues(
+      of([pendingSettlements[0], staleSecondSettlement]),
+      refreshSubject.asObservable()
+    );
+    fixture.detectChanges();
+
+    component.decideSettlement(pendingSettlements[0], 'APPROVE');
+
+    expect(component.pendingSettlements).toEqual([]);
+    expect(component.currentSettlement()).toBeNull();
+    expect(component.showSettlementOverlay()).toBeFalse();
+
+    refreshSubject.next([refreshedSecondSettlement]);
+    refreshSubject.complete();
+
+    expect(component.currentSettlement()?.id).toBe('10-12-refreshed');
+    expect(component.showSettlementOverlay()).toBeTrue();
   });
 
   it('should reject a pending settlement via button fallback', () => {

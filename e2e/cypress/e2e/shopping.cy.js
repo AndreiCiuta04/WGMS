@@ -121,6 +121,7 @@ describe('FR-07 Shopping List E2E Workflow', () => {
         // Delete the item
         cy.intercept('DELETE', '**/api/v1/shopping-items/*').as('deleteRequest');
         cy.contains('.completed-item', updatedItem.name).find('button[title="Delete"]').click();
+        cy.confirmDialog();
         cy.wait('@deleteRequest').its('response.statusCode').should('eq', 204);
 
         // Verify it is gone entirely

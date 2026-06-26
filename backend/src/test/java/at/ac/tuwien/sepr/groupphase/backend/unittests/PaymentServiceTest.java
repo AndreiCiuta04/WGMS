@@ -220,7 +220,7 @@ public class PaymentServiceTest {
     public void givenValidPayment_whenCreatePayment_thenPaymentIsSaved() {
         mockCurrentRoommate(ROOMMATE_EMAIL, roommateUser, roommate);
         when(householdRepository.findByIdForUpdate(household.getId())).thenReturn(Optional.of(household));
-        when(roommateRepository.findByIdAndHouseholdId(mainTenant.getId(), household.getId()))
+        when(roommateRepository.findByIdAndHouseholdIdAndActiveTrue(mainTenant.getId(), household.getId()))
             .thenReturn(Optional.of(mainTenant));
         when(expenseSplitRepository.findAllByExpenseHouseholdId(household.getId()))
             .thenReturn(List.of(createSplit(createExpense(mainTenant), roommate, "10.00")));
@@ -379,7 +379,7 @@ public class PaymentServiceTest {
     public void givenPaymentToRoommateInOtherHousehold_whenCreatePayment_thenNotFoundAndNoSave() {
         mockCurrentRoommate(ROOMMATE_EMAIL, roommateUser, roommate);
         when(householdRepository.findByIdForUpdate(household.getId())).thenReturn(Optional.of(household));
-        when(roommateRepository.findByIdAndHouseholdId(outsider.getId(), household.getId()))
+        when(roommateRepository.findByIdAndHouseholdIdAndActiveTrue(outsider.getId(), household.getId()))
             .thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class, () ->
@@ -445,7 +445,7 @@ public class PaymentServiceTest {
     public void givenNoOpenBalance_whenCreatePayment_thenConflictAndNoSave() {
         mockCurrentRoommate(ROOMMATE_EMAIL, roommateUser, roommate);
         when(householdRepository.findByIdForUpdate(household.getId())).thenReturn(Optional.of(household));
-        when(roommateRepository.findByIdAndHouseholdId(mainTenant.getId(), household.getId()))
+        when(roommateRepository.findByIdAndHouseholdIdAndActiveTrue(mainTenant.getId(), household.getId()))
             .thenReturn(Optional.of(mainTenant));
         when(expenseSplitRepository.findAllByExpenseHouseholdId(household.getId())).thenReturn(List.of());
         when(paymentRepository.findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(household.getId()))
@@ -465,7 +465,7 @@ public class PaymentServiceTest {
     public void givenPaymentAboveOpenBalance_whenCreatePayment_thenConflictAndNoSave() {
         mockCurrentRoommate(ROOMMATE_EMAIL, roommateUser, roommate);
         when(householdRepository.findByIdForUpdate(household.getId())).thenReturn(Optional.of(household));
-        when(roommateRepository.findByIdAndHouseholdId(mainTenant.getId(), household.getId()))
+        when(roommateRepository.findByIdAndHouseholdIdAndActiveTrue(mainTenant.getId(), household.getId()))
             .thenReturn(Optional.of(mainTenant));
         when(expenseSplitRepository.findAllByExpenseHouseholdId(household.getId()))
             .thenReturn(List.of(createSplit(createExpense(mainTenant), roommate, "10.00")));
@@ -486,7 +486,7 @@ public class PaymentServiceTest {
     public void givenPaymentToSelf_whenCreatePayment_thenConflictAndNoSave() {
         mockCurrentRoommate(ROOMMATE_EMAIL, roommateUser, roommate);
         when(householdRepository.findByIdForUpdate(household.getId())).thenReturn(Optional.of(household));
-        when(roommateRepository.findByIdAndHouseholdId(roommate.getId(), household.getId()))
+        when(roommateRepository.findByIdAndHouseholdIdAndActiveTrue(roommate.getId(), household.getId()))
             .thenReturn(Optional.of(roommate));
 
         assertThrows(ConflictException.class, () ->
@@ -529,7 +529,7 @@ public class PaymentServiceTest {
         when(householdRepository.findByIdForUpdate(household.getId())).thenReturn(Optional.of(household));
 
         assertThrows(ForbiddenException.class, () ->
-            paymentService.approveSettlement(roommate.getId() + "-" + mainTenant.getId() + "-1000", MAIN_EMAIL));
+            paymentService.approveSettlement(settlementId("10.00", "e15p0"), MAIN_EMAIL));
 
         verify(settlementDecisionRepository, never()).save(any(SettlementDecision.class));
         verify(paymentRepository, never()).save(any(Payment.class));
@@ -553,8 +553,9 @@ public class PaymentServiceTest {
             ));
         when(paymentRepository.findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(household.getId()))
             .thenReturn(List.of());
-        when(settlementDecisionRepository.findTopByHouseholdIdAndFromRoommateIdAndToRoommateIdAndAmountOrderByDecidedAtDescIdDesc(
-            household.getId(), roommate.getId(), mainTenant.getId(), money("10.00")))
+        mockSettlementSnapshotVersion("e11p0");
+        when(settlementDecisionRepository.findTopByHouseholdIdAndSettlementIdOrderByDecidedAtDescIdDesc(
+            household.getId(), settlementId("10.00", "e11p0")))
             .thenReturn(Optional.empty());
 
         List<PendingSettlementDto> result = paymentService.getPendingSettlements(ROOMMATE_EMAIL);
@@ -571,8 +572,9 @@ public class PaymentServiceTest {
             .thenReturn(List.of(createSplit(expense, roommate, "10.00")));
         when(paymentRepository.findAllByHouseholdIdOrderByDateDescCreatedAtDescIdDesc(household.getId()))
             .thenReturn(List.of());
-        when(settlementDecisionRepository.findTopByHouseholdIdAndFromRoommateIdAndToRoommateIdAndAmountOrderByDecidedAtDescIdDesc(
-            household.getId(), roommate.getId(), mainTenant.getId(), money("10.00")))
+        mockSettlementSnapshotVersion("e0p0");
+        when(settlementDecisionRepository.findTopByHouseholdIdAndSettlementIdOrderByDecidedAtDescIdDesc(
+            household.getId(), settlementId("10.00", "e0p0")))
             .thenReturn(Optional.empty());
 
         List<PendingSettlementDto> result = paymentService.getPendingSettlements(ROOMMATE_EMAIL);

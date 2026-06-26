@@ -209,14 +209,15 @@ export class PaymentStatusComponent implements OnInit {
         this.successMessage = decision === 'APPROVE'
           ? 'Settlement approved and payment recorded.'
           : 'Settlement rejected.';
-        this.pendingSettlements = this.pendingSettlements.filter(s => s.id !== settlement.id);
-        if (this.currentSettlementIndex >= this.pendingSettlements.length) {
-          this.currentSettlementIndex = Math.max(0, this.pendingSettlements.length - 1);
-        }
-        if (this.pendingSettlements.length === 0) {
-          this.settlementOverlayDismissed = true;
-        }
+        this.pendingSettlements = [];
+        this.currentSettlementIndex = 0;
+        this.settlementSwipeOffsets = {};
+        this.swipeStartX = null;
+        this.swipedSettlementId = null;
+        this.settlingSettlementId = null;
+        this.settlementOverlayDismissed = false;
         this.loadOverview();
+        this.loadPendingSettlements();
       },
       error: err => {
         this.errorMessage = this.extractErrorMessage(err, 'Could not update settlement.');

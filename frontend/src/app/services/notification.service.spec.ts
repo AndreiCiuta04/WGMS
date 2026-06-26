@@ -3,7 +3,7 @@ import { NotificationService } from './notification.service';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { Globals } from '../global/globals';
-import { NotificationDto, NotificationType, NotificationSettingDto } from '../dtos/notification';
+import { NotificationDto, NotificationType, NotificationSettingDto, UserVerifyDto } from '../dtos/notification';
 
 describe('NotificationService', () => {
   let service: NotificationService;
@@ -83,5 +83,49 @@ describe('NotificationService', () => {
     const req = httpMock.expectOne(`${globals.backendUri}/notifications/settings`);
     expect(req.request.method).toBe('GET');
     req.flush(dummySettings);
+  });
+
+  it('should update settings', () => {
+    const settings: NotificationSettingDto = {
+      notifyTaskAssigned: false,
+      notifyTaskOverdue: true,
+      notifyExpenseCreated: false,
+      notifyPaymentReceived: true,
+      notifyCleaningReminder: false,
+      channelInApp: true,
+      channelEmail: false,
+      channelPush: false
+    };
+
+    service.updateSettings(settings).subscribe(data => expect(data).toEqual(settings));
+
+    const req = httpMock.expectOne(`${globals.backendUri}/notifications/settings`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual(settings);
+    req.flush(settings);
+  });
+
+  it('should verify user and store bearer token without prefix', () => {
+    spyOn(localStorage, 'setItem');
+    const verifyDto: UserVerifyDto = { email: 'anna@example.com', code: '123456' };
+
+    service.verifyUser(verifyDto).subscribe(token => expect(token).toBe('Bearer jwt-token'));
+
+    const req = httpMock.expectOne(`${globals.backendUri}/users/verify`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(verifyDto);
+    req.flush('Bearer jwt-token');
+    expect(localStorage.setItem).toHaveBeenCalledWith('authToken', 'jwt-token');
+  });
+
+  it('should store verification token unchanged when no bearer prefix is returned', () => {
+    spyOn(localStorage, 'setItem');
+
+    service.verifyUser({ email: 'anna@example.com', code: '654321' }).subscribe(token => expect(token).toBe('plain-token'));
+
+    const req = httpMock.expectOne(`${globals.backendUri}/users/verify`);
+    expect(req.request.method).toBe('POST');
+    req.flush('plain-token');
+    expect(localStorage.setItem).toHaveBeenCalledWith('authToken', 'plain-token');
   });
 });
