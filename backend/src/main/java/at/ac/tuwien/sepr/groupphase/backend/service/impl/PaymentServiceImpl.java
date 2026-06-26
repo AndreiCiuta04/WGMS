@@ -143,9 +143,10 @@ public class PaymentServiceImpl implements PaymentService {
         LOGGER.debug("Get pending settlement approvals for user {}", currentUserEmail);
 
         Roommate currentRoommate = getCurrentRoommateByEmail(currentUserEmail);
-        return calculateOpenBalances(currentRoommate.getHousehold().getId()).stream()
+        Long householdId = currentRoommate.getHousehold().getId();
+        return calculateOpenBalances(householdId).stream()
             .filter(balance -> currentRoommate.getId().equals(balance.fromRoommateId()))
-            .filter(balance -> latestDecisionFor(currentRoommate.getHousehold().getId(), balance).isEmpty())
+            .filter(balance -> latestDecisionFor(householdId, balance).isEmpty())
             .map(balance -> toPendingSettlementDto(balance, currentRoommate))
             .toList();
     }
@@ -163,7 +164,7 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = new Payment();
         payment.setHousehold(currentRoommate.getHousehold());
         payment.setFromRoommate(currentRoommate);
-        payment.setToRoommate(getSettlementCounterpartyInHousehold(balance.toRoommateId(), householdId));
+        payment.setToRoommate(getActiveRoommateInHousehold(balance.toRoommateId(), householdId));
         payment.setAmount(toMoney(balance.amount()));
         payment.setDate(LocalDate.now());
         payment.setCreatedBy(currentRoommate);
@@ -177,7 +178,7 @@ public class PaymentServiceImpl implements PaymentService {
             savedPayment.getId()
         );
 
-        SettlementDecision decision = saveSettlementDecision(balance, currentRoommate, SettlementDecisionStatus.APPROVED);
+        SettlementDecision decision = saveSettlementDecision(balance, currentRoommate, settlementId, SettlementDecisionStatus.APPROVED);
         return toDecidedSettlementDto(balance, currentRoommate, decision);
     }
 
@@ -190,7 +191,7 @@ public class PaymentServiceImpl implements PaymentService {
         Long householdId = currentRoommate.getHousehold().getId();
         lockHouseholdForSettlement(householdId);
         BalanceDto balance = validateSettlementDecisionInput(settlementId, currentRoommate);
-        SettlementDecision decision = saveSettlementDecision(balance, currentRoommate, SettlementDecisionStatus.REJECTED);
+        SettlementDecision decision = saveSettlementDecision(balance, currentRoommate, settlementId, SettlementDecisionStatus.REJECTED);
         return toDecidedSettlementDto(balance, currentRoommate, decision);
     }
 
@@ -225,14 +226,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private Roommate getActiveRoommateInHousehold(Long roommateId, Long householdId) {
         return roommateRepository.findByIdAndHouseholdIdAndActiveTrue(roommateId, householdId)
-            .or(() -> roommateRepository.findByIdAndHouseholdId(roommateId, householdId)
-                .filter(Roommate::isActive))
             .orElseThrow(() -> new NotFoundException("Roommate is not an active member of your household."));
-    }
-
-    private Roommate getSettlementCounterpartyInHousehold(Long roommateId, Long householdId) {
-        return roommateRepository.findByIdAndHouseholdId(roommateId, householdId)
-            .orElseThrow(() -> new NotFoundException("Roommate is not a member of your household."));
     }
 
     private List<BalanceDto> calculateOpenBalances(Long householdId) {
@@ -249,21 +243,14 @@ public class PaymentServiceImpl implements PaymentService {
             throw new ForbiddenException("Only the roommate who owes the settlement may approve or reject it.");
         }
 
-        Roommate toRoommate = getSettlementCounterpartyInHousehold(settlementKey.toRoommateId(), householdId);
+        Roommate toRoommate = getActiveRoommateInHousehold(settlementKey.toRoommateId(), householdId);
         validateDifferentRoommates(currentRoommate, toRoommate);
 
         BigDecimal amount = settlementKey.amount();
         validatePositiveAmount(amount);
 
         Optional<SettlementDecision> existingDecision = settlementDecisionRepository
-            .findTopByHouseholdIdAndSettlementIdOrderByDecidedAtDescIdDesc(householdId, settlementId)
-            .or(() -> settlementDecisionRepository
-            .findTopByHouseholdIdAndFromRoommateIdAndToRoommateIdAndAmountOrderByDecidedAtDescIdDesc(
-                householdId,
-                currentRoommate.getId(),
-                toRoommate.getId(),
-                amount
-            ));
+            .findTopByHouseholdIdAndSettlementIdOrderByDecidedAtDescIdDesc(householdId, settlementId);
         if (existingDecision.isPresent()) {
             throw new ConflictException("This settlement has already been decided.");
         }
@@ -271,7 +258,8 @@ public class PaymentServiceImpl implements PaymentService {
         return calculateOpenBalances(householdId).stream()
             .filter(balance -> currentRoommate.getId().equals(balance.fromRoommateId())
                 && toRoommate.getId().equals(balance.toRoommateId())
-                && amount.compareTo(toMoney(balance.amount())) == 0)
+                && amount.compareTo(toMoney(balance.amount())) == 0
+                && settlementId.equals(settlementId(balance.fromRoommateId(), balance.toRoommateId(), balance.amount(), householdId)))
             .findFirst()
             .orElseThrow(() -> new ConflictException("Settlement is no longer pending."));
     }
@@ -281,26 +269,20 @@ public class PaymentServiceImpl implements PaymentService {
             .findTopByHouseholdIdAndSettlementIdOrderByDecidedAtDescIdDesc(
                 householdId,
                 settlementId(balance.fromRoommateId(), balance.toRoommateId(), balance.amount(), householdId)
-            )
-            .or(() -> settlementDecisionRepository
-                .findTopByHouseholdIdAndFromRoommateIdAndToRoommateIdAndAmountOrderByDecidedAtDescIdDesc(
-                householdId,
-                balance.fromRoommateId(),
-                balance.toRoommateId(),
-                toMoney(balance.amount())
-            ));
+            );
     }
 
     private SettlementDecision saveSettlementDecision(
         BalanceDto balance,
         Roommate currentRoommate,
+        String settlementId,
         SettlementDecisionStatus status
     ) {
         SettlementDecision decision = new SettlementDecision();
         decision.setHousehold(currentRoommate.getHousehold());
         decision.setFromRoommate(currentRoommate);
-        decision.setToRoommate(getSettlementCounterpartyInHousehold(balance.toRoommateId(), currentRoommate.getHousehold().getId()));
-        decision.setSettlementId(settlementId(balance.fromRoommateId(), balance.toRoommateId(), balance.amount(), currentRoommate.getHousehold().getId()));
+        decision.setToRoommate(getActiveRoommateInHousehold(balance.toRoommateId(), currentRoommate.getHousehold().getId()));
+        decision.setSettlementId(settlementId);
         decision.setAmount(toMoney(balance.amount()));
         decision.setStatus(status);
         decision.setDecidedBy(currentRoommate);
@@ -413,7 +395,7 @@ public class PaymentServiceImpl implements PaymentService {
         SettlementDecision decision
     ) {
         return new PendingSettlementDto(
-            settlementId(balance.fromRoommateId(), balance.toRoommateId(), balance.amount(), currentRoommate.getHousehold().getId()),
+            decision.getSettlementId(),
             expenseDescriptionFor(balance, currentRoommate.getHousehold().getId()),
             balance.fromRoommateId(),
             balance.fromRoommateName(),
@@ -454,13 +436,17 @@ public class PaymentServiceImpl implements PaymentService {
 
     private String settlementId(Long fromRoommateId, Long toRoommateId, BigDecimal amount, Long householdId) {
         long amountInCents = toMoney(amount).movePointRight(MONEY_SCALE).longValueExact();
-        Long maxExpenseId = Optional.ofNullable(expenseRepository.findMaxIdByHouseholdId(householdId)).orElse(0L);
-        Long maxPaymentId = Optional.ofNullable(paymentRepository.findMaxIdByHouseholdId(householdId)).orElse(0L);
-        return fromRoommateId + "-" + toRoommateId + "-" + amountInCents + "-e" + maxExpenseId + "p" + maxPaymentId;
+        return fromRoommateId + "-" + toRoommateId + "-" + amountInCents + "-" + settlementSnapshotVersion(householdId);
+    }
+
+    private String settlementSnapshotVersion(Long householdId) {
+        long maxExpenseId = Optional.ofNullable(expenseRepository.findMaxIdByHouseholdId(householdId)).orElse(0L);
+        long maxPaymentId = Optional.ofNullable(paymentRepository.findMaxIdByHouseholdId(householdId)).orElse(0L);
+        return "e" + maxExpenseId + "p" + maxPaymentId;
     }
 
     private SettlementKey parseSettlementId(String settlementId) {
-        if (settlementId == null || !settlementId.matches("\\d+-\\d+-\\d+(-e\\d+p\\d+)?")) {
+        if (settlementId == null || !settlementId.matches("\\d+-\\d+-\\d+-e\\d+p\\d+")) {
             throw new NotFoundException("Settlement does not exist.");
         }
 

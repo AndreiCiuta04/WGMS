@@ -212,6 +212,8 @@ describe('PaymentStatusComponent', () => {
     expect(text).toContain('Groceries');
     expect(text).toContain('Max Mustermann owes Anna Musterfrau');
     expect(text).toContain('€12.50');
+    expect(fixture.nativeElement.querySelector('[data-cy="approve-settlement-button"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-cy="reject-settlement-button"]')).not.toBeNull();
   });
 
   it('should close the settlement approval overlay with the close button', () => {
@@ -232,7 +234,8 @@ describe('PaymentStatusComponent', () => {
     paymentServiceSpy.getPendingSettlements.and.returnValue(of(pendingSettlements));
     fixture.detectChanges();
 
-    component.decideSettlement(pendingSettlements[0], 'APPROVE');
+    const approveButton = fixture.nativeElement.querySelector('[data-cy="approve-settlement-button"]') as HTMLButtonElement;
+    approveButton.click();
 
     expect(paymentServiceSpy.approveSettlement).toHaveBeenCalledOnceWith('10-11-1250');
     expect(component.successMessage).toBe('Settlement approved and payment recorded.');
@@ -244,7 +247,8 @@ describe('PaymentStatusComponent', () => {
     paymentServiceSpy.getPendingSettlements.and.returnValue(of(pendingSettlements));
     fixture.detectChanges();
 
-    component.decideSettlement(pendingSettlements[0], 'REJECT');
+    const rejectButton = fixture.nativeElement.querySelector('[data-cy="reject-settlement-button"]') as HTMLButtonElement;
+    rejectButton.click();
 
     expect(paymentServiceSpy.rejectSettlement).toHaveBeenCalledOnceWith('10-11-1250');
     expect(component.successMessage).toBe('Settlement rejected.');
