@@ -341,15 +341,18 @@ $text-secondary: #5F6B5F;
     .stat-card-icon {
       transform: scale(1.08);
       background: rgba(52, 103, 57, 0.14);
-      
+
       &.shopping-icon {
-        background: rgba(121, 174, 111, 0.2);
+          background: rgba(121, 174, 111, 0.12);
+          color: #3d6437;   // was #4f7e46 (4.24 — fails AA)
       }
-      &.schedule-icon {
-        background: rgba(245, 158, 11, 0.14);
+      &.schedule-icon {            // <-- "the amber class"
+          background: rgba(245, 158, 11, 0.08);
+          color: #9a5700;   // was #d97706 (3.19 — fails AA); darker amber
       }
       &.members-icon {
-        background: rgba(59, 130, 246, 0.14);
+          background: rgba(59, 130, 246, 0.08);
+          color: #2563eb;   // 4.55 — already passes, leave as-is
       }
     }
   }
@@ -877,7 +880,7 @@ $text-secondary: #5F6B5F;
 .empty-state {
   text-align: center;
   padding: 32px 12px;
-  
+
   .empty-emoji {
     font-size: 32px;
     display: block;

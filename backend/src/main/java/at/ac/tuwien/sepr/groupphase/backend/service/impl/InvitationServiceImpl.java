@@ -198,12 +198,12 @@ public class InvitationServiceImpl implements InvitationService {
     @Transactional
     public void deleteInvitation(Long invitationId, ApplicationUser currentUser) {
         LOGGER.debug("Deleting invitation {} by user {}", invitationId, currentUser.getEmail());
-        
+
         HouseholdInvitation invitation = invitationRepository.findById(invitationId)
             .orElseThrow(() -> new NotFoundException("Invitation not found."));
-        
+
         requireMainTenant(invitation.getHousehold().getId(), currentUser);
-        
+
         invitation.setRevokedAt(LocalDateTime.now());
         invitationRepository.save(invitation);
     }
@@ -240,7 +240,7 @@ public class InvitationServiceImpl implements InvitationService {
             throw new IllegalStateException("SHA-256 not available", e);
         }
     }
-    
+
     private String getInvitationStatus(HouseholdInvitation inv) {
         if (inv.isUsed()) {
             return "USED";
